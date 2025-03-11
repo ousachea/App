@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <PageSwitcher/>
     <div class="scanner-box">
       <h1 class="title">KHQR Code Scanner</h1>
       <div class="input-section">
@@ -40,6 +41,7 @@
 </template>
 
 <script>
+import PageSwitcher from '../components/PageSwitcher.vue';
 import QrScanner from 'qr-scanner';
 
 export default {

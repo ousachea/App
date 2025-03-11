@@ -1,5 +1,7 @@
 <template>
   <div class="container" :style="{ backgroundColor: backgroundColor }">
+    <PageSwitcher/>
+
     <div class="card">
       <h2>Check Your Carrier</h2>
       <div class="phone-card">
@@ -54,6 +56,8 @@
 </template>
 
 <script setup>
+import PageSwitcher from '../components/PageSwitcher.vue';
+
 import { ref, computed, watch } from 'vue';
 
 const phoneNumber = ref('');
