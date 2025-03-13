@@ -23,7 +23,9 @@ import { ref } from 'vue';
 const pages = [
   { name: 'Home', path: '/' },
   { name: 'Gold', path: '/gold' },
-  { name: 'Phone', path: '/phone' }
+  { name: 'Phone', path: '/phone' },
+  { name: 'MPG', path: '/mpg' },
+  { name: 'Temperture', path: '/temperture' }
 ];
 
 const menuOpen = ref(false);
