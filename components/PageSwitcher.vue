@@ -26,6 +26,7 @@ const pages = [
   { name: 'Phone', path: '/phone' },
   { name: 'MPG', path: '/mpg' },
   { name: 'Text Converter', path: '/textconverter' },
+  { name: 'Image Compresser', path: '/compressor' },
   { name: 'Temperture', path: '/temperture' }
 ];
 
