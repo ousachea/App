@@ -1,621 +1,231 @@
 <template>
-  <div class="page-wrapper">
-    <div :class="['gold-wrapper', darkMode ? 'dark-mode' : 'light-mode']">
-      <h1 class="gold-glow fade-in slide-down looping-text">Live Gold Price</h1>
+  <div class="page-container">
+    <h1 class="title">✨ Text Case Converter ✨</h1>
 
-      <!-- 🔘 Toggle Source (API or Manual) -->
-      <button @click="toggleSource" class="toggle-source">
-        {{ useApi ? '🔗 Using API Data' : '✍️ Using Manual Input' }}
+    <textarea
+      v-model="inputText"
+      placeholder="Paste your text here..."
+      class="input-area animate-fade"
+    />
+
+    <div class="button-grid">
+      <button
+        v-for="(fn, label) in converters"
+        :key="label"
+        @click="convert(fn)"
+        class="convert-button animate-pop"
+      >
+        {{ label }}
       </button>
+    </div>
 
-      <!-- 📥 Manual Input for Gold Price -->
-      <div v-if="!useApi" class="manual-input">
-        <label>Enter Gold Price per Ounce ($):</label>
-        <input
-          type="number"
-          v-model.number="manualGoldPrice"
-          class="big-input"
-          @input="updateFromInput"
-        />
+    <div v-if="outputText" class="output-section">
+      <h2 class="output-title">Converted Text</h2>
+      <div class="output-box animate-fade">
+        {{ outputText }}
       </div>
-
-      <!-- 📊 Live Prices -->
-      <div class="price-container">
-        <div class="price fade-in">
-          💰 Ounce:
-          <span class="looping-text">{{
-            goldPrice.ounce || 'Loading...'
-          }}</span>
-        </div>
-        <div class="price fade-in">
-          🔶 Damlung:
-          <span class="looping-text">{{
-            goldPrice.damlung || 'Loading...'
-          }}</span>
-        </div>
-        <div class="price fade-in">
-          🟡 Chi:
-          <span class="looping-text">{{ goldPrice.chi || 'Loading...' }}</span>
-        </div>
-      </div>
-
-      <!-- 🔢 Custom Chi Calculation -->
-      <h2 class="slide-in">Custom Chi Price (ជី)</h2>
-      <input
-        type="number"
-        step="0.01"
-        v-model.number="customChiAmount"
-        placeholder="Enter Chi"
-        min="0"
-        @input="calculateChiPrice"
-        class="big-input"
-      />
-      <div class="price fade-in">
-        💲 Price for <span class="gold-glow">{{ customChiAmount }}</span> Chi:
-        <span class="gold-glow looping-text">{{ customChiPrice || '--' }}</span>
-      </div>
-
-      <!-- 📜 Price History Table -->
-      <h2 class="slide-in">Last 3 Prices</h2>
-      <div class="table-container">
-        <table class="gold-table">
-          <thead>
-            <tr>
-              <th>Ounce ($)</th>
-              <th>Damlung ($)</th>
-              <th>Chi ($)</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(record, index) in priceHistory" :key="index">
-              <td>{{ record.ounce }}</td>
-              <td>{{ record.damlung }}</td>
-              <td>{{ record.chi }}</td>
-              <td>{{ record.timestamp }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="timestamp fade-in slide-up">
-        Last updated: {{ lastUpdated }}
-      </div>
-
-      <button @click="toggleDarkMode" class="toggle-mode">
-        <span v-if="darkMode">☀️ Light Mode</span>
-        <span v-else>🌙 Dark Mode</span>
-      </button>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      goldPrice: { ounce: null, damlung: null, chi: null },
-      customChiAmount: 1,
-      customChiPrice: null,
-      lastUpdated: null,
-      pricePerChi: 0,
-      priceHistory: [],
-      darkMode: false,
-      useApi: true,
-      manualGoldPrice: null,
-    };
-  },
-  mounted() {
-    this.darkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
-    this.priceHistory = JSON.parse(localStorage.getItem('priceHistory')) || [];
-    if (this.useApi) this.fetchGoldPrice(true);
-    else this.restoreManualPrice();
-  },
-  methods: {
-    async fetchGoldPrice(updateUI) {
-      if (!this.useApi) return;
-      try {
-        const response = await fetch('https://www.goldapi.io/api/XAU/USD', {
-          headers: { 'x-access-token': 'goldapi-vf9wd19m6tl90rg-io' },
-        });
-        const data = await response.json();
-        this.updateGoldPrices(data.price, updateUI);
-      } catch (error) {
-        console.error('Error fetching gold price', error);
-      }
-    },
-    updateFromInput() {
-      if (this.manualGoldPrice > 0) {
-        this.updateGoldPrices(this.manualGoldPrice, true);
-        localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
-      }
-    },
-    restoreManualPrice() {
-      const storedPrice = localStorage.getItem('manualGoldPrice');
-      if (storedPrice) {
-        this.manualGoldPrice = parseFloat(storedPrice);
-        this.updateGoldPrices(this.manualGoldPrice, true);
-      }
-    },
-    updateGoldPrices(pricePerOunce, updateUI) {
-      const pricePerGram = pricePerOunce / 31.1035;
-      const pricePerDamlung = pricePerGram * 37.5;
-      this.pricePerChi = pricePerDamlung / 10;
+<script setup>
+import { ref } from 'vue'
 
-      const newPrice = {
-        ounce: `$${pricePerOunce.toFixed(2)}`,
-        damlung: `$${pricePerDamlung.toFixed(2)}`,
-        chi: `$${this.pricePerChi.toFixed(2)}`,
-        timestamp: new Date().toLocaleString(),
-      };
+const inputText = ref('')
+const outputText = ref('')
 
-      if (updateUI) {
-        this.goldPrice = newPrice;
-        this.lastUpdated = newPrice.timestamp;
-        this.calculateChiPrice();
+const convert = (fn) => {
+  outputText.value = fn(inputText.value)
+}
 
-        // Store last 3 price updates locally
-        this.priceHistory.unshift(newPrice);
-        if (this.priceHistory.length > 3) {
-          this.priceHistory.pop();
-        }
-        localStorage.setItem('priceHistory', JSON.stringify(this.priceHistory));
+const toSentenceCase = (text) => {
+  return text
+    .toLowerCase()
+    .replace(/(^\s*\w|[.!?]\s*\w)/g, (c) => c.toUpperCase())
+}
+
+const toLowerCase = (text) => text.toLowerCase()
+
+const toUpperCase = (text) => text.toUpperCase()
+
+const toCapitalizedCase = (text) =>
+  text.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+
+const toAlternatingCase = (text) =>
+  [...text]
+    .map((char, i) =>
+      i % 2 === 0 ? char.toLowerCase() : char.toUpperCase()
+    )
+    .join('')
+
+const toTitleCase = (text) => {
+  const minorWords = ['a', 'an', 'the', 'and', 'or', 'but', 'nor', 'to', 'for', 'on', 'at', 'by', 'with', 'of', 'in']
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map((word, index) => {
+      if (minorWords.includes(word) && index !== 0) {
+        return word
       }
-    },
-    calculateChiPrice() {
-      this.customChiPrice =
-        this.customChiAmount > 0
-          ? `$${(this.pricePerChi * this.customChiAmount).toFixed(2)}`
-          : null;
-    },
-    toggleDarkMode() {
-      this.darkMode = !this.darkMode;
-      localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
-    },
-    toggleSource() {
-      this.useApi = !this.useApi;
-      localStorage.setItem('useApi', JSON.stringify(this.useApi));
-      if (!this.useApi) {
-        this.restoreManualPrice();
-      } else {
-        this.fetchGoldPrice(true);
-      }
-    },
-  },
-};
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    })
+    .join(' ')
+}
+
+const toInverseCase = (text) =>
+  [...text]
+    .map((char) =>
+      char === char.toUpperCase()
+        ? char.toLowerCase()
+        : char.toUpperCase()
+    )
+    .join('')
+
+const converters = {
+  'Sentence case': toSentenceCase,
+  'lower case': toLowerCase,
+  'UPPER CASE': toUpperCase,
+  'Capitalized Case': toCapitalizedCase,
+  'aLtErNaTiNg cAsE': toAlternatingCase,
+  'Title Case': toTitleCase,
+  'InVeRsE CaSe': toInverseCase,
+}
 </script>
 
-<style>
-.page-wrapper {
-  text-align: center;
-  padding-top: 40px;
-  position: relative;
-  overflow: hidden;
-  height: 100vh;
+<style scoped>
+.page-container {
+  min-height: 100vh;
+  background-color: #f4f1ea;
+  color: #2a1f14;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 3rem 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
 }
 
-/* 🎆 Animated Background */
-.page-wrapper::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.05em;
+  color: #c44536;
+  text-shadow: 1px 1px #fffdf6;
+}
+
+.input-area {
   width: 100%;
-  height: 100%;
-  background: linear-gradient(-45deg, #ffdd44, #ffcc00, #b8860b, #8b6508);
-  background-size: 400% 400%;
-  animation: glowingBackground 6s ease infinite;
-  z-index: -1;
+  height: 12rem;
+  padding: 1.5rem;
+  font-size: 1.125rem;
+  border: 3px dashed #c44536;
+  border-radius: 0.75rem;
+  background-color: #fffdf6;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
+  resize: vertical;
+  transition: box-shadow 0.3s ease-in-out;
 }
 
-/* 🔥 Glowing Animation */
-@keyframes glowingBackground {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+.input-area:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(196, 69, 54, 0.4);
 }
 
-/* 📜 Glassmorphism Card */
-.gold-wrapper {
-  padding: 30px;
-  border-radius: 20px;
-  backdrop-filter: blur(15px);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.2);
-  max-width: 520px;
-  margin: 20px auto;
-  text-align: center;
-  border: 2px solid rgba(255, 215, 0, 0.5);
-  transition: all 0.5s ease-in-out;
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem 1.25rem;
+  justify-content: center;
+  padding: 0 1rem;
 }
 
-/* 🌑 Dark Mode */
-.light-mode {
-  color: #222;
+.convert-button {
+  background-color: #2a1f14;
+  color: #f4f1ea;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
 }
 
-.dark-mode {
-  background: rgba(0, 0, 0, 0.6);
+.convert-button:hover {
+  background-color: #c44536;
+  transform: translateY(-2px);
   color: #fff;
 }
 
-/* 🔘 Toggle Mode Button */
-.toggle-mode,
-.toggle-source {
-  margin: 15px 5px;
-  padding: 12px 18px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s ease-in-out;
+.output-section {
+  animation: fadeIn 0.3s ease;
+  padding: 0 1rem;
 }
 
-.toggle-mode {
-  background: #222;
-  color: #ffd700;
+.output-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #c44536;
+  text-decoration: underline;
 }
 
-.toggle-mode:hover {
-  background: #ffd700;
-  color: #222;
-}
-
-.toggle-source {
-  background: #444;
-  color: #ffd700;
-}
-
-.toggle-source:hover {
-  background: #ffd700;
-  color: #222;
-}
-
-/* ✨ Animated Gold Glow */
-.gold-glow {
-  color: #b8860b;
-  font-weight: bold;
-  text-shadow: 0 0 10px rgba(184, 134, 11, 0.7), 0 0 20px rgba(255, 215, 0, 0.5);
-}
-
-/* 🎭 Looping Animation */
-.looping-text {
-  animation: glowLoop 2s infinite alternate;
-}
-
-@keyframes glowLoop {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
-
-/* 🔢 Input Fields */
-.big-input {
-  width: 85%;
-  padding: 14px;
-  font-size: 20px;
-  border-radius: 10px;
-  text-align: center;
+.output-box {
+  background-color: #fffdf6;
+  border: 1px solid #2a1f14;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  font-size: 1.125rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  white-space: pre-wrap;
   transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.8);
-  color: #222;
-  border: 2px solid #b8860b;
-  margin: 15px 0;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.big-input:focus {
-  border-color: #ffcc00;
-  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* 💰 Gold Prices */
-.price-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin: 15px 0;
+.animate-fade {
+  animation: fadeIn 0.4s ease forwards;
 }
 
-.price {
-  font-size: 20px;
-  font-weight: bold;
-  color: #222;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 10px 15px;
-  border-radius: 8px;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+@keyframes pop {
+  0% { transform: scale(0.95); }
+  100% { transform: scale(1); }
 }
 
-/* 🕒 Timestamp */
-.timestamp {
-  margin-top: 15px;
-  font-size: 16px;
-  opacity: 0.8;
-  color: #444;
-}
-/* 📊 Gold Price Table */
-.gold-table {
-  width: 100%;
-  margin-top: 15px;
-  border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+.animate-pop {
+  animation: pop 0.3s ease-out;
 }
 
-.gold-table th,
-.gold-table td {
-  padding: 12px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.5);
-}
-
-.gold-table th {
-  background: rgba(255, 215, 0, 0.3);
-  color: #222;
-  font-weight: bold;
-}
-
-.gold-table tr:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-/* 📜 Table Container for Mobile */
-.table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-/* 📊 Gold Price Table */
-.gold-table {
-  width: 100%;
-  margin-top: 15px;
-  border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-}
-
-.gold-table th,
-.gold-table td {
-  padding: 12px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.5);
-}
-
-.gold-table th {
-  background: rgba(255, 215, 0, 0.3);
-  color: #222;
-  font-weight: bold;
-}
-
-.gold-table tr:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* 🌎 Responsive Design */
+/* Responsive */
 @media (max-width: 600px) {
-  .gold-table th,
-  .gold-table td {
-    font-size: 14px;
-    padding: 8px;
+  .title {
+    font-size: 2rem;
   }
-  .price-container {
-    flex-direction: column;
-    align-items: center;
+
+  .input-area {
+    font-size: 1rem;
+    padding: 1rem;
   }
-  .big-input {
-    width: 90%;
-    font-size: 18px;
+
+  .convert-button {
+    font-size: 0.95rem;
+    padding: 0.6rem 1rem;
   }
-}
-/* 🌟 Full Page Styling */
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Poppins', sans-serif;
-  background: linear-gradient(-45deg, #ffdd44, #ffcc00, #b8860b, #8b6508);
-  background-size: 400% 400%;
-  animation: glowingBackground 6s ease infinite;
-  color: #fff;
-  text-align: center;
-  overflow-x: hidden;
-}
 
-@keyframes glowingBackground {
-  0% {
-    background-position: 0% 50%;
+  .output-title {
+    font-size: 1.25rem;
   }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
 
-/* 📜 Gold Wrapper (No Card) */
-.gold-wrapper {
-  padding: 30px;
-  max-width: 600px;
-  margin: auto;
-  text-align: center;
-  border-radius: 15px;
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
-  border: 2px solid rgba(255, 215, 0, 0.5);
-}
-
-/* 🌑 Dark Mode */
-.dark-mode {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.light-mode {
-  background: rgba(255, 255, 255, 0.9);
-  color: #222;
-}
-
-/* ✨ Glowing Gold Effect */
-.gold-glow {
-  font-weight: bold;
-  color: #ffd700;
-  text-shadow: 0 0 10px rgba(255, 223, 0, 0.7);
-}
-
-/* 🔘 Toggle Buttons */
-.toggle-mode,
-.toggle-source {
-  margin: 10px;
-  padding: 12px 18px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
-}
-
-.toggle-mode {
-  background: #222;
-  color: #ffd700;
-}
-
-.toggle-mode:hover {
-  background: #ffd700;
-  color: #222;
-}
-
-.toggle-source {
-  background: #444;
-  color: #ffd700;
-}
-
-.toggle-source:hover {
-  background: #ffd700;
-  color: #222;
-}
-
-/* 🔢 Input Fields */
-.big-input {
-  width: 85%;
-  max-width: 320px;
-  padding: 14px;
-  font-size: 20px;
-  border-radius: 10px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.85);
-  color: #222;
-  border: 2px solid #b8860b;
-  margin: 15px 0;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.big-input:focus {
-  border-color: #ffcc00;
-  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
-}
-
-/* 📊 Price Container */
-.price-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.price {
-  font-size: 20px;
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 10px 15px;
-  border-radius: 8px;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* 📜 Table Container */
-.table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-/* 📊 Price History Table */
-.gold-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-}
-
-.gold-table th,
-.gold-table td {
-  padding: 12px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.5);
-}
-
-.gold-table th {
-  background: rgba(255, 215, 0, 0.3);
-  color: #222;
-  font-weight: bold;
-}
-
-.gold-table tr:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* 🕒 Timestamp */
-.timestamp {
-  margin-top: 10px;
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-/* 🎭 Looping Animation */
-.looping-text {
-  animation: glowLoop 2s infinite alternate;
-}
-
-@keyframes glowLoop {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.9;
-    transform: scale(1.05);
-  }
-}
-
-/* 📱 Responsive Design */
-@media (max-width: 600px) {
-  .gold-table th,
-  .gold-table td {
-    font-size: 14px;
-    padding: 8px;
-  }
-  .big-input {
-    width: 90%;
-    font-size: 18px;
+  .output-box {
+    font-size: 1rem;
   }
 }
 </style>

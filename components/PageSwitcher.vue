@@ -25,6 +25,7 @@ const pages = [
   { name: 'Gold', path: '/gold' },
   { name: 'Phone', path: '/phone' },
   { name: 'MPG', path: '/mpg' },
+  { name: 'Text Converter', path: '/textconverter' },
   { name: 'Temperture', path: '/temperture' }
 ];
 
