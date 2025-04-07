@@ -17,6 +17,7 @@
         placeholder="Paste your text here..."
         class="terminal-input"
         ref="inputArea"
+        @input="removeTrailingSpace"
       ></textarea>
       <div class="terminal-footer">
         <span class="character-count">{{ characterCount }}</span>
@@ -74,6 +75,11 @@ const characterCount = computed(() => {
 onMounted(() => {
   inputArea.value.focus()
 })
+
+// Removes any trailing spaces from the input text
+const removeTrailingSpace = () => {
+  inputText.value = inputText.value.trimEnd()
+}
 
 const clearInput = () => {
   inputText.value = ''
@@ -265,7 +271,7 @@ const converters = {
   height: 150px;
   background-color: var(--bg-input);
   color: var(--text-primary);
-  border: none;
+  border: 2px solid navajowhite;
   padding: 1rem;
   font-family: 'VT323', monospace;
   font-size: 1.3rem;
@@ -345,7 +351,7 @@ const converters = {
 .convert-button {
   background-color: var(--button-bg);
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border: 1px solid green;
   padding: 0.75rem 1rem;
   font-family: 'VT323', monospace;
   font-size: 1.1rem;
@@ -378,7 +384,7 @@ const converters = {
 }
 
 .convert-button.active {
-  background-color: var(--bg-input);
+  background-color: green;
   border-color: var(--button-active);
   box-shadow: 0 0 10px rgba(51, 255, 153, 0.3);
 }
@@ -433,7 +439,7 @@ const converters = {
 
 .output-box {
   background-color: var(--bg-input);
-  border: 1px solid var(--border);
+  border: 1px solid red;
   border-radius: 4px;
   padding: 1rem;
   min-height: 120px;
