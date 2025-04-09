@@ -1,503 +1,509 @@
 <template>
-  <div class="page-container">
-    <div class="app-header">
-      <h1 class="title"><span class="title-decoration">⟦</span> TEXT CASE CONVERTER <span class="title-decoration">⟧</span></h1>
-      <div class="retro-line"></div>
-    </div>
-
-    <div class="terminal-container">
-      <div class="terminal-header">
-        <div class="terminal-button"></div>
-        <div class="terminal-button"></div>
-        <div class="terminal-button"></div>
-        <span class="terminal-title">INPUT.TXT</span>
-      </div>
-      <textarea
-        v-model="inputText"
-        placeholder="Paste your text here..."
-        class="terminal-input"
-        ref="inputArea"
-        @input="removeTrailingSpace"
-      ></textarea>
-      <div class="terminal-footer">
-        <span class="character-count">{{ characterCount }}</span>
-        <button v-if="inputText" @click="clearInput" class="terminal-action">CLEAR</button>
-      </div>
-    </div>
-
-    <div class="control-panel">
-      <div class="control-panel-header">
-        <span class="panel-label">CONVERT TO:</span>
-        <div class="control-panel-line"></div>
+  <div class="terminal-container">
+    <!-- Header -->
+    <h1 class="terminal-header">[ TEXT CASE CONVERTER ]</h1>
+    
+    <div class="content-wrapper">
+      <div class="input-container">
+        <!-- Window Controls -->
+        <div class="window-header">
+          <div class="window-control close"></div>
+          <div class="window-control minimize"></div>
+          <div class="window-control maximize"></div>
+          <div class="window-title">INPUT.TXT</div>
+        </div>
+        
+        <!-- Text Area -->
+        <div class="textarea-wrapper">
+          <textarea 
+            v-model="inputText" 
+            class="terminal-textarea" 
+            placeholder="Paste your text here..."
+          ></textarea>
+        </div>
+        
+        <!-- Character Count and Clear Button -->
+        <div class="status-bar">
+          <div class="char-count">CHARS: {{ inputText.length }}</div>
+          <button 
+            @click="clearText" 
+            class="terminal-button"
+          >CLEAR</button>
+        </div>
       </div>
       
-      <div class="button-grid">
-        <button
-          v-for="(fn, label, index) in converters"
-          :key="index"
-          @click="convert(fn, label)"
-          :class="['convert-button', { active: activeConverter === label }]"
-        >
-          <span class="button-icon">❯</span>
-          <span class="button-label">{{ label }}</span>
-        </button>
+      <!-- Convert Options -->
+      <div class="convert-section">
+        <div class="section-header">
+          <span>CONVERT TO:</span>
+        </div>
+        
+        <div class="button-grid">
+          <button 
+            @click="convertTo('sentence')" 
+            class="option-button"
+          >&gt; Sentence case</button>
+          
+          <button 
+            @click="convertTo('title')" 
+            class="option-button"
+          >&gt; Title Case</button>
+          
+          <button 
+            @click="convertTo('capitalized')" 
+            class="option-button"
+          >&gt; Capitalized Case</button>
+          
+          <button 
+            @click="convertTo('lower')" 
+            class="option-button"
+          >&gt; lower case</button>
+        </div>
+        
+        <div class="button-grid">
+          <button 
+            @click="convertTo('upper')" 
+            class="option-button"
+          >&gt; UPPER CASE</button>
+          
+          <button 
+            @click="convertTo('alternating')" 
+            class="option-button"
+          >altErNaTiNg caSe</button>
+        </div>
+        
+        <div class="inverse-button-container">
+          <button 
+            @click="convertTo('inverse')" 
+            class="option-button inverse-button"
+          >&gt; InVeRsE CaSe</button>
+        </div>
       </div>
-    </div>
-
-    <div v-if="outputText" class="output-container">
+      
+      <!-- Output Area -->
       <div class="output-header">
-        <span class="panel-label">OUTPUT</span>
-        <div class="control-panel-line"></div>
-        <button @click="copyToClipboard" class="copy-button">
-          {{ copySuccess ? '✓ COPIED' : 'COPY' }}
-        </button>
+        <span>OUTPUT</span>
+        <button 
+          @click="copyToClipboard" 
+          class="terminal-button"
+        >COPY</button>
       </div>
-      <div class="output-box">
-        <pre>{{ outputText }}</pre>
+      
+      <div class="output-container" ref="outputContainer">
+        <div v-if="showCopyAlert" class="copy-alert">Text copied to clipboard!</div>
+        <pre v-if="outputText" class="output-text" :class="{ 'matrix-effect': matrixEffectActive }">{{ outputText }}</pre>
+        <div v-else class="matrix-rain" ref="matrixRain"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue';
 
-const inputText = ref('')
-const outputText = ref('')
-const activeConverter = ref('')
-const copySuccess = ref(false)
-const inputArea = ref(null)
+const inputText = ref('');
+const outputText = ref('');
+const showCopyAlert = ref(false);
+const matrixEffectActive = ref(false);
+const outputContainer = ref(null);
+const matrixRain = ref(null);
+let matrixInterval = null;
 
-const characterCount = computed(() => {
-  return inputText.value ? `CHARS: ${inputText.value.length}` : 'CHARS: 0'
-})
+const clearText = () => {
+  inputText.value = '';
+  outputText.value = '';
+};
 
-onMounted(() => {
-  inputArea.value.focus()
-})
-
-// Removes any trailing spaces from the input text
-const removeTrailingSpace = () => {
-  inputText.value = inputText.value.trimEnd()
-}
-
-const clearInput = () => {
-  inputText.value = ''
-  outputText.value = ''
-  activeConverter.value = ''
-  inputArea.value.focus()
-}
-
-const convert = (fn, label) => {
-  if (inputText.value) {
-    outputText.value = fn(inputText.value)
-    activeConverter.value = label
+const convertTo = (caseType) => {
+  if (!inputText.value) return;
+  
+  matrixEffectActive.value = true;
+  
+  setTimeout(() => {
+    switch(caseType) {
+      case 'sentence':
+        outputText.value = inputText.value.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+        break;
+      case 'title':
+        outputText.value = inputText.value.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        break;
+      case 'capitalized':
+        outputText.value = inputText.value.split(' ').map(word => {
+          return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }).join(' ');
+        break;
+      case 'lower':
+        outputText.value = inputText.value.toLowerCase();
+        break;
+      case 'upper':
+        outputText.value = inputText.value.toUpperCase();
+        break;
+      case 'alternating':
+        outputText.value = inputText.value.split('').map((char, index) => 
+          index % 2 === 0 ? char.toLowerCase() : char.toUpperCase()
+        ).join('');
+        break;
+      case 'inverse':
+        outputText.value = inputText.value.split('').map(char => {
+          if (char === char.toUpperCase()) return char.toLowerCase();
+          return char.toUpperCase();
+        }).join('');
+        break;
+    }
     
-    // Scroll to output section after conversion
+    // Turn off matrix effect after conversion
     setTimeout(() => {
-      const outputSection = document.querySelector('.output-container')
-      if (outputSection) {
-        outputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }
-    }, 100)
-  }
-}
+      matrixEffectActive.value = false;
+    }, 1000);
+  }, 600); // Delay for matrix effect to show
+};
 
 const copyToClipboard = () => {
-  if (outputText.value) {
-    navigator.clipboard.writeText(outputText.value)
-    copySuccess.value = true
-    setTimeout(() => {
-      copySuccess.value = false
-    }, 2000)
-  }
-}
-
-// Text conversion functions
-const toSentenceCase = (text) => {
-  return text.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, (c) => c.toUpperCase())
-}
-
-const toLowerCase = (text) => text.toLowerCase()
-
-const toUpperCase = (text) => text.toUpperCase()
-
-const toCapitalizedCase = (text) =>
-  text.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-
-const toAlternatingCase = (text) =>
-  [...text].map((char, i) => i % 2 === 0 ? char.toLowerCase() : char.toUpperCase()).join('')
-
-const toTitleCase = (text) => {
-  const minorWords = ['a', 'an', 'the', 'and', 'or', 'but', 'nor', 'to', 'for', 'on', 'at', 'by', 'with', 'of', 'in']
-  return text
-    .toLowerCase()
-    .split(' ')
-    .map((word, index) => {
-      if (minorWords.includes(word) && index !== 0) {
-        return word
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1)
+  if (!outputText.value) return;
+  
+  navigator.clipboard.writeText(outputText.value)
+    .then(() => {
+      showCopyAlert.value = true;
+      setTimeout(() => {
+        showCopyAlert.value = false;
+      }, 2000);
     })
-    .join(' ')
-}
+    .catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+};
 
-const toInverseCase = (text) =>
-  [...text].map((char) => char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase()).join('')
+// Matrix rain animation
+const setupMatrixRain = () => {
+  if (!matrixRain.value) return;
+  
+  const canvas = document.createElement('canvas');
+  matrixRain.value.innerHTML = '';
+  matrixRain.value.appendChild(canvas);
+  
+  const ctx = canvas.getContext('2d');
+  canvas.width = matrixRain.value.offsetWidth;
+  canvas.height = matrixRain.value.offsetHeight;
+  
+  const characters = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const columns = Math.floor(canvas.width / 20);
+  const drops = [];
+  
+  for (let i = 0; i < columns; i++) {
+    drops[i] = Math.floor(Math.random() * canvas.height);
+  }
+  
+  const draw = () => {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = '#39ff14';
+    ctx.font = '20px monospace';
+    
+    for (let i = 0; i < drops.length; i++) {
+      const text = characters[Math.floor(Math.random() * characters.length)];
+      ctx.fillText(text, i * 20, drops[i] * 20);
+      
+      if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      
+      drops[i]++;
+    }
+  };
+  
+  matrixInterval = setInterval(draw, 50);
+};
 
-// Grouped converters by category
-const converters = {
-  'Sentence case': toSentenceCase,
-  'Title Case': toTitleCase,
-  'Capitalized Case': toCapitalizedCase,
-  'lower case': toLowerCase,
-  'UPPER CASE': toUpperCase,
-  'aLtErNaTiNg cAsE': toAlternatingCase,
-  'InVeRsE CaSe': toInverseCase,
-}
+// Handle window resize for matrix rain
+const handleResize = () => {
+  if (matrixRain.value && !outputText.value) {
+    clearInterval(matrixInterval);
+    setupMatrixRain();
+  }
+};
+
+onMounted(() => {
+  setupMatrixRain();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  clearInterval(matrixInterval);
+  window.removeEventListener('resize', handleResize);
+});
+
+// Watch for output text changes to adjust matrix rain
+watch(outputText, (newValue) => {
+  if (!newValue && matrixRain.value) {
+    setupMatrixRain();
+  } else if (newValue) {
+    clearInterval(matrixInterval);
+  }
+});
 </script>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
-:root {
-  --bg-main: #0c0c14;
-  --bg-terminal: #151520;
-  --bg-input: #060611;
-  --text-primary: #33ff99;
-  --text-secondary: #c586c0;
-  --accent: #fc5185;
-  --border: #364156;
-  --glow: rgba(51, 255, 153, 0.4);
-  --button-bg: #1e1e28;
-  --button-active: #33ff99;
-  --button-hover: #242436;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-.page-container {
-  min-height: 100vh;
-  background-color: var(--bg-main);
-  background-image: 
-    radial-gradient(rgba(51, 255, 153, 0.03) 2px, transparent 2px),
-    radial-gradient(rgba(51, 255, 153, 0.02) 2px, transparent 2px);
-  background-size: 50px 50px;
-  background-position: 0 0, 25px 25px;
-  color: var(--text-primary);
-  font-family: 'VT323', monospace;
-  padding: 2rem 1rem;
-  max-width: 900px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.app-header {
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-.title {
-  font-family: 'Press Start 2P', cursive;
-  font-size: 1.75rem;
-  letter-spacing: -1px;
-  color: var(--text-primary);
-  margin: 0;
-  padding: 0.5rem 0;
-  text-shadow: 0 0 10px var(--glow);
-  line-height: 1.5;
-}
-
-.title-decoration {
-  color: var(--accent);
-}
-
-.retro-line {
-  height: 4px;
-  background: linear-gradient(90deg, transparent, var(--text-primary), transparent);
-  margin: 1rem auto;
-  width: 80%;
-  box-shadow: 0 0 10px var(--glow);
-}
 
 .terminal-container {
-  border: 2px solid var(--text-primary);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 0 15px var(--glow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: black;
+  padding: 1rem;
+  color: #39ff14;
+  font-family: 'VT323', monospace;
+  text-shadow: 0 0 5px rgba(57, 255, 20, 0.7);
+  position: relative;
+}
+
+.terminal-container::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
 }
 
 .terminal-header {
-  background-color: var(--bg-terminal);
-  padding: 0.5rem 1rem;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.2em;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.input-container {
+  border: 1px solid #39ff14;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.window-header {
   display: flex;
   align-items: center;
-  border-bottom: 2px solid var(--text-primary);
+  padding: 0.5rem;
+  border-bottom: 1px solid #39ff14;
 }
 
-.terminal-button {
-  width: 12px;
-  height: 12px;
+.window-control {
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 50%;
-  background-color: var(--accent);
-  margin-right: 8px;
-  box-shadow: 0 0 5px rgba(252, 81, 133, 0.5);
+  margin-right: 0.5rem;
 }
 
-.terminal-button:nth-child(2) {
-  background-color: #ffdd59;
-  box-shadow: 0 0 5px rgba(255, 221, 89, 0.5);
+.close {
+  background-color: #ff9f40;
 }
 
-.terminal-button:nth-child(3) {
-  background-color: var(--text-primary);
-  box-shadow: 0 0 5px var(--glow);
+.minimize, .maximize {
+  background-color: #39ff14;
 }
 
-.terminal-title {
-  margin-left: 1rem;
-  font-size: 1.1rem;
-  font-weight: bold;
-  letter-spacing: 1px;
+.window-title {
+  flex: 1;
+  text-align: center;
+  letter-spacing: 0.1em;
 }
 
-.terminal-input {
+.textarea-wrapper {
+  padding: 0.5rem;
+}
+
+.terminal-textarea {
   width: 100%;
-  height: 150px;
-  background-color: var(--bg-input);
-  color: var(--text-primary);
-  border: 2px solid navajowhite;
-  padding: 1rem;
+  height: 8rem;
+  background-color: black;
+  color: #39ff14;
+  border: none;
+  resize: none;
   font-family: 'VT323', monospace;
-  font-size: 1.3rem;
-  resize: vertical;
+}
+
+.terminal-textarea:focus {
   outline: none;
 }
 
-.terminal-input::placeholder {
-  color: rgba(51, 255, 153, 0.5);
+.terminal-textarea::placeholder {
+  color: rgba(57, 255, 20, 0.5);
 }
 
-.terminal-footer {
-  background-color: var(--bg-terminal);
-  padding: 0.5rem 1rem;
+.status-bar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid var(--border);
+  padding: 0.5rem;
+  border-top: 1px solid #39ff14;
 }
 
-.character-count {
-  font-size: 0.9rem;
-  letter-spacing: 1px;
-}
-
-.terminal-action {
+.terminal-button {
   background: none;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 0.25rem 0.75rem;
-  font-family: 'VT323', monospace;
-  font-size: 0.9rem;
+  border: none;
+  color: #39ff14;
   cursor: pointer;
+  font-family: 'VT323', monospace;
+  letter-spacing: 0.1em;
   transition: all 0.2s ease;
 }
 
-.terminal-action:hover {
-  background-color: var(--accent);
-  color: var(--bg-main);
-  box-shadow: 0 0 8px rgba(252, 81, 133, 0.7);
+.terminal-button:hover {
+  text-shadow: 0 0 10px rgba(57, 255, 20, 1);
 }
 
-.control-panel {
-  background-color: var(--bg-terminal);
-  border: 2px solid var(--text-primary);
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 0 15px var(--glow);
+.convert-section {
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
-.control-panel-header {
+.section-header {
+  border-top: 1px solid #39ff14;
+  border-bottom: 1px solid #39ff14;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  letter-spacing: 0.1em;
+}
+
+/* Updated: 2x2 flex grid */
+.button-grid {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.button-grid .option-button {
+  flex: 1 1 calc(50% - 1rem);
+  max-width: calc(50% - 1rem);
+  min-width: 140px;
+}
+
+.option-button {
+  border: 1px solid #39ff14;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: none;
+  color: #39ff14;
+  cursor: pointer;
+  font-family: 'VT323', monospace;
+  transition: all 0.2s ease;
+}
+
+.option-button:hover {
+  background-color: rgba(57, 255, 20, 0.1);
+  text-shadow: 0 0 10px rgba(57, 255, 20, 1);
+}
+
+.inverse-button-container {
+  display: flex;
+  justify-content: center;
   margin-bottom: 1rem;
 }
 
-.panel-label {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: var(--text-secondary);
-  margin-right: 1rem;
-  white-space: nowrap;
-}
-
-.control-panel-line {
-  flex-grow: 1;
-  height: 2px;
-  background: linear-gradient(90deg, var(--text-secondary), transparent);
-}
-
-.button-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
-}
-
-.convert-button {
-  background-color: var(--button-bg);
-  color: var(--text-primary);
-  border: 1px solid green;
-  padding: 0.75rem 1rem;
-  font-family: 'VT323', monospace;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.convert-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background-color: var(--text-secondary);
-  transform: scaleY(0);
-  transition: transform 0.2s ease;
-}
-
-.convert-button:hover {
-  background-color: var(--button-hover);
-}
-
-.convert-button:hover::before {
-  transform: scaleY(1);
-}
-
-.convert-button.active {
-  background-color: green;
-  border-color: var(--button-active);
-  box-shadow: 0 0 10px rgba(51, 255, 153, 0.3);
-}
-
-.convert-button.active::before {
-  transform: scaleY(1);
-  background-color: var(--button-active);
-}
-
-.button-icon {
-  margin-right: 0.75rem;
-  color: var(--text-secondary);
-}
-
-.active .button-icon {
-  color: var(--button-active);
-}
-
-.output-container {
-  background-color: var(--bg-terminal);
-  border: 2px solid var(--text-primary);
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 0 15px var(--glow);
-  animation: fadeIn 0.3s ease-out;
+.inverse-button {
+  width: 16rem;
 }
 
 .output-header {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #39ff14;
+  border-bottom: 1px solid #39ff14;
+  padding: 0.5rem 0;
   margin-bottom: 1rem;
+  letter-spacing: 0.1em;
 }
 
-.copy-button {
-  background-color: var(--bg-input);
-  color: var(--text-secondary);
-  border: 1px solid var(--text-secondary);
-  padding: 0.25rem 0.75rem;
-  font-family: 'VT323', monospace;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: 1rem;
-  white-space: nowrap;
-}
-
-.copy-button:hover {
-  background-color: var(--text-secondary);
-  color: var(--bg-input);
-  box-shadow: 0 0 8px rgba(197, 134, 192, 0.7);
-}
-
-.output-box {
-  background-color: var(--bg-input);
-  border: 1px solid red;
-  border-radius: 4px;
+.output-container {
+  border: 1px solid #39ff14;
+  border-radius: 0.5rem;
   padding: 1rem;
-  min-height: 120px;
-  color: var(--text-primary);
-  font-size: 1.2rem;
-  line-height: 1.5;
+  height: 8rem;
+  overflow: hidden;
+  position: relative;
 }
 
-.output-box pre {
+.output-text {
   white-space: pre-wrap;
-  word-wrap: break-word;
   margin: 0;
-  font-family: 'VT323', monospace;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.matrix-effect {
+  animation: matrixFlicker 0.5s linear;
+}
+
+@keyframes matrixFlicker {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  50% { opacity: 0; }
+  75% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+.matrix-rain {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.matrix-rain canvas {
+  display: block;
+}
+
+/* Copy Alert */
+.copy-alert {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #39ff14;
+  color: #39ff14;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  z-index: 20;
+  animation: fadeIn 0.3s ease-in-out, fadeOut 0.3s ease-in-out 1.7s;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @media (max-width: 768px) {
-  .title {
-    font-size: 1.2rem;
+  .button-grid .option-button {
+    flex: 1 1 100%;
+    max-width: 100%;
   }
   
-  .button-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 0.75rem;
-  }
-  
-  .convert-button {
-    font-size: 1rem;
-    padding: 0.5rem 0.75rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .page-container {
-    padding: 1rem 0.5rem;
-    gap: 1.5rem;
-  }
-  
-  .title {
-    font-size: 0.9rem;
-    padding: 0 0.5rem;
-  }
-  
-  .button-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-  }
-  
-  .terminal-input {
-    font-size: 1.1rem;
-  }
-  
-  .button-icon {
-    margin-right: 0.5rem;
+  .terminal-header {
+    font-size: 1.5rem;
   }
 }
 </style>

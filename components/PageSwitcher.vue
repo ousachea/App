@@ -1,147 +1,83 @@
 <template>
-  <div class="fab-container">
-    <button class="fab" @click="toggleMenu">
-      <span class="fab-icon" :class="{ 'open': menuOpen }">✦</span>
-    </button>
-    <transition name="fade">
-      <div v-if="menuOpen" class="fab-menu">
-        <ul>
-          <li v-for="page in pages" :key="page.path">
-            <NuxtLink :to="page.path" class="fab-link" @click="closeMenu">
-              <span class="icon">🔗</span> {{ page.name }}
-            </NuxtLink>
-          </li>
-        </ul>
+  <div class="image-compressor">
+    <h1>Image Compressor</h1>
+    
+    <input type="file" ref="fileInput" @change="handleFileUpload" multiple />
+    
+    <div v-if="compressedImages.length">
+      <h3>Compressed Images:</h3>
+      <div class="image-gallery">
+        <div v-for="(image, index) in compressedImages" :key="index">
+          <img :src="image" alt="Compressed Image" />
+        </div>
       </div>
-    </transition>
+    </div>
+    
+    <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue';
+<script>
+import imageCompression from 'browser-image-compression';
 
-const pages = [
-  { name: 'Home', path: '/' },
-  { name: 'Gold', path: '/gold' },
-  { name: 'Phone', path: '/phone' },
-  { name: 'MPG', path: '/mpg' },
-  { name: 'Text Converter', path: '/textconverter' },
-  { name: 'Image Compresser', path: '/compressor' },
-  { name: 'Temperture', path: '/temperture' }
-];
+export default {
+  data() {
+    return {
+      compressedImages: [],
+      errorMessage: '',
+    };
+  },
+  methods: {
+    async handleFileUpload(event) {
+      this.compressedImages = [];
+      this.errorMessage = '';
+      const files = event.target.files;
+      
+      if (files.length === 0) {
+        this.errorMessage = 'Please select an image.';
+        return;
+      }
 
-const menuOpen = ref(false);
-
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value;
-};
-
-const closeMenu = () => {
-  menuOpen.value = false;
+      for (const file of files) {
+        try {
+          const compressedFile = await this.compressImage(file);
+          const imageUrl = URL.createObjectURL(compressedFile);
+          this.compressedImages.push(imageUrl);
+        } catch (error) {
+          this.errorMessage = 'Error compressing image.';
+        }
+      }
+    },
+    
+    async compressImage(file) {
+      const options = {
+        maxSizeMB: 1, // 1MB
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      };
+      return await imageCompression(file, options);
+    },
+  },
 };
 </script>
 
 <style scoped>
-.fab-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+.image-compressor {
+  text-align: center;
 }
 
-.fab {
-  background: linear-gradient(135deg, #00DC82, #00875A);
-  color: white;
-  border: none;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease-in-out;
+.image-gallery {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  align-items: center;
 }
 
-.fab:hover {
-  background: #00875A;
+.image-gallery img {
+  max-width: 200px;
+  margin: 10px;
 }
 
-.fab-icon {
-  transition: transform 0.3s ease-in-out;
-  font-size: 28px;
-}
-
-.fab-icon.open {
-  transform: rotate(180deg);
-}
-
-.fab-menu {
-  background: white;
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-  position: absolute;
-  bottom: 70px;
-  right: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-li {
-  display: flex;
-  align-items: center;
-}
-
-.fab-link {
-  text-decoration: none;
-  color: #333;
-  font-size: 16px;
-  padding: 10px 15px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.3s ease-in-out;
-}
-
-.fab-link:hover {
-  background: #00DC82;
-  color: white;
-}
-
-.icon {
-  font-size: 18px;
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease-in-out;
-}
-
-.fade-enter, .fade-leave-to {
-  opacity: 0;
+.error {
+  color: red;
 }
 </style>
