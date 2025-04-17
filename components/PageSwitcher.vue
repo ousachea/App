@@ -1,83 +1,75 @@
 <template>
-  <div class="image-compressor">
-    <h1>Image Compressor</h1>
-    
-    <input type="file" ref="fileInput" @change="handleFileUpload" multiple />
-    
-    <div v-if="compressedImages.length">
-      <h3>Compressed Images:</h3>
-      <div class="image-gallery">
-        <div v-for="(image, index) in compressedImages" :key="index">
-          <img :src="image" alt="Compressed Image" />
-        </div>
-      </div>
+  <Transition name="slide-fade">
+    <div class="ios-floating-menu">
+      <ul class="ios-list">
+        <li><NuxtLink to="/compressor" class="ios-link">🗜️ Compressor</NuxtLink></li>
+        <li><NuxtLink to="/Gold" class="ios-link">💰 Gold</NuxtLink></li>
+        <li><NuxtLink to="/MPG" class="ios-link">⛽ MPG</NuxtLink></li>
+        <li><NuxtLink to="/Phone" class="ios-link">📞 Phone</NuxtLink></li>
+        <li><NuxtLink to="/Temperture" class="ios-link">🌡️ Temp</NuxtLink></li>
+        <li><NuxtLink to="/TextConverter" class="ios-link">🔤 Text</NuxtLink></li>
+      </ul>
     </div>
-    
-    <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
-  </div>
+  </Transition>
 </template>
 
-<script>
-import imageCompression from 'browser-image-compression';
-
-export default {
-  data() {
-    return {
-      compressedImages: [],
-      errorMessage: '',
-    };
-  },
-  methods: {
-    async handleFileUpload(event) {
-      this.compressedImages = [];
-      this.errorMessage = '';
-      const files = event.target.files;
-      
-      if (files.length === 0) {
-        this.errorMessage = 'Please select an image.';
-        return;
-      }
-
-      for (const file of files) {
-        try {
-          const compressedFile = await this.compressImage(file);
-          const imageUrl = URL.createObjectURL(compressedFile);
-          this.compressedImages.push(imageUrl);
-        } catch (error) {
-          this.errorMessage = 'Error compressing image.';
-        }
-      }
-    },
-    
-    async compressImage(file) {
-      const options = {
-        maxSizeMB: 1, // 1MB
-        maxWidthOrHeight: 1024,
-        useWebWorker: true,
-      };
-      return await imageCompression(file, options);
-    },
-  },
-};
+<script setup>
+// Optional: delay render if needed
 </script>
 
 <style scoped>
-.image-compressor {
-  text-align: center;
+.ios-floating-menu {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: #ffffffcc;
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 999;
+  min-width: 180px;
 }
 
-.image-gallery {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+.ios-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.image-gallery img {
-  max-width: 200px;
-  margin: 10px;
+.ios-link {
+  display: block;
+  padding: 0.6rem 0;
+  color: #333;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-bottom: 1px solid #eee;
+  transition: all 0.2s ease;
 }
 
-.error {
-  color: red;
+.ios-link:last-child {
+  border-bottom: none;
+}
+
+.ios-link:hover {
+  color: #007aff;
+}
+
+/* Animation classes */
+.slide-fade-enter-active {
+  transition: all 0.4s ease;
+}
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-10px) translateX(10px);
+}
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) translateX(10px);
 }
 </style>

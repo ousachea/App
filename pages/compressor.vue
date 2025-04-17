@@ -1,5 +1,6 @@
 <template>
   <div class="compressor-container">
+    <PageSwitcher/>
     <h1 class="title">Image Compressor</h1>
 
     <div 
@@ -52,6 +53,7 @@
 
 <script>
 import imageCompression from 'browser-image-compression';
+import PageSwitcher from '../components/PageSwitcher.vue';
 
 export default {
   data() {

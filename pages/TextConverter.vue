@@ -1,5 +1,6 @@
 <template>
   <div class="terminal-container">
+    <PageSwitcher/>
     <!-- Header -->
     <h1 class="terminal-header">[ TEXT CASE CONVERTER ]</h1>
     
@@ -99,6 +100,8 @@
 </template>
 
 <script setup>
+import PageSwitcher from '../components/PageSwitcher.vue';
+
 import { ref, onMounted, watch, onUnmounted } from 'vue';
 
 const inputText = ref('');
@@ -290,8 +293,9 @@ watch(outputText, (newValue) => {
   margin: 0 auto;
 }
 
+/* Updated: Changed solid borders to dashed */
 .input-container {
-  border: 1px solid #39ff14;
+  border: 2px dashed #39ff14;
   border-radius: 0.5rem;
   margin-bottom: 1.5rem;
 }
@@ -300,7 +304,7 @@ watch(outputText, (newValue) => {
   display: flex;
   align-items: center;
   padding: 0.5rem;
-  border-bottom: 1px solid #39ff14;
+  border-bottom: 1px dashed #39ff14;
 }
 
 .window-control {
@@ -350,7 +354,7 @@ watch(outputText, (newValue) => {
   display: flex;
   justify-content: space-between;
   padding: 0.5rem;
-  border-top: 1px solid #39ff14;
+  border-top: 1px dashed #39ff14;
 }
 
 .terminal-button {
@@ -372,15 +376,15 @@ watch(outputText, (newValue) => {
   margin-bottom: 1.5rem;
 }
 
+/* Updated: Changed solid borders to dashed */
 .section-header {
-  border-top: 1px solid #39ff14;
-  border-bottom: 1px solid #39ff14;
+  border-top: 1px dashed #39ff14;
+  border-bottom: 1px dashed #39ff14;
   padding: 0.5rem 0;
   margin-bottom: 1rem;
   letter-spacing: 0.1em;
 }
 
-/* Updated: 2x2 flex grid */
 .button-grid {
   display: flex;
   flex-wrap: wrap;
@@ -395,8 +399,9 @@ watch(outputText, (newValue) => {
   min-width: 140px;
 }
 
+/* Updated: Changed solid borders to dashed */
 .option-button {
-  border: 1px solid #39ff14;
+  border: 2px dashed #39ff14;
   border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   background: none;
@@ -421,18 +426,20 @@ watch(outputText, (newValue) => {
   width: 16rem;
 }
 
+/* Updated: Changed solid borders to dashed */
 .output-header {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid #39ff14;
-  border-bottom: 1px solid #39ff14;
+  border-top: 1px dashed #39ff14;
+  border-bottom: 1px dashed #39ff14;
   padding: 0.5rem 0;
   margin-bottom: 1rem;
   letter-spacing: 0.1em;
 }
 
+/* Updated: Changed solid borders to dashed */
 .output-container {
-  border: 1px solid #39ff14;
+  border: 2px dashed #39ff14;
   border-radius: 0.5rem;
   padding: 1rem;
   height: 8rem;
@@ -471,14 +478,14 @@ watch(outputText, (newValue) => {
   display: block;
 }
 
-/* Copy Alert */
+/* Updated: Changed solid border to dashed for copy alert */
 .copy-alert {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: rgba(0, 0, 0, 0.8);
-  border: 1px solid #39ff14;
+  border: 2px dashed #39ff14;
   color: #39ff14;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
@@ -505,5 +512,19 @@ watch(outputText, (newValue) => {
   .terminal-header {
     font-size: 1.5rem;
   }
+}
+
+/* Add dotted connections between elements */
+.terminal-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(#39ff14 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.05;
+  pointer-events: none;
 }
 </style>

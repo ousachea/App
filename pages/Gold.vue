@@ -1,5 +1,6 @@
 <template>
   <div class="page-wrapper">
+    <PageSwitcher/>
     <div :class="['gold-wrapper', darkMode ? 'dark-mode' : 'light-mode']">
       <h1 class="gold-glow fade-in slide-down looping-text">Live Gold Price</h1>
 
@@ -91,6 +92,8 @@
 </template>
 
 <script>
+import PageSwitcher from '../components/PageSwitcher.vue';
+
 export default {
   data() {
     return {

@@ -1,5 +1,6 @@
 <template>
     <div class="container-mpg">
+      <PageSwitcher/>
       <h2 class="title">Fuel Efficiency Converter</h2>
       <p class="description">Enter your vehicle's MPG to see its equivalent fuel consumption in L/100Km.</p>
       
@@ -25,6 +26,8 @@
   </template>
   
   <script>
+  import PageSwitcher from '../components/PageSwitcher.vue';
+
   export default {
     data() {
       return {
