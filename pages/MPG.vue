@@ -1,187 +1,337 @@
 <template>
-    <div class="container-mpg">
-        <PageSwitcher/>
-      <h2 class="title">Fuel Efficiency Converter</h2>
-      <p class="description">Enter your vehicle's MPG to see its equivalent fuel consumption in L/100Km.</p>
+  <div class="converter-container">
+    <PageSwitcher/>
+    <div class="converter-card">
+      <h2 class="converter-title">Fuel Efficiency Converter</h2>
+      <p class="converter-description">Convert your vehicle's MPG to liters per 100 kilometers</p>
       
-      <div class="input-wrapper">
-        <input
-          type="number"
-          v-model="mpg"
-          class="input-mpg"
-          min="1"
-          max="100000"
-          @input="validateInput"
-          placeholder="Enter MPG"
-        />
-        <span class="unit">MPG</span>
+      <div class="input-container">
+        <label for="mpg-input" class="input-label">Miles Per Gallon</label>
+        <div class="input-field">
+          <input
+            id="mpg-input"
+            type="number"
+            v-model="mpg"
+            min="1"
+            max="100000"
+            @input="validateInput"
+            placeholder="Enter MPG"
+            class="mpg-input"
+          />
+          <span class="input-unit">MPG</span>
+        </div>
       </div>
+
+      <div class="divider"></div>
   
-      <div class="mpg-total">
-        <h1 :class="['animated-text', mpgConvertClass()]">{{ mpgConvertText() }}</h1>
-        <p class="loop-animation">{{ mpgConvert() }} L/100Km</p>
-        <p class="info-text">Lower L/100Km values indicate better fuel efficiency.</p>
+      <div class="result-container">
+        <div class="efficiency-badge" :class="efficiencyClass">
+          {{ efficiencyText }}
+        </div>
+        <div class="result-value">
+          <span class="value">{{ mpgConvert() }}</span>
+          <span class="unit">L/100km</span>
+        </div>
+        <p class="info-text">
+          <span class="info-icon">ℹ️</span>
+          Lower L/100km values indicate better fuel efficiency
+        </p>
       </div>
     </div>
-  </template>
+  </div>
+</template>
   
-  <script>
-  import PageSwitcher from '../components/PageSwitcher.vue';
+<script>
+import PageSwitcher from '../components/PageSwitcher.vue';
 
-  export default {
-    data() {
-      return {
-        mpg: 25,
-      };
+export default {
+  components: {
+    PageSwitcher
+  },
+  data() {
+    return {
+      mpg: 25,
+    };
+  },
+  computed: {
+    efficiencyText() {
+      const value = this.mpgConvert();
+      if (value === "-") return "Enter MPG";
+      if (value <= 5) return "Excellent";
+      if (value <= 7) return "Great";
+      if (value <= 9) return "Good";
+      return "Poor";
     },
-    methods: {
-      mpgConvert() {
-        let mpgValue = parseFloat(this.mpg);
-        if (isNaN(mpgValue) || mpgValue < 1 || mpgValue > 100000) return "-";
-        return parseFloat(235.215 / mpgValue).toFixed(1);
-      },
-      mpgConvertText() {
-        let value = this.mpgConvert();
-        if (value <= 6) return "Great Efficiency";
-        if (value <= 8) return "Good Efficiency";
-        return "Poor Efficiency";
-      },
-      mpgConvertClass() {
-        let value = this.mpgConvert();
-        if (value <= 6) return "great";
-        if (value <= 8) return "good";
-        return "bad";
-      },
-      validateInput(event) {
-        let value = event.target.value.replace(/[^0-9]/g, '');
-        value = value ? Math.min(Math.max(parseInt(value, 10), 1), 100000) : "";
-        this.mpg = value;
-      },
+    efficiencyClass() {
+      const value = this.mpgConvert();
+      if (value === "-") return "neutral";
+      if (value <= 5) return "excellent";
+      if (value <= 7) return "great";
+      if (value <= 9) return "good";
+      return "poor";
+    }
+  },
+  methods: {
+    mpgConvert() {
+      let mpgValue = parseFloat(this.mpg);
+      if (isNaN(mpgValue) || mpgValue < 1 || mpgValue > 100000) return "-";
+      return parseFloat(235.215 / mpgValue).toFixed(1);
     },
-  };
-  </script>
+    validateInput(event) {
+      let value = event.target.value.replace(/[^0-9]/g, '');
+      value = value ? Math.min(Math.max(parseInt(value, 10), 1), 100000) : "";
+      this.mpg = value;
+    },
+  },
+};
+</script>
   
-  <style scoped>
-  .container-mpg {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 50px 20px;
-    margin: 0 auto;
-    max-width: 400px;
-    text-align: center;
-    background: linear-gradient(to bottom, #f9f9f9, #e3e3e3);
-    border-radius: 12px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+<style scoped>
+.converter-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.converter-card {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 28px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.converter-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+}
+
+.converter-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.converter-description {
+  font-size: 15px;
+  color: #666;
+  text-align: center;
+  margin: 0 0 32px 0;
+}
+
+.input-container {
+  margin-bottom: 28px;
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.input-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mpg-input {
+  width: 100%;
+  font-size: 18px;
+  padding: 14px 60px 14px 16px;
+  border: 2px solid #d0d0d0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  background-color: #f9f9f9;
+  color: #333;
+  font-weight: 500;
+  -webkit-appearance: none;
+}
+
+.mpg-input:focus {
+  border-color: #007aff;
+  background-color: white;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
+  outline: none;
+  color: #000;
+}
+
+.input-unit {
+  position: absolute;
+  right: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #888;
+  pointer-events: none;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+  margin: 24px 0;
+}
+
+.result-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.efficiency-badge {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.efficiency-badge.excellent {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.efficiency-badge.great {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.efficiency-badge.good {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.efficiency-badge.poor {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.efficiency-badge.neutral {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.result-value {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 16px;
+  animation: gentle-pulse 2s infinite alternate;
+}
+
+.result-value .value {
+  font-size: 42px;
+  font-weight: 700;
+  color: #007aff;
+}
+
+.result-value .unit {
+  font-size: 16px;
+  color: #888;
+  margin-left: 8px;
+}
+
+.info-text {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #777;
+}
+
+.info-icon {
+  margin-right: 6px;
+  font-size: 14px;
+}
+
+@keyframes gentle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.03); }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .converter-card {
+    background: #1c1c1e;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   }
-  .title {
-    font-size: 22px;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 10px;
+  
+  .converter-title {
+    color: #f2f2f7;
   }
-  .description {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 20px;
+  
+  .converter-description {
+    color: #98989d;
   }
-  .input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    max-width: 280px;
-    width: 100%;
+  
+  .input-label {
+    color: #98989d;
   }
-  .input-mpg {
-    font-size: 16px;
-    font-weight: bold;
-    padding: 14px 50px 14px 15px;
-    text-align: left;
-    border: 2px solid #777;
-    border-radius: 8px;
-    width: 100%;
-    outline: none;
-    transition: all 0.3s ease-in-out;
-    background: #fff;
+  
+  .mpg-input {
+    background-color: #2c2c2e;
+    border-color: #4a4a4c;
+    color: #f2f2f7;
   }
-  .input-mpg:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+  
+  .mpg-input:focus {
+    border-color: #0a84ff;
+    background-color: #3a3a3c;
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.35);
+    color: #ffffff;
   }
-  .unit {
-    position: absolute;
-    right: 15px;
-    font-size: 14px;
-    color: #555;
-    font-weight: bold;
+  
+  .input-unit {
+    color: #98989d;
   }
-  .mpg-total {
-    display: flex;
-    flex-direction: column;
-    justify-items: center;
-    align-items: center;
-    padding-top: 30px;
+  
+  .divider {
+    background: linear-gradient(to right, transparent, #3a3a3c, transparent);
   }
-  .mpg-total p {
-    font-size: 20px;
-    font-weight: bold;
-    color: #444;
+  
+  .result-value .value {
+    color: #0a84ff;
   }
-  .mpg-total h1 {
-    font-size: 28px;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 10px;
+  
+  .result-value .unit {
+    color: #98989d;
   }
-  .mpg-total .great {
-    color: #28a745;
-  }
-  .mpg-total .good {
-    color: #ffc107;
-  }
-  .mpg-total .bad {
-    color: #dc3545;
-  }
-  .animated-text {
-    animation: fadeInOut 2s infinite alternate;
-  }
-  .loop-animation {
-    font-size: 22px;
-    font-weight: bold;
-    color: #007bff;
-    animation: bounce 1.5s infinite alternate;
-  }
+  
   .info-text {
-    font-size: 13px;
-    color: #666;
-    margin-top: 10px;
+    color: #98989d;
   }
-  @keyframes fadeInOut {
-    0% { opacity: 0.5; transform: scale(0.95); }
-    100% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .converter-card {
+    padding: 20px;
   }
-  @keyframes bounce {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-5px); }
+  
+  .converter-title {
+    font-size: 22px;
   }
-  @media (max-width: 600px) {
-    .container-mpg {
-      padding: 30px 15px;
-      max-width: 350px;
-    }
-    .input-mpg {
-      font-size: 14px;
-      padding: 12px;
-    }
-    .mpg-total p {
-      font-size: 18px;
-    }
-    .mpg-total h1 {
-      font-size: 26px;
-    }
-    .info-text {
-      font-size: 12px;
-    }
+  
+  .converter-description {
+    font-size: 14px;
+    margin-bottom: 24px;
   }
-  </style>
+  
+  .mpg-input {
+    font-size: 16px;
+    padding: 12px 50px 12px 14px;
+  }
+  
+  .result-value .value {
+    font-size: 36px;
+  }
+}
+</style>

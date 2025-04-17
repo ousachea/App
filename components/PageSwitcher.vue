@@ -6,7 +6,7 @@
         <li><NuxtLink to="/Gold" class="ios-link">💰 Gold</NuxtLink></li>
         <li><NuxtLink to="/MPG" class="ios-link">⛽ MPG</NuxtLink></li>
         <li><NuxtLink to="/Phone" class="ios-link">📞 Phone</NuxtLink></li>
-        <li><NuxtLink to="/Temperture" class="ios-link">🌡️ Temp</NuxtLink></li>
+        <li><NuxtLink to="/textcompare" class="ios-link"> Text Compare</NuxtLink></li>
         <li><NuxtLink to="/TextConverter" class="ios-link">🔤 Text</NuxtLink></li>
       </ul>
     </div>
