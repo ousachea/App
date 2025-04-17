@@ -95,6 +95,9 @@
 import PageSwitcher from '../components/PageSwitcher.vue';
 
 export default {
+  components: {
+    PageSwitcher
+  },
   data() {
     return {
       goldPrice: { ounce: null, damlung: null, chi: null },
@@ -189,18 +192,20 @@ export default {
 </script>
 
 <style scoped>
+/* Mobile-first approach with proper viewport settings */
 .page-wrapper {
   text-align: center;
-  padding-top: 40px;
+  padding: 20px 10px;
   position: relative;
-  overflow: hidden;
-  height: 100vh;
+  overflow-x: hidden;
+  min-height: 100vh;
+  width: 100%;
 }
 
 /* 🎆 Animated Background */
 .page-wrapper::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -226,13 +231,14 @@ export default {
 
 /* 📜 Glassmorphism Card */
 .gold-wrapper {
-  padding: 30px;
+  padding: 20px 15px;
   border-radius: 20px;
   backdrop-filter: blur(15px);
   background: rgba(255, 255, 255, 0.1);
   box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.2);
+  width: 90%;
   max-width: 520px;
-  margin: 20px auto;
+  margin: 10px auto;
   text-align: center;
   border: 2px solid rgba(255, 215, 0, 0.5);
   transition: all 0.5s ease-in-out;
@@ -248,17 +254,33 @@ export default {
   color: #fff;
 }
 
-/* 🔘 Toggle Mode Button */
+/* 📱 Mobile-Friendly Headings */
+h1 {
+  font-size: 7vw;
+  max-font-size: 32px;
+  margin: 10px 0;
+}
+
+h2 {
+  font-size: 5vw;
+  max-font-size: 24px;
+  margin: 15px 0 10px;
+}
+
+/* 🔘 Touch-Friendly Toggle Mode Button */
 .toggle-mode,
 .toggle-source {
   margin: 15px 5px;
   padding: 12px 18px;
   font-size: 16px;
   font-weight: bold;
-  border-radius: 8px;
+  border-radius: 25px;
   border: none;
   cursor: pointer;
   transition: all 0.3s ease-in-out;
+  width: auto;
+  min-width: 160px;
+  min-height: 44px; /* Touch-friendly size */
 }
 
 .toggle-mode {
@@ -266,7 +288,7 @@ export default {
   color: #ffd700;
 }
 
-.toggle-mode:hover {
+.toggle-mode:hover, .toggle-mode:active {
   background: #ffd700;
   color: #222;
 }
@@ -276,7 +298,7 @@ export default {
   color: #ffd700;
 }
 
-.toggle-source:hover {
+.toggle-source:hover, .toggle-source:active {
   background: #ffd700;
   color: #222;
 }
@@ -304,24 +326,40 @@ export default {
   }
 }
 
-/* 🔢 Input Fields */
+/* 🔢 Touch-Friendly Input Fields */
 .big-input {
-  width: 85%;
-  padding: 14px;
-  font-size: 20px;
+  width: 90%;
+  max-width: 300px;
+  padding: 15px;
+  font-size: 18px;
   border-radius: 10px;
   text-align: center;
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.8);
   color: #222;
   border: 2px solid #b8860b;
-  margin: 15px 0;
+  margin: 12px 0;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  -webkit-appearance: none; /* Remove browser default styling on iOS */
 }
 
 .big-input:focus {
   border-color: #ffcc00;
   box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+  outline: none;
+}
+
+/* Manual input section */
+.manual-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.manual-input label {
+  font-size: 16px;
+  margin-bottom: 5px;
 }
 
 /* 💰 Gold Prices */
@@ -331,25 +369,29 @@ export default {
   align-items: center;
   gap: 10px;
   margin: 15px 0;
+  width: 100%;
 }
 
 .price {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
-  color: #222;
+  color: inherit;
   background: rgba(255, 255, 255, 0.2);
-  padding: 10px 15px;
-  border-radius: 8px;
+  padding: 12px;
+  border-radius: 12px;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 300px;
 }
 
 /* 🕒 Timestamp */
 .timestamp {
   margin-top: 15px;
-  font-size: 16px;
+  font-size: 14px;
   opacity: 0.8;
-  color: #444;
+  color: inherit;
 }
+
 /* 📊 Gold Price Table */
 .gold-table {
   width: 100%;
@@ -359,11 +401,12 @@ export default {
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
 }
 
 .gold-table th,
 .gold-table td {
-  padding: 12px;
+  padding: 10px 5px;
   text-align: center;
   border-bottom: 1px solid rgba(255, 215, 0, 0.5);
 }
@@ -377,248 +420,101 @@ export default {
 .gold-table tr:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
 /* 📜 Table Container for Mobile */
 .table-container {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  margin: 0 auto;
+  scrollbar-width: thin;
 }
 
-/* 📊 Gold Price Table */
-.gold-table {
-  width: 100%;
-  margin-top: 15px;
-  border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+/* Custom Scrollbar for the table */
+.table-container::-webkit-scrollbar {
+  height: 4px;
 }
 
-.gold-table th,
-.gold-table td {
-  padding: 12px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.5);
+.table-container::-webkit-scrollbar-track {
+  background: rgba(255, 215, 0, 0.1);
 }
 
-.gold-table th {
-  background: rgba(255, 215, 0, 0.3);
-  color: #222;
-  font-weight: bold;
-}
-
-.gold-table tr:hover {
-  background: rgba(255, 255, 255, 0.3);
+.table-container::-webkit-scrollbar-thumb {
+  background: rgba(184, 134, 11, 0.7);
+  border-radius: 4px;
 }
 
 /* 🌎 Responsive Design */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
+  .gold-wrapper {
+    width: 95%;
+    padding: 15px 10px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
   .gold-table th,
   .gold-table td {
-    font-size: 14px;
-    padding: 8px;
+    font-size: 12px;
+    padding: 8px 4px;
   }
-  .price-container {
-    flex-direction: column;
-    align-items: center;
-  }
+
   .big-input {
+    width: 95%;
+    font-size: 16px;
+    padding: 12px 8px;
+  }
+
+  .price {
+    font-size: 16px;
+    padding: 10px 8px;
+    width: 95%;
+  }
+
+  .toggle-mode,
+  .toggle-source {
     width: 90%;
-    font-size: 18px;
-  }
-}
-/* 🌟 Full Page Styling */
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Poppins', sans-serif;
-  background: linear-gradient(-45deg, #ffdd44, #ffcc00, #b8860b, #8b6508);
-  background-size: 400% 400%;
-  animation: glowingBackground 6s ease infinite;
-  color: #fff;
-  text-align: center;
-  overflow-x: hidden;
-}
-
-@keyframes glowingBackground {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
+    margin: 10px auto;
+    font-size: 14px;
+    padding: 10px;
+    display: block;
   }
 }
 
-/* 📜 Gold Wrapper (No Card) */
-.gold-wrapper {
-  padding: 30px;
-  max-width: 600px;
-  margin: auto;
-  text-align: center;
-  border-radius: 15px;
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
-  border: 2px solid rgba(255, 215, 0, 0.5);
-}
-
-/* 🌑 Dark Mode */
-.dark-mode {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.light-mode {
-  background: rgba(255, 255, 255, 0.9);
-  color: #222;
-}
-
-/* ✨ Glowing Gold Effect */
-.gold-glow {
-  font-weight: bold;
-  color: #ffd700;
-  text-shadow: 0 0 10px rgba(255, 223, 0, 0.7);
-}
-
-/* 🔘 Toggle Buttons */
-.toggle-mode,
-.toggle-source {
-  margin: 10px;
-  padding: 12px 18px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
-}
-
-.toggle-mode {
-  background: #222;
-  color: #ffd700;
-}
-
-.toggle-mode:hover {
-  background: #ffd700;
-  color: #222;
-}
-
-.toggle-source {
-  background: #444;
-  color: #ffd700;
-}
-
-.toggle-source:hover {
-  background: #ffd700;
-  color: #222;
-}
-
-/* 🔢 Input Fields */
-.big-input {
-  width: 85%;
-  max-width: 320px;
-  padding: 14px;
-  font-size: 20px;
-  border-radius: 10px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.85);
-  color: #222;
-  border: 2px solid #b8860b;
-  margin: 15px 0;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.big-input:focus {
-  border-color: #ffcc00;
-  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
-}
-
-/* 📊 Price Container */
-.price-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.price {
-  font-size: 20px;
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 10px 15px;
-  border-radius: 8px;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* 📜 Table Container */
-.table-container {
-  width: 100%;
-  overflow-x: auto;
-}
-
-/* 📊 Price History Table */
-.gold-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-}
-
-.gold-table th,
-.gold-table td {
-  padding: 12px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.5);
-}
-
-.gold-table th {
-  background: rgba(255, 215, 0, 0.3);
-  color: #222;
-  font-weight: bold;
-}
-
-.gold-table tr:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* 🕒 Timestamp */
-.timestamp {
-  margin-top: 10px;
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-/* 🎭 Looping Animation */
-.looping-text {
-  animation: glowLoop 2s infinite alternate;
-}
-
-@keyframes glowLoop {
-  0% {
-    opacity: 1;
-    transform: scale(1);
+/* Medium-sized devices */
+@media (min-width: 481px) and (max-width: 768px) {
+  .gold-wrapper {
+    width: 90%;
   }
-  100% {
-    opacity: 0.9;
-    transform: scale(1.05);
+
+  h1 {
+    font-size: 28px;
+  }
+
+  h2 {
+    font-size: 22px;
   }
 }
 
-/* 📱 Responsive Design */
-@media (max-width: 600px) {
+/* Make sure tables are readable on small screens */
+@media (max-width: 360px) {
+  .gold-table {
+    font-size: 11px;
+  }
+  
   .gold-table th,
   .gold-table td {
-    font-size: 14px;
-    padding: 8px;
+    padding: 6px 3px;
   }
-  .big-input {
-    width: 90%;
-    font-size: 18px;
+
+  .timestamp {
+    font-size: 12px;
   }
 }
 </style>
