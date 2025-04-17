@@ -7,12 +7,22 @@
       class="drop-zone" 
       @dragover.prevent 
       @drop="handleDrop" 
-      :class="{'dragging': dragging, 'has-image': imageSelected}"
-      @dragenter="dragging = true"
-      @dragleave="dragging = false"
+      :class="{
+        'dragging': dragging, 
+        'has-image': imageSelected,
+        'active-drop': activeDropArea
+      }"
+      @dragenter="activateDropArea"
+      @dragleave="deactivateDropArea"
+      @click="$refs.fileInput.click()"
     >
+      <!-- Animated Background -->
+      <div class="animated-background">
+        <div class="dot" v-for="n in 8" :key="n"></div>
+      </div>
+      
       <div v-if="!imageSelected" class="upload-section">
-        <div class="icon-container">
+        <div class="icon-container" :class="{'bounce-animation': dragging}">
           <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
@@ -29,7 +39,7 @@
             accept="image/*" 
             class="file-input" 
             ref="fileInput"
-            @click="resetDropZone"
+            @click.stop="resetDropZone"
           />
         </label>
         <p class="file-type-hint">Supports: JPG, PNG, GIF, WebP</p>
@@ -38,7 +48,7 @@
       <div v-if="imageSelected" class="image-preview">
         <img :src="imagePreview" alt="Image Preview" />
         <div class="preview-controls">
-          <button @click="clearImage" class="control-button remove-button">
+          <button @click.stop="clearImage" class="control-button remove-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -52,7 +62,10 @@
     <div v-if="imageSelected && !compressedImage && !loading" class="compression-options">
       <h3 class="options-title">Compression Options</h3>
       <div class="option-group">
-        <label for="quality-slider">Quality: {{ quality }}%</label>
+        <div class="slider-header">
+          <label for="quality-slider">Quality: {{ quality }}%</label>
+          <span class="estimated-size" v-if="estimatedSize">Est. Size: {{ estimatedSize }} KB</span>
+        </div>
         <input 
           type="range" 
           id="quality-slider" 
@@ -60,17 +73,27 @@
           min="30" 
           max="90" 
           class="quality-slider"
+          @input="updateEstimatedSize"
         />
+        <div class="slider-labels">
+          <span>Lower Quality</span>
+          <span>Higher Quality</span>
+        </div>
       </div>
       <div class="option-group">
         <label for="max-size">Max Size:</label>
-        <select id="max-size" v-model="maxSizeMB" class="select-option">
+        <select id="max-size" v-model="maxSizeMB" class="select-option" @change="updateEstimatedSize">
           <option value="0.5">0.5 MB</option>
           <option value="1">1 MB</option>
           <option value="2">2 MB</option>
         </select>
       </div>
       <button @click="performCompression" class="compress-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+          <path d="M12 12v9"></path>
+          <path d="m8 17 4 4 4-4"></path>
+        </svg>
         Compress Image
       </button>
     </div>
@@ -98,8 +121,10 @@
         </div>
       </div>
       
-      <div class="result-image">
-        <img :src="compressedImage" alt="Compressed Image" class="compressed-image" />
+      <div class="image-comparison">
+        <div class="result-image">
+          <img :src="compressedImage" alt="Compressed Image" class="compressed-image" />
+        </div>
       </div>
       
       <div class="action-buttons">
@@ -140,11 +165,14 @@ export default {
       loading: false,
       imageSelected: false,
       dragging: false,
+      activeDropArea: false,
       fileSizes: null,
       reductionPercentage: 0,
       quality: 75,
       maxSizeMB: 1,
-      selectedFile: null // Store the selected file here
+      selectedFile: null, // Store the selected file here
+      estimatedSize: null, // For estimated file size
+      originalImageRatio: 1 // Store aspect ratio to help with size estimation
     };
   },
   methods: {
@@ -159,9 +187,41 @@ export default {
       const originalSize = (file.size / 1024).toFixed(2);
       this.fileSizes = { originalSize: originalSize };
 
+      // Create image preview
       this.imagePreview = URL.createObjectURL(file);
+      
+      // Get image dimensions for better size estimation
+      const img = new Image();
+      img.onload = () => {
+        this.originalImageRatio = img.width / img.height;
+        this.updateEstimatedSize();
+      };
+      img.src = this.imagePreview;
+
       this.imageSelected = true;
       this.compressedImage = null;
+      this.updateEstimatedSize();
+    },
+
+    updateEstimatedSize() {
+      if (!this.selectedFile) return;
+      
+      // Simple estimation algorithm based on original size, quality setting, and max size
+      // This is a rough estimate that won't be perfectly accurate
+      const originalSizeKB = parseFloat(this.fileSizes.originalSize);
+      
+      // Base compression factor - quality has exponential effect on file size
+      const qualityFactor = Math.pow(this.quality / 100, 1.5);
+      
+      // Calculate estimated size, but ensure it doesn't exceed maxSizeMB
+      let estimatedSizeKB = originalSizeKB * qualityFactor;
+      const maxSizeKB = parseFloat(this.maxSizeMB) * 1024;
+      
+      if (estimatedSizeKB > maxSizeKB) {
+        estimatedSizeKB = maxSizeKB;
+      }
+      
+      this.estimatedSize = Math.floor(estimatedSizeKB);
     },
 
     async performCompression() {
@@ -206,6 +266,22 @@ export default {
         alert('Please drop an image file.');
       }
       this.dragging = false;
+      this.activeDropArea = false;
+    },
+
+    activateDropArea(event) {
+      event.preventDefault();
+      this.dragging = true;
+      this.activeDropArea = true;
+    },
+
+    deactivateDropArea(event) {
+      // Check if the leave is to a child element and ignore if so
+      if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget)) {
+        return;
+      }
+      this.dragging = false;
+      this.activeDropArea = false;
     },
 
     clearImage() {
@@ -215,6 +291,7 @@ export default {
       this.fileSizes = null;
       this.reductionPercentage = 0;
       this.selectedFile = null;
+      this.estimatedSize = null;
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = '';
       }
@@ -224,8 +301,34 @@ export default {
 
     resetDropZone() {
       this.dragging = false;
+      this.activeDropArea = false;
     },
   },
+  mounted() {
+    // Add drag and drop event listeners to the document
+    document.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      this.dragging = true;
+    });
+    
+    document.addEventListener('dragleave', (e) => {
+      if (e.clientX === 0 && e.clientY === 0) {
+        // Leaving the window
+        this.dragging = false;
+        this.activeDropArea = false;
+      }
+    });
+    
+    document.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+  },
+  beforeUnmount() {
+    // Clean up event listeners
+    document.removeEventListener('dragenter', this.activateDropArea);
+    document.removeEventListener('dragleave', this.deactivateDropArea);
+    document.removeEventListener('dragover', (e) => e.preventDefault());
+  }
 };
 </script>
 
@@ -249,6 +352,7 @@ export default {
 }
 
 .drop-zone {
+  position: relative;
   border: 2px dashed #cbd5e0;
   border-radius: 12px;
   padding: 40px;
@@ -256,11 +360,19 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   background-color: #f7fafc;
+  overflow: hidden;
 }
 
 .drop-zone.dragging {
-  background-color: #e6f7ff;
-  border-color: #40a9ff;
+  border-color: #4299e1;
+}
+
+.drop-zone.active-drop {
+  background-color: #ebf8ff;
+  border-color: #4299e1;
+  border-width: 3px;
+  transform: scale(1.01);
+  box-shadow: 0 0 20px rgba(66, 153, 225, 0.2);
 }
 
 .drop-zone.has-image {
@@ -269,15 +381,130 @@ export default {
   border-color: #e2e8f0;
 }
 
+/* Animated Background */
+.animated-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dot {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(66, 153, 225, 0.1) 0%, rgba(66, 153, 225, 0) 70%);
+  animation: float 15s infinite;
+  opacity: 0;
+}
+
+.dot:nth-child(1) {
+  top: 10%;
+  left: 20%;
+  width: 80px;
+  height: 80px;
+  animation-delay: 0s;
+}
+
+.dot:nth-child(2) {
+  top: 60%;
+  left: 80%;
+  width: 120px;
+  height: 120px;
+  animation-delay: 1s;
+}
+
+.dot:nth-child(3) {
+  top: 40%;
+  left: 10%;
+  width: 90px;
+  height: 90px;
+  animation-delay: 2s;
+}
+
+.dot:nth-child(4) {
+  top: 80%;
+  left: 30%;
+  width: 70px;
+  height: 70px;
+  animation-delay: 3s;
+}
+
+.dot:nth-child(5) {
+  top: 20%;
+  left: 70%;
+  width: 100px;
+  height: 100px;
+  animation-delay: 4s;
+}
+
+.dot:nth-child(6) {
+  top: 70%;
+  left: 60%;
+  width: 85px;
+  height: 85px;
+  animation-delay: 5s;
+}
+
+.dot:nth-child(7) {
+  top: 30%;
+  left: 40%;
+  width: 110px;
+  height: 110px;
+  animation-delay: 6s;
+}
+
+.dot:nth-child(8) {
+  top: 50%;
+  left: 50%;
+  width: 75px;
+  height: 75px;
+  animation-delay: 7s;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(100%) translateX(-100%) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.4;
+  }
+  80% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(-100%) translateX(100%) scale(1);
+    opacity: 0;
+  }
+}
+
 .upload-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .icon-container {
   margin-bottom: 16px;
+  transition: transform 0.3s ease;
+}
+
+.icon-container.bounce-animation {
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 .upload-icon {
@@ -327,6 +554,7 @@ export default {
 
 .image-preview {
   position: relative;
+  z-index: 1;
 }
 
 .image-preview img {
@@ -393,6 +621,22 @@ export default {
   color: #4a5568;
 }
 
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.estimated-size {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4299e1;
+  background-color: #ebf8ff;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
 .quality-slider {
   width: 100%;
   height: 6px;
@@ -421,6 +665,14 @@ export default {
   border: none;
 }
 
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #718096;
+}
+
 .select-option {
   width: 100%;
   padding: 10px;
@@ -432,7 +684,9 @@ export default {
 }
 
 .compress-button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   padding: 12px;
   margin-top: 24px;
@@ -445,6 +699,10 @@ export default {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s;
+}
+
+.compress-button svg {
+  margin-right: 8px;
 }
 
 .compress-button:hover {
@@ -544,9 +802,14 @@ export default {
   border-radius: 16px;
 }
 
+.image-comparison {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
 .result-image {
   text-align: center;
-  margin-bottom: 24px;
 }
 
 .compressed-image {

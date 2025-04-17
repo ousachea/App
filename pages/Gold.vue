@@ -2,17 +2,24 @@
   <div class="page-wrapper">
     <PageSwitcher/>
     <div :class="['gold-wrapper', darkMode ? 'dark-mode' : 'light-mode']">
-      <h1 class="gold-glow fade-in slide-down looping-text">Live Gold Price</h1>
-
-      <!-- 🔘 Toggle Source (API or Manual) -->
-      <button @click="toggleSource" class="toggle-source">
-        {{ useApi ? '🔗 Using API Data' : '✍️ Using Manual Input' }}
-      </button>
+      <div class="header-section">
+        <h1 class="gold-glow main-title">Live Gold Price</h1>
+        <div class="toggle-container">
+          <button @click="toggleDarkMode" class="toggle-button">
+            <span v-if="darkMode">☀️ Light</span>
+            <span v-else>🌙 Dark</span>
+          </button>
+          <button @click="toggleSource" class="toggle-button">
+            {{ useApi ? '🔗 API Data' : '✍️ Manual' }}
+          </button>
+        </div>
+      </div>
 
       <!-- 📥 Manual Input for Gold Price -->
       <div v-if="!useApi" class="manual-input">
-        <label>Enter Gold Price per Ounce ($):</label>
+        <label for="goldPrice">Enter Gold Price per Ounce ($)</label>
         <input
+          id="goldPrice"
           type="number"
           v-model.number="manualGoldPrice"
           class="big-input"
@@ -21,72 +28,87 @@
       </div>
 
       <!-- 📊 Live Prices -->
-      <div class="price-container">
-        <div class="price fade-in">
-          💰 Ounce:
-          <span class="looping-text">{{
-            goldPrice.ounce || 'Loading...'
-          }}</span>
+      <div class="prices-card">
+        <div class="price-item">
+          <div class="price-icon">💰</div>
+          <div class="price-info">
+            <div class="price-label">Ounce</div>
+            <div class="price-value">{{ goldPrice.ounce || 'Loading...' }}</div>
+          </div>
         </div>
-        <div class="price fade-in">
-          🔶 Damlung:
-          <span class="looping-text">{{
-            goldPrice.damlung || 'Loading...'
-          }}</span>
+        
+        <div class="price-item">
+          <div class="price-icon">🔶</div>
+          <div class="price-info">
+            <div class="price-label">Damlung</div>
+            <div class="price-value">{{ goldPrice.damlung || 'Loading...' }}</div>
+          </div>
         </div>
-        <div class="price fade-in">
-          🟡 Chi:
-          <span class="looping-text">{{ goldPrice.chi || 'Loading...' }}</span>
+        
+        <div class="price-item">
+          <div class="price-icon">🟡</div>
+          <div class="price-info">
+            <div class="price-label">Chi</div>
+            <div class="price-value">{{ goldPrice.chi || 'Loading...' }}</div>
+          </div>
         </div>
       </div>
 
       <!-- 🔢 Custom Chi Calculation -->
-      <h2 class="slide-in">Custom Chi Price (ជី)</h2>
-      <input
-        type="number"
-        step="0.01"
-        v-model.number="customChiAmount"
-        placeholder="Enter Chi"
-        min="0"
-        @input="calculateChiPrice"
-        class="big-input"
-      />
-      <div class="price fade-in">
-        💲 Price for <span class="gold-glow">{{ customChiAmount }}</span> Chi:
-        <span class="gold-glow looping-text">{{ customChiPrice || '--' }}</span>
+      <div class="calculator-section">
+        <h2 class="section-title">Custom Chi Calculator (ជី)</h2>
+        <div class="calculator-input">
+          <input
+            type="number"
+            step="0.01"
+            v-model.number="customChiAmount"
+            placeholder="Enter Chi Amount"
+            min="0"
+            @input="calculateChiPrice"
+            class="big-input"
+          />
+          <div class="calculation-result">
+            Price for <span class="highlight">{{ customChiAmount || 0 }}</span> Chi:
+            <span class="gold-value">{{ customChiPrice || '--' }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- 📜 Price History Table -->
-      <h2 class="slide-in">Last 3 Prices</h2>
-      <div class="table-container">
-        <table class="gold-table">
-          <thead>
-            <tr>
-              <th>Ounce ($)</th>
-              <th>Damlung ($)</th>
-              <th>Chi ($)</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(record, index) in priceHistory" :key="index">
-              <td>{{ record.ounce }}</td>
-              <td>{{ record.damlung }}</td>
-              <td>{{ record.chi }}</td>
-              <td>{{ record.timestamp }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="history-section">
+        <h2 class="section-title">Recent Price History</h2>
+        <div class="table-container">
+          <table class="gold-table">
+            <thead>
+              <tr>
+                <th>Ounce ($)</th>
+                <th>Damlung ($)</th>
+                <th>Chi ($)</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(record, index) in priceHistory" :key="index">
+                <td>{{ record.ounce }}</td>
+                <td>{{ record.damlung }}</td>
+                <td>{{ record.chi }}</td>
+                <td>{{ record.timestamp }}</td>
+              </tr>
+              <tr v-if="priceHistory.length === 0">
+                <td colspan="4" class="no-data">No price history available yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="timestamp fade-in slide-up">
-        Last updated: {{ lastUpdated }}
+      <div class="timestamp">
+        <div class="indicator-dot" :class="{ 'active': useApi }"></div>
+        Last updated: {{ lastUpdated || 'Not updated yet' }}
       </div>
-
-      <button @click="toggleDarkMode" class="toggle-mode">
-        <span v-if="darkMode">☀️ Light Mode</span>
-        <span v-else>🌙 Dark Mode</span>
-      </button>
+    </div>
+    <div class="footer">
+      &copy; 2025 Gold Price Tracker
     </div>
   </div>
 </template>
@@ -112,10 +134,27 @@ export default {
     };
   },
   mounted() {
-    this.darkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
+    // Check system preference for dark mode
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    this.darkMode = JSON.parse(localStorage.getItem('darkMode')) ?? prefersDark;
+    
     this.priceHistory = JSON.parse(localStorage.getItem('priceHistory')) || [];
-    if (this.useApi) this.fetchGoldPrice(true);
-    else this.restoreManualPrice();
+    this.useApi = JSON.parse(localStorage.getItem('useApi')) ?? true;
+    
+    if (this.useApi) {
+      this.fetchGoldPrice(true);
+      // Set up refresh interval for API data - every 5 minutes
+      this.refreshInterval = setInterval(() => {
+        this.fetchGoldPrice(true);
+      }, 300000);
+    } else {
+      this.restoreManualPrice();
+    }
+  },
+  beforeUnmount() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
   },
   methods: {
     async fetchGoldPrice(updateUI) {
@@ -183,8 +222,15 @@ export default {
       localStorage.setItem('useApi', JSON.stringify(this.useApi));
       if (!this.useApi) {
         this.restoreManualPrice();
+        if (this.refreshInterval) {
+          clearInterval(this.refreshInterval);
+          this.refreshInterval = null;
+        }
       } else {
         this.fetchGoldPrice(true);
+        this.refreshInterval = setInterval(() => {
+          this.fetchGoldPrice(true);
+        }, 300000);
       }
     },
   },
@@ -192,17 +238,30 @@ export default {
 </script>
 
 <style scoped>
-/* Mobile-first approach with proper viewport settings */
+/* Import font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Base reset and settings */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Mobile-first approach */
 .page-wrapper {
+  font-family: 'Poppins', sans-serif;
   text-align: center;
-  padding: 20px 10px;
+  padding: 12px;
   position: relative;
   overflow-x: hidden;
   min-height: 100vh;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 🎆 Animated Background */
+/* 🎆 Animated Background with gradient mesh */
 .page-wrapper::before {
   content: '';
   position: fixed;
@@ -210,14 +269,13 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(-45deg, #ffdd44, #ffcc00, #b8860b, #8b6508);
+  background: linear-gradient(-45deg, #f5d742, #ffc83d, #d4af37, #a67c00);
   background-size: 400% 400%;
-  animation: glowingBackground 6s ease infinite;
+  animation: gradientBG 12s ease infinite;
   z-index: -1;
 }
 
-/* 🔥 Glowing Animation */
-@keyframes glowingBackground {
+@keyframes gradientBG {
   0% {
     background-position: 0% 50%;
   }
@@ -229,208 +287,253 @@ export default {
   }
 }
 
-/* 📜 Glassmorphism Card */
+/* Main content wrapper with neumorphic design */
 .gold-wrapper {
-  padding: 20px 15px;
-  border-radius: 20px;
-  backdrop-filter: blur(15px);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 520px;
+  flex: 1;
+  padding: 25px 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 94%;
+  max-width: 540px;
   margin: 10px auto;
   text-align: center;
-  border: 2px solid rgba(255, 215, 0, 0.5);
-  transition: all 0.5s ease-in-out;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-/* 🌑 Dark Mode */
+/* 🌓 Theme Modes */
 .light-mode {
-  color: #222;
+  color: #333;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .dark-mode {
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  background: rgba(20, 20, 35, 0.85);
+  color: #f0f0f0;
 }
 
-/* 📱 Mobile-Friendly Headings */
-h1 {
-  font-size: 7vw;
-  max-font-size: 32px;
-  margin: 10px 0;
+/* 📱 Header Section */
+.header-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
-h2 {
-  font-size: 5vw;
-  max-font-size: 24px;
-  margin: 15px 0 10px;
+.main-title {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  letter-spacing: 0.5px;
+  position: relative;
 }
 
-/* 🔘 Touch-Friendly Toggle Mode Button */
-.toggle-mode,
-.toggle-source {
-  margin: 15px 5px;
-  padding: 12px 18px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 25px;
-  border: none;
+.main-title::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(255,215,0,0.2), rgba(255,215,0,0.8), rgba(255,215,0,0.2));
+  border-radius: 4px;
+}
+
+.toggle-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.toggle-button {
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: inherit;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
-  width: auto;
-  min-width: 160px;
-  min-height: 44px; /* Touch-friendly size */
-}
-
-.toggle-mode {
-  background: #222;
-  color: #ffd700;
-}
-
-.toggle-mode:hover, .toggle-mode:active {
-  background: #ffd700;
-  color: #222;
-}
-
-.toggle-source {
-  background: #444;
-  color: #ffd700;
-}
-
-.toggle-source:hover, .toggle-source:active {
-  background: #ffd700;
-  color: #222;
-}
-
-/* ✨ Animated Gold Glow */
-.gold-glow {
-  color: #b8860b;
-  font-weight: bold;
-  text-shadow: 0 0 10px rgba(184, 134, 11, 0.7), 0 0 20px rgba(255, 215, 0, 0.5);
-}
-
-/* 🎭 Looping Animation */
-.looping-text {
-  animation: glowLoop 2s infinite alternate;
-}
-
-@keyframes glowLoop {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
-
-/* 🔢 Touch-Friendly Input Fields */
-.big-input {
-  width: 90%;
-  max-width: 300px;
-  padding: 15px;
-  font-size: 18px;
-  border-radius: 10px;
-  text-align: center;
   transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.8);
-  color: #222;
-  border: 2px solid #b8860b;
-  margin: 12px 0;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  -webkit-appearance: none; /* Remove browser default styling on iOS */
+  min-height: 44px;
+  min-width: 120px;
+  backdrop-filter: blur(5px);
 }
 
-.big-input:focus {
-  border-color: #ffcc00;
-  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
-  outline: none;
+.toggle-button:hover {
+  background: rgba(255, 215, 0, 0.5);
+  transform: translateY(-2px);
 }
 
-/* Manual input section */
+.toggle-button:active {
+  transform: translateY(1px);
+}
+
+/* 📥 Manual Input Section */
 .manual-input {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
+  gap: 10px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .manual-input label {
-  font-size: 16px;
-  margin-bottom: 5px;
+  font-size: 15px;
+  font-weight: 500;
 }
 
-/* 💰 Gold Prices */
-.price-container {
+/* 🔢 Input fields with modern styling */
+.big-input {
+  width: 92%;
+  padding: 14px;
+  font-size: 18px;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  font-family: 'Poppins', sans-serif;
+  -webkit-appearance: none;
+}
+
+.big-input:focus {
+  border-color: rgba(212, 175, 55, 0.9);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.25);
+  outline: none;
+  transform: scale(1.02);
+}
+
+/* 💰 Price Cards Section */
+.prices-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.price-item {
+  display: flex;
+  align-items: center;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.price-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.price-icon {
+  font-size: 24px;
+  margin-right: 15px;
+  min-width: 40px;
+}
+
+.price-info {
+  flex: 1;
+  text-align: left;
+}
+
+.price-label {
+  font-size: 14px;
+  opacity: 0.8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.price-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #d4af37;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+/* 🧮 Calculator Section */
+.calculator-section {
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  position: relative;
+  display: inline-block;
+}
+
+.calculator-input {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin: 15px 0;
-  width: 100%;
+  gap: 15px;
 }
 
-.price {
+.calculation-result {
   font-size: 18px;
-  font-weight: bold;
-  color: inherit;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 12px;
-  border-radius: 12px;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-  width: 90%;
-  max-width: 300px;
+  font-weight: 500;
+  margin-top: 10px;
 }
 
-/* 🕒 Timestamp */
-.timestamp {
-  margin-top: 15px;
-  font-size: 14px;
-  opacity: 0.8;
-  color: inherit;
+.highlight {
+  color: #d4af37;
+  font-weight: 600;
 }
 
-/* 📊 Gold Price Table */
-.gold-table {
-  width: 100%;
-  margin-top: 15px;
-  border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
+.gold-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #d4af37;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+  display: block;
+  margin-top: 5px;
 }
 
-.gold-table th,
-.gold-table td {
-  padding: 10px 5px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.5);
+/* 📜 History Section */
+.history-section {
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.gold-table th {
-  background: rgba(255, 215, 0, 0.3);
-  color: #222;
-  font-weight: bold;
-}
-
-.gold-table tr:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* 📜 Table Container for Mobile */
+/* Table Container for Mobile */
 .table-container {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
   margin: 0 auto;
   scrollbar-width: thin;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
 }
 
-/* Custom Scrollbar for the table */
+/* Custom Scrollbar */
 .table-container::-webkit-scrollbar {
   height: 4px;
 }
@@ -440,81 +543,175 @@ h2 {
 }
 
 .table-container::-webkit-scrollbar-thumb {
-  background: rgba(184, 134, 11, 0.7);
+  background: rgba(212, 175, 55, 0.6);
   border-radius: 4px;
 }
 
-/* 🌎 Responsive Design */
-@media (max-width: 480px) {
-  .gold-wrapper {
-    width: 95%;
-    padding: 15px 10px;
-  }
+/* Modern Table Design */
+.gold-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+  font-size: 14px;
+}
 
-  h1 {
+.gold-table th,
+.gold-table td {
+  padding: 12px 10px;
+  text-align: center;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.gold-table th {
+  background: rgba(212, 175, 55, 0.2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 12px;
+}
+
+.gold-table tr:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.no-data {
+  font-style: italic;
+  opacity: 0.7;
+  padding: 20px 0;
+}
+
+/* 🕒 Timestamp with live indicator */
+.timestamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 13px;
+  opacity: 0.8;
+  margin-top: 10px;
+}
+
+.indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #aaa;
+  transition: all 0.5s ease;
+}
+
+.indicator-dot.active {
+  background: #4CAF50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px rgba(76, 175, 80, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+/* 👣 Footer */
+.footer {
+  text-align: center;
+  padding: 15px;
+  font-size: 12px;
+  opacity: 0.7;
+  color: #333;
+}
+
+/* 🌎 Responsive Design */
+@media (min-width: 600px) {
+  .gold-wrapper {
+    padding: 30px;
+  }
+  
+  .main-title {
+    font-size: 36px;
+  }
+  
+  .section-title {
     font-size: 24px;
   }
-
-  h2 {
-    font-size: 20px;
+  
+  .prices-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
   }
-
-  .gold-table th,
-  .gold-table td {
-    font-size: 12px;
-    padding: 8px 4px;
+  
+  .price-item {
+    width: calc(33.33% - 10px);
   }
-
-  .big-input {
-    width: 95%;
-    font-size: 16px;
-    padding: 12px 8px;
-  }
-
-  .price {
-    font-size: 16px;
-    padding: 10px 8px;
-    width: 95%;
-  }
-
-  .toggle-mode,
-  .toggle-source {
-    width: 90%;
-    margin: 10px auto;
-    font-size: 14px;
-    padding: 10px;
-    display: block;
+  
+  .toggle-button {
+    min-width: 140px;
   }
 }
 
-/* Medium-sized devices */
-@media (min-width: 481px) and (max-width: 768px) {
-  .gold-wrapper {
-    width: 90%;
+@media (max-width: 480px) {
+  .main-title {
+    font-size: 24px;
   }
-
-  h1 {
-    font-size: 28px;
-  }
-
-  h2 {
-    font-size: 22px;
-  }
-}
-
-/* Make sure tables are readable on small screens */
-@media (max-width: 360px) {
-  .gold-table {
-    font-size: 11px;
+  
+  .price-value {
+    font-size: 18px;
   }
   
   .gold-table th,
   .gold-table td {
-    padding: 6px 3px;
-  }
-
-  .timestamp {
+    padding: 10px 5px;
     font-size: 12px;
   }
+  
+  .section-title {
+    font-size: 18px;
+  }
+  
+  .price-item {
+    padding: 12px 10px;
+  }
+}
+
+/* Animation Classes */
+.gold-glow {
+  color: #d4af37;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.slide-up {
+  animation: slide-up 0.8s ease-out forwards;
+}
+
+.slide-down {
+  animation: slide-down 0.8s ease-out forwards;
 }
 </style>
