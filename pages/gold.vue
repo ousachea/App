@@ -1,7 +1,9 @@
 // index.vue - Single Page Application
 <template>
   <div class="page-wrapper">
+    <PageSwitcher/>
     <div :class="['gold-wrapper', darkMode ? 'dark-mode' : 'light-mode']">
+      
       <div class="header-section">
         <h1 class="gold-glow main-title">{{ translations[currentLanguage].goldPriceTracker }}</h1>
         <div class="toggle-container">
@@ -501,6 +503,8 @@
 </template>
 
 <script>
+import PageSwitcher from '../components/PageSwitcher.vue';
+
 export default {
  
   data() {
