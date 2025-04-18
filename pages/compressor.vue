@@ -16,6 +16,7 @@
       @dragenter="activateDropArea"
       @dragleave="deactivateDropArea"
       @click="$refs.fileInput.click()"
+      @touchstart="handleTouch"
       tabindex="0"
       @keydown="handleKeyDown"
       role="button"
@@ -37,8 +38,12 @@
         <p class="drop-message">Drag and drop images here</p>
         <p class="drop-message-secondary">or</p>
         <button class="file-button">Browse Files</button>
-        <p class="file-type-hint">Supports: JPG, PNG, GIF, WebP, AVIF, HEIC</p>
-        <p class="batch-hint">Tip: You can select multiple images for batch compression</p>
+        <p class="file-type-hint">
+          Supports: JPG, PNG, GIF, WebP, AVIF, HEIC
+        </p>
+        <p class="batch-hint">
+          Tip: You can select multiple images for batch compression
+        </p>
       </div>
     </div>
     
@@ -73,6 +78,29 @@
       <div class="compression-options">
         <h3 class="options-title">Compression Settings</h3>
         
+        <!-- Presets Selector -->
+        <div class="preset-selection">
+          <label for="preset-selector">Preset:</label>
+          <div class="preset-buttons">
+            <button 
+              v-for="preset in presets" 
+              :key="preset.id"
+              @click="applyPreset(preset)"
+              :class="['preset-button', currentPreset === preset.id ? 'active-preset' : '']"
+            >
+              {{ preset.name }}
+            </button>
+            <button v-if="hasCustomChanges" class="preset-button save-preset" @click="openSavePresetModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Save
+            </button>
+          </div>
+        </div>
+        
         <div class="option-group">
           <div class="slider-header">
             <label for="quality-slider">Quality: {{ quality }}%</label>
@@ -90,6 +118,21 @@
           <div class="slider-labels">
             <span>Lower Quality</span>
             <span>Higher Quality</span>
+          </div>
+        </div>
+
+        <!-- Output Format Selector -->
+        <div class="option-group">
+          <label for="output-format">Output Format:</label>
+          <select id="output-format" v-model="outputFormat" class="select-option" @change="updateEstimatedSize">
+            <option value="same">Same as original</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/png">PNG</option>
+            <option value="image/webp">WebP</option>
+            <option value="image/avif" v-if="supportsAvif">AVIF</option>
+          </select>
+          <div class="format-info" v-if="formatInfo">
+            {{ formatInfo }}
           </div>
         </div>
         
@@ -188,7 +231,7 @@
       </button>
     </div>
     
-    <!-- Results -->
+    <!-- Results with Before/After Comparison -->
     <div v-if="compressedImage" class="results-container">
       <h3 class="result-title">Compression Complete</h3>
       
@@ -207,6 +250,29 @@
         </div>
       </div>
       
+      <!-- Before/After Slider for the first compressed image -->
+      <div v-if="compressedFiles.length > 0 && !compressedFiles[0].failed" class="comparison-slider-container">
+        <h4 class="comparison-title">Before / After Comparison</h4>
+        <div class="comparison-slider" ref="comparisonSliderContainer">
+          <div class="comparison-image original-image">
+            <img :src="getThumbnailUrl(selectedFiles[0])" alt="Original Image" />
+          </div>
+          <div class="comparison-image compressed-image" :style="{ width: `${sliderPosition}%` }">
+            <img :src="compressedFiles[0].url" alt="Compressed Image" />
+          </div>
+          <div class="slider-divider" 
+               :style="{ left: `${sliderPosition}%` }"
+               @mousedown="startSliderDrag"
+               @touchstart="startSliderDrag">
+            <div class="slider-handle"></div>
+          </div>
+        </div>
+        <div class="comparison-labels">
+          <span>Original</span>
+          <span>Compressed</span>
+        </div>
+      </div>
+      
       <div class="compressed-files">
         <div v-for="(file, index) in compressedFiles" :key="index" class="compressed-file-item">
           <div class="file-preview">
@@ -221,15 +287,29 @@
               <span>{{ formatSize(file.compressedSize) }}</span>
               <span class="size-badge">-{{ file.reductionPercentage }}%</span>
             </div>
+            <div class="file-format">
+              <span>Format: {{ getFormatLabel(file.originalType) }} → {{ getFormatLabel(file.type) }}</span>
+            </div>
           </div>
           
-          <button @click="downloadFile(index)" class="download-file-button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </button>
+          <div class="file-actions">
+            <button @click="downloadFile(index)" class="download-file-button" title="Download">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </button>
+            <button v-if="canShare" @click="shareFile(index)" class="share-file-button" title="Share">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
       
@@ -249,6 +329,30 @@
           </svg>
           Download All
         </button>
+      </div>
+    </div>
+    
+    <!-- Save Preset Modal -->
+    <div v-if="showSavePresetModal" class="modal-overlay" @click="showSavePresetModal = false">
+      <div class="modal-content" @click.stop>
+        <h3 class="modal-title">Save Custom Preset</h3>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="preset-name">Preset Name:</label>
+            <input type="text" id="preset-name" v-model="newPresetName" placeholder="e.g., My Social Media Preset" class="modal-input">
+          </div>
+          <div class="preset-summary">
+            <div class="preset-param">Quality: {{ quality }}%</div>
+            <div class="preset-param">Format: {{ getFormatLabel(outputFormat) }}</div>
+            <div class="preset-param">Max Size: {{ maxSizeMB }} MB</div>
+            <div class="preset-param">Resize: {{ resizeDimensions.width || 'Auto' }} × {{ resizeDimensions.height || 'Auto' }}</div>
+            <div class="preset-param">Preserve EXIF: {{ preserveExif ? 'Yes' : 'No' }}</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showSavePresetModal = false" class="secondary-button">Cancel</button>
+          <button @click="saveCustomPreset" :disabled="!newPresetName" class="primary-button">Save Preset</button>
+        </div>
       </div>
     </div>
     
@@ -318,7 +422,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import PageSwitcher from '../components/PageSwitcher.vue';
 
 // Lazy-load the image compression library
@@ -352,10 +456,15 @@ export default defineComponent({
     const compressedImage = ref(null);
     const thumbnailUrls = ref({});
     
+    // Feature detection
+    const supportsAvif = ref(false);
+    const canShare = ref(false);
+    
     // Compression options
     const quality = ref(75);
     const maxSizeMB = ref(1);
     const preserveExif = ref(false);
+    const outputFormat = ref('same');
     const resizeDimensions = ref({
       width: 0,
       height: 0,
@@ -363,6 +472,87 @@ export default defineComponent({
     });
     const estimatedSize = ref(null);
     const averageAspectRatio = ref(1);
+    
+    // Before/After slider
+    const sliderPosition = ref(50);
+    const isDraggingSlider = ref(false);
+    const comparisonSliderContainer = ref(null);
+    
+    // Presets
+    const defaultPresets = [
+      {
+        id: 'web',
+        name: 'Web',
+        quality: 70,
+        maxSizeMB: 0.5,
+        outputFormat: 'image/webp',
+        resize: { width: 1200, height: 0, maintainAspect: true },
+        preserveExif: false
+      },
+      {
+        id: 'social',
+        name: 'Social Media',
+        quality: 80,
+        maxSizeMB: 1,
+        outputFormat: 'image/jpeg',
+        resize: { width: 1080, height: 0, maintainAspect: true },
+        preserveExif: true
+      },
+      {
+        id: 'email',
+        name: 'Email',
+        quality: 60,
+        maxSizeMB: 0.25,
+        outputFormat: 'image/jpeg',
+        resize: { width: 800, height: 0, maintainAspect: true },
+        preserveExif: false
+      },
+      {
+        id: 'print',
+        name: 'Print',
+        quality: 90,
+        maxSizeMB: 5,
+        outputFormat: 'image/png',
+        resize: { width: 0, height: 0, maintainAspect: true },
+        preserveExif: true
+      },
+      {
+        id: 'custom',
+        name: 'Custom',
+        quality: 75,
+        maxSizeMB: 1,
+        outputFormat: 'same',
+        resize: { width: 0, height: 0, maintainAspect: true },
+        preserveExif: false
+      }
+    ];
+    
+    const userPresets = ref([]);
+    const presets = computed(() => [...defaultPresets, ...userPresets.value]);
+    const currentPreset = ref('custom');
+    const hasCustomChanges = ref(false);
+    
+    // Modal state
+    const showSavePresetModal = ref(false);
+    const newPresetName = ref('');
+    
+    // Format information
+    const formatInfo = computed(() => {
+      switch(outputFormat.value) {
+        case 'same':
+          return 'Keeps the original format of each image';
+        case 'image/jpeg':
+          return 'JPEG: Good for photos. Smaller file size, but may lose some details.';
+        case 'image/png':
+          return 'PNG: Best for images with transparency or text. Larger file size, lossless quality.';
+        case 'image/webp':
+          return 'WebP: Modern format with better compression. Good balance of quality and size.';
+        case 'image/avif':
+          return 'AVIF: Newest format with excellent compression. Limited browser support.';
+        default:
+          return '';
+      }
+    });
     
     // Computed properties
     const originalSizeTotal = computed(() => {
@@ -385,6 +575,31 @@ export default defineComponent({
       if (bytes < 1024) return bytes + ' B';
       else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
       else return (bytes / 1048576).toFixed(2) + ' MB';
+    };
+    
+    // Get format label
+    const getFormatLabel = (mimeType) => {
+      if (mimeType === 'same') return 'Same as original';
+      
+      switch(mimeType) {
+        case 'image/jpeg':
+          return 'JPEG';
+        case 'image/png':
+          return 'PNG';
+        case 'image/webp':
+          return 'WebP';
+        case 'image/gif':
+          return 'GIF';
+        case 'image/avif':
+          return 'AVIF';
+        case 'image/heic':
+          return 'HEIC';
+        default:
+          if (mimeType?.startsWith('image/')) {
+            return mimeType.substring(6).toUpperCase();
+          }
+          return 'Unknown';
+      }
     };
     
     // Truncate filename helper
@@ -416,6 +631,8 @@ export default defineComponent({
     
     // Handle dimension changes for resize
     const handleDimensionChange = (dimension) => {
+      hasCustomChanges.value = true;
+      
       // Skip if aspect ratio not maintained
       if (!resizeDimensions.value.maintainAspect) {
         updateEstimatedSize();
@@ -434,6 +651,8 @@ export default defineComponent({
     
     // Update dimensions when toggling aspect ratio
     const updateDimensionsWithAspect = () => {
+      hasCustomChanges.value = true;
+      
       if (resizeDimensions.value.maintainAspect && resizeDimensions.value.width > 0) {
         resizeDimensions.value.height = Math.round(resizeDimensions.value.width / averageAspectRatio.value);
       }
@@ -455,12 +674,19 @@ export default defineComponent({
         return;
       }
       
+      // Store original format for each file
+      imageFiles.forEach(file => {
+        file.originalType = file.type;
+      });
+      
       // Add to existing selection or create new
       if (imageSelected.value) {
         selectedFiles.value = [...selectedFiles.value, ...imageFiles];
       } else {
         selectedFiles.value = imageFiles;
         imageSelected.value = true;
+        // Apply default preset on first upload
+        applyPreset(presets.value.find(preset => preset.id === 'web'));
       }
       
       // Reset compression results
@@ -509,11 +735,26 @@ export default defineComponent({
         return;
       }
       
+      hasCustomChanges.value = true;
+      
       const totalOriginalSize = selectedFiles.value.reduce((total, file) => total + file.size, 0);
       
       // Apply quality factor (non-linear)
       const qualityFactor = Math.pow(quality.value / 100, 1.5);
       let estimatedSizeBytes = totalOriginalSize * qualityFactor;
+      
+      // Apply format conversion factor
+      if (outputFormat.value !== 'same') {
+        // Format-specific adjustment factors (approximate)
+        const formatFactor = {
+          'image/jpeg': 0.8,    // JPEG tends to be smaller than other formats
+          'image/png': 1.2,     // PNG can be larger due to lossless compression
+          'image/webp': 0.65,   // WebP is usually more efficient than JPEG
+          'image/avif': 0.5     // AVIF is usually more efficient than WebP
+        };
+        
+        estimatedSizeBytes *= formatFactor[outputFormat.value] || 1;
+      }
       
       // Apply resize factor if dimensions are set
       if (resizeDimensions.value.width > 0 && resizeDimensions.value.height > 0) {
@@ -568,6 +809,79 @@ export default defineComponent({
       updateEstimatedSize();
     };
     
+    // Apply a preset
+    const applyPreset = (preset) => {
+      if (!preset) return;
+      
+      currentPreset.value = preset.id;
+      quality.value = preset.quality;
+      maxSizeMB.value = preset.maxSizeMB;
+      outputFormat.value = preset.outputFormat;
+      
+      // Copy resize settings
+      resizeDimensions.value = {
+        width: preset.resize.width,
+        height: preset.resize.height,
+        maintainAspect: preset.resize.maintainAspect
+      };
+      
+      preserveExif.value = preset.preserveExif;
+      
+      // Reset custom changes flag
+      hasCustomChanges.value = false;
+      
+      // Update estimated size
+      updateEstimatedSize();
+    };
+    
+    // Save a custom preset
+    const saveCustomPreset = () => {
+      if (!newPresetName.value) return;
+      
+      // Create new preset
+      const customPreset = {
+        id: 'user-' + Date.now(),
+        name: newPresetName.value,
+        quality: quality.value,
+        maxSizeMB: maxSizeMB.value,
+        outputFormat: outputFormat.value,
+        resize: {
+          width: resizeDimensions.value.width,
+          height: resizeDimensions.value.height,
+          maintainAspect: resizeDimensions.value.maintainAspect
+        },
+        preserveExif: preserveExif.value
+      };
+      
+      // Add to user presets
+      userPresets.value.push(customPreset);
+      
+      // Save to localStorage
+      localStorage.setItem('compression-presets', JSON.stringify(userPresets.value));
+      
+      // Update current preset
+      currentPreset.value = customPreset.id;
+      hasCustomChanges.value = false;
+      
+      // Close modal and reset
+      showSavePresetModal.value = false;
+      newPresetName.value = '';
+      
+      // Show success message
+      showSuccess(`Preset "${customPreset.name}" saved successfully!`);
+    };
+    
+    // Open save preset modal
+    const openSavePresetModal = () => {
+      showSavePresetModal.value = true;
+      
+      // Focus the input after modal appears
+      nextTick(() => {
+        const input = document.getElementById('preset-name');
+        if (input) input.focus();
+      });
+    };
+    
     // Start compression process
     const performCompression = async () => {
       if (selectedFiles.value.length === 0) return;
@@ -601,52 +915,60 @@ export default defineComponent({
             maxHeight = resizeDimensions.value.height;
           }
           
-          // Configure compression options
+          // Determine output format
+          let targetFormat = file.type;
+          if (outputFormat.value !== 'same') {
+            targetFormat = outputFormat.value;
+          }
+          
+          // Set up compression options
           const options = {
             maxSizeMB: parseFloat(maxSizeMB.value),
             maxWidthOrHeight: Math.max(maxWidth || 0, maxHeight || 0) || 1920,
             useWebWorker: true,
             quality: quality.value / 100,
+            fileType: targetFormat,
             onProgress: (progress) => {
+              // Calculate overall progress
               const fileProgress = progress / 100;
-              const overallProgress = ((i + fileProgress) / selectedFiles.value.length) * 100;
-              compressionProgress.value = Math.round(overallProgress);
+              const overallProgress = (i + fileProgress) / selectedFiles.value.length;
+              compressionProgress.value = Math.round(overallProgress * 100);
             },
             preserveExif: preserveExif.value
           };
           
-          // Compress the image
+          // Perform compression
           try {
             const compressedFile = await imageCompression(file, options);
             
-            // Create result object with metadata
-            const result = {
+            // Create a more descriptive object with metadata
+            const compressedFileWithMetadata = {
+              file: compressedFile,
               name: file.name,
               originalSize: file.size,
               compressedSize: compressedFile.size,
+              type: compressedFile.type,
+              originalType: file.type,
               dimensions: file.dimensions,
-              reductionPercentage: ((file.size - compressedFile.size) / file.size * 100).toFixed(1),
               url: URL.createObjectURL(compressedFile),
-              file: compressedFile
+              reductionPercentage: ((file.size - compressedFile.size) / file.size * 100).toFixed(1)
             };
             
-            compressedFiles.value.push(result);
+            compressedFiles.value.push(compressedFileWithMetadata);
+            compressionProgress.value = Math.round(((i + 1) / selectedFiles.value.length) * 100);
           } catch (err) {
-            console.error(`Error compressing ${file.name}:`, err);
+            console.error(`Error compressing file ${file.name}:`, err);
             
+            // Add failed file to the list but mark as failed
             compressedFiles.value.push({
               name: file.name,
               originalSize: file.size,
+              originalType: file.type,
               compressedSize: file.size,
               failed: true,
               error: err.message
             });
-            
-            showError(`Failed to compress ${file.name}: ${err.message}`);
           }
-          
-          // Update progress
-          compressionProgress.value = Math.round(((i + 1) / selectedFiles.value.length) * 100);
         }
         
         // All files processed
@@ -654,10 +976,18 @@ export default defineComponent({
           compressedImage.value = true;
           showSuccess(`Successfully compressed ${compressedFiles.value.length} image${compressedFiles.value.length > 1 ? 's' : ''}`);
           
+          // Reset slider position
+          sliderPosition.value = 50;
+          
           // Add haptic feedback on mobile if supported
           if ('vibrate' in navigator) {
             navigator.vibrate(200);
           }
+          
+          // Set up slider event listeners
+          nextTick(() => {
+            setupSliderEventListeners();
+          });
         }
       } catch (err) {
         console.error('Compression failed:', err);
@@ -679,6 +1009,52 @@ export default defineComponent({
       compressedFiles.value = [];
     };
     
+    // Before/After slider functionality
+    const setupSliderEventListeners = () => {
+      // Remove any existing event listeners
+      document.removeEventListener('mousemove', handleSliderDrag);
+      document.removeEventListener('mouseup', stopSliderDrag);
+      document.removeEventListener('touchmove', handleSliderDrag);
+      document.removeEventListener('touchend', stopSliderDrag);
+      
+      // Set up new event listeners
+      document.addEventListener('mousemove', handleSliderDrag);
+      document.addEventListener('mouseup', stopSliderDrag);
+      document.addEventListener('touchmove', handleSliderDrag);
+      document.addEventListener('touchend', stopSliderDrag);
+    };
+    
+    const startSliderDrag = (event) => {
+      event.preventDefault();
+      isDraggingSlider.value = true;
+      
+      // Capture starting point
+      handleSliderDrag(event);
+    };
+    
+    const handleSliderDrag = (event) => {
+      if (!isDraggingSlider.value || !comparisonSliderContainer.value) return;
+      
+      // Get container bounds
+      const containerRect = comparisonSliderContainer.value.getBoundingClientRect();
+      
+      // Get cursor position (works for both mouse and touch)
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      
+      // Calculate position as percentage
+      let newPosition = ((clientX - containerRect.left) / containerRect.width) * 100;
+      
+      // Clamp position between 0 and 100
+      newPosition = Math.max(0, Math.min(100, newPosition));
+      
+      // Update slider position
+      sliderPosition.value = newPosition;
+    };
+    
+    const stopSliderDrag = () => {
+      isDraggingSlider.value = false;
+    };
+    
     // Download a single compressed file
     const downloadFile = (index) => {
       const fileData = compressedFiles.value[index];
@@ -688,7 +1064,7 @@ export default defineComponent({
       link.href = fileData.url;
       
       // Create filename with compression info
-      const fileExtension = fileData.name.split('.').pop();
+      const fileExtension = fileData.type.split('/')[1];
       const baseName = fileData.name.substring(0, fileData.name.lastIndexOf('.'));
       const newFileName = `${baseName}-compressed-${quality.value}q.${fileExtension}`;
       
@@ -696,27 +1072,58 @@ export default defineComponent({
       link.click();
     };
     
+    // Share file (mobile only)
+    const shareFile = async (index) => {
+      const fileData = compressedFiles.value[index];
+      if (!fileData || fileData.failed) return;
+      
+      try {
+        // Convert URL to blob
+        const response = await fetch(fileData.url);
+        const blob = await response.blob();
+        
+        // Create filename
+        const fileExtension = fileData.type.split('/')[1];
+        const baseName = fileData.name.substring(0, fileData.name.lastIndexOf('.'));
+        const newFileName = `${baseName}-compressed.${fileExtension}`;
+        
+        // Create a file object
+        const file = new File([blob], newFileName, { type: fileData.type });
+        
+        // Share the file
+        if (navigator.share) {
+          await navigator.share({
+            files: [file],
+            title: 'Compressed Image',
+            text: 'Check out this compressed image!'
+          });
+        }
+      } catch (err) {
+        console.error('Error sharing file:', err);
+        showError('Failed to share file: ' + err.message);
+      }
+    };
     
-// Download all compressed files without requiring JSZip
-const downloadAllFiles = async () => {
-  // For single file, use simple download
-  if (compressedFiles.value.length === 1) {
-    downloadFile(0);
-    return;
-  }
-  
-  // For multiple files, just download one by one
-  showSuccess('Downloading files individually...');
-  
-  for (let i = 0; i < compressedFiles.value.length; i++) {
-    if (compressedFiles.value[i].failed) continue;
-    
-    downloadFile(i);
-    
-    // Add small delay between downloads to avoid browser issues
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-};
+    // Download all compressed files
+    const downloadAllFiles = async () => {
+      // For single file, use simple download
+      if (compressedFiles.value.length === 1) {
+        downloadFile(0);
+        return;
+      }
+      
+      // For multiple files, download individually
+      showSuccess('Downloading files individually...');
+      
+      for (let i = 0; i < compressedFiles.value.length; i++) {
+        if (compressedFiles.value[i].failed) continue;
+        
+        downloadFile(i);
+        
+        // Add small delay between downloads to avoid browser issues
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    };
     
     // Reset state
     const clearImage = () => {
@@ -764,6 +1171,11 @@ const downloadAllFiles = async () => {
       handleFileSelected(event);
     };
     
+    // Handle touch events for mobile
+    const handleTouch = (event) => {
+      // Just handling for accessibility - tap will trigger click
+    };
+    
     // Handle keyboard events
     const handleKeyDown = (event) => {
       // Enter key to trigger file browser
@@ -780,6 +1192,8 @@ const downloadAllFiles = async () => {
           cancelCompression();
         } else if (imageSelected.value) {
           clearImage();
+        } else if (showSavePresetModal.value) {
+          showSavePresetModal.value = false;
         }
       }
     };
@@ -813,8 +1227,24 @@ const downloadAllFiles = async () => {
       }, 5000);
     };
     
+    // Detect browser features
+    const detectFeatures = () => {
+      // Detect AVIF support
+      const img = new Image();
+      img.onload = function() {
+        supportsAvif.value = img.width > 0 && img.height > 0;
+      };
+      img.onerror = function() {
+        supportsAvif.value = false;
+      };
+      img.src = 'data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAIAAAACAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIAAYAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgANogQEAwgMg8f8D///8WfhwB8+ErK42A=';
+      
+      // Detect Web Share API
+      canShare.value = 'share' in navigator && 'canShare' in navigator;
+    };
+    
     // Load saved preferences
-    onMounted(() => {
+    const loadUserPreferences = () => {
       // Check for dark mode preference
       const savedDarkMode = localStorage.getItem('dark-mode');
       if (savedDarkMode === 'true' || 
@@ -839,6 +1269,30 @@ const downloadAllFiles = async () => {
         preserveExif.value = savedPreserveExif === 'true';
       }
       
+      // Load user presets
+      const savedPresets = localStorage.getItem('compression-presets');
+      if (savedPresets) {
+        try {
+          userPresets.value = JSON.parse(savedPresets);
+        } catch (err) {
+          console.error('Failed to load saved presets:', err);
+          userPresets.value = [];
+        }
+      }
+    };
+    
+    // Save user preferences
+    const saveUserPreferences = () => {
+      localStorage.setItem('compression-quality', quality.value.toString());
+      localStorage.setItem('compression-max-size', maxSizeMB.value.toString());
+      localStorage.setItem('preserve-exif', preserveExif.value.toString());
+    };
+    
+    // Setup event listeners
+    onMounted(() => {
+      loadUserPreferences();
+      detectFeatures();
+      
       // Set up global drag event listeners
       document.addEventListener('dragenter', (e) => {
         e.preventDefault();
@@ -858,6 +1312,23 @@ const downloadAllFiles = async () => {
       document.addEventListener('dragover', (e) => {
         e.preventDefault();
       });
+      
+      // Media query listener for dark mode
+      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleDarkModeChange = (e) => {
+        if (!localStorage.getItem('dark-mode')) {
+          isDarkMode.value = e.matches;
+          if (isDarkMode.value) {
+            document.documentElement.classList.add('dark-theme');
+          } else {
+            document.documentElement.classList.remove('dark-theme');
+          }
+        }
+      };
+      
+      if (darkModeMediaQuery.addEventListener) {
+        darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
+      }
     });
     
     // Clean up on unmount
@@ -875,15 +1346,15 @@ const downloadAllFiles = async () => {
       document.removeEventListener('dragenter', () => {});
       document.removeEventListener('dragleave', () => {});
       document.removeEventListener('dragover', () => {});
+      document.removeEventListener('mousemove', handleSliderDrag);
+      document.removeEventListener('mouseup', stopSliderDrag);
+      document.removeEventListener('touchmove', handleSliderDrag);
+      document.removeEventListener('touchend', stopSliderDrag);
     });
     
     // Save preferences when they change
-    watch([quality, maxSizeMB, preserveExif], () => {
-      localStorage.setItem('compression-quality', quality.value.toString());
-      localStorage.setItem('compression-max-size', maxSizeMB.value.toString());
-      localStorage.setItem('preserve-exif', preserveExif.value.toString());
-      
-      // Update estimated size
+    watch([quality, maxSizeMB, preserveExif, outputFormat], () => {
+      saveUserPreferences();
       updateEstimatedSize();
     });
     
@@ -910,8 +1381,25 @@ const downloadAllFiles = async () => {
       quality,
       maxSizeMB,
       preserveExif,
+      outputFormat,
       resizeDimensions,
       estimatedSize,
+      supportsAvif,
+      canShare,
+      
+      // Before/After slider
+      sliderPosition,
+      comparisonSliderContainer,
+      
+      // Presets
+      presets,
+      currentPreset,
+      hasCustomChanges,
+      showSavePresetModal,
+      newPresetName,
+      
+      // Format info
+      formatInfo,
       
       // Computed values
       originalSizeTotal,
@@ -922,6 +1410,7 @@ const downloadAllFiles = async () => {
       formatSize,
       truncateFilename,
       getThumbnailUrl,
+      getFormatLabel,
       handleDimensionChange,
       updateDimensionsWithAspect,
       handleFileSelected,
@@ -930,12 +1419,18 @@ const downloadAllFiles = async () => {
       cancelCompression,
       downloadFile,
       downloadAllFiles,
+      shareFile,
       clearImage,
       activateDropArea,
       deactivateDropArea,
       handleDrop,
+      handleTouch,
       handleKeyDown,
       toggleDarkMode,
+      applyPreset,
+      openSavePresetModal,
+      saveCustomPreset,
+      startSliderDrag,
       showError,
       showSuccess
     };
@@ -1289,6 +1784,13 @@ const downloadAllFiles = async () => {
   opacity: 1;
 }
 
+/* Mobile - always show remove button for touch devices */
+@media (max-width: 768px) {
+  .remove-thumbnail {
+    opacity: 0.7;
+  }
+}
+
 .add-more-thumbnail {
   width: 100px;
   height: 100px;
@@ -1343,6 +1845,95 @@ const downloadAllFiles = async () => {
 
 .dark-mode .options-title {
   color: #e2e8f0;
+}
+
+/* Preset Selection */
+.preset-selection {
+  margin-bottom: 20px;
+}
+
+.preset-selection label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 16px;
+  color: #4a5568;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .preset-selection label {
+  color: #e2e8f0;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.preset-button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  background-color: #edf2f7;
+  border: 1px solid #e2e8f0;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dark-mode .preset-button {
+  background-color: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.preset-button:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e0;
+}
+
+.dark-mode .preset-button:hover {
+  background-color: #4a5568;
+  border-color: #718096;
+}
+
+.active-preset {
+  background-color: #4299e1;
+  border-color: #3182ce;
+  color: white;
+}
+
+.dark-mode .active-preset {
+  background-color: #4299e1;
+  border-color: #3182ce;
+}
+
+.active-preset:hover {
+  background-color: #3182ce;
+  border-color: #2c5282;
+  color: white;
+}
+
+.dark-mode .active-preset:hover {
+  background-color: #3182ce;
+  border-color: #2c5282;
+}
+
+.save-preset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #48bb78;
+  border-color: #38a169;
+  color: white;
+}
+
+.save-preset:hover {
+  background-color: #38a169;
+  border-color: #2f855a;
+  color: white;
 }
 
 .option-group {
@@ -1454,6 +2045,18 @@ const downloadAllFiles = async () => {
   background-color: #1a202c;
   border-color: #4a5568;
   color: #e2e8f0;
+}
+
+.format-info {
+  font-size: 12px;
+  color: #718096;
+  margin-top: 8px;
+  font-style: italic;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .format-info {
+  color: #a0aec0;
 }
 
 /* Dimension inputs */
@@ -1833,6 +2436,135 @@ const downloadAllFiles = async () => {
   font-size: 14px;
 }
 
+/* Before/After Comparison Slider */
+.comparison-slider-container {
+  margin-bottom: 24px;
+  background-color: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.dark-mode .comparison-slider-container {
+  background-color: #1a202c;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.comparison-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #2d3748;
+  transition: color 0.3s ease;
+  text-align: center;
+}
+
+.dark-mode .comparison-title {
+  color: #e2e8f0;
+}
+
+.comparison-slider {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.comparison-image {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.original-image {
+  left: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.compressed-image {
+  left: 0;
+  z-index: 2;
+  width: 50%;
+}
+
+.comparison-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.slider-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #4299e1;
+  cursor: col-resize;
+  z-index: 3;
+  transform: translateX(-50%);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .slider-divider {
+  background-color: #63b3ed;
+}
+
+.slider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #4299e1;
+  border: 3px solid white;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark-mode .slider-handle {
+  border-color: #1a202c;
+}
+
+.slider-handle::before, .slider-handle::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 2px;
+  background-color: white;
+}
+
+.slider-handle::before {
+  transform: rotate(45deg);
+}
+
+.slider-handle::after {
+  transform: rotate(-45deg);
+}
+
+.comparison-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.dark-mode .comparison-labels {
+  color: #e2e8f0;
+}
+
 /* Compressed files list */
 .compressed-files {
   margin-bottom: 24px;
@@ -1909,7 +2641,15 @@ const downloadAllFiles = async () => {
   transition: color 0.3s ease;
 }
 
-.dark-mode .file-size-reduction {
+.file-format {
+  font-size: 12px;
+  color: #718096;
+  margin-top: 4px;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .file-size-reduction,
+.dark-mode .file-format {
   color: #a0aec0;
 }
 
@@ -1932,23 +2672,39 @@ const downloadAllFiles = async () => {
   font-weight: 600;
 }
 
-.download-file-button {
+.file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.download-file-button, .share-file-button {
   width: 36px;
   height: 36px;
-  background-color: #ebf8ff;
   border: none;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #4299e1;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-left: 12px;
+}
+
+.download-file-button {
+  background-color: #ebf8ff;
+  color: #4299e1;
 }
 
 .download-file-button:hover {
   background-color: #bee3f8;
+}
+
+.share-file-button {
+  background-color: #f0fff4;
+  color: #48bb78;
+}
+
+.share-file-button:hover {
+  background-color: #c6f6d5;
 }
 
 .dark-mode .download-file-button {
@@ -1960,10 +2716,141 @@ const downloadAllFiles = async () => {
   background-color: #2b6cb0;
 }
 
+.dark-mode .share-file-button {
+  background-color: #22543d;
+  color: #68d391;
+}
+
+.dark-mode .share-file-button:hover {
+  background-color: #276749;
+}
+
 .result-actions {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: modal-appear 0.3s ease;
+}
+
+.dark-mode .modal-content {
+  background-color: #1a202c;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #2d3748;
+}
+
+.dark-mode .modal-title {
+  color: #e2e8f0;
+  border-color: #4a5568;
+}
+
+.modal-body {
+  padding: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.dark-mode .form-group label {
+  color: #e2e8f0;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 16px;
+  color: #4a5568;
+  background-color: white;
+}
+
+.dark-mode .modal-input {
+  background-color: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.preset-summary {
+  background-color: #f7fafc;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.dark-mode .preset-summary {
+  background-color: #2d3748;
+}
+
+.preset-param {
+  font-size: 14px;
+  color: #4a5568;
+  margin-bottom: 6px;
+}
+
+.dark-mode .preset-param {
+  color: #e2e8f0;
+}
+
+.modal-footer {
+  padding: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dark-mode .modal-footer {
+  border-color: #4a5568;
 }
 
 /* Notification styles */
@@ -2138,6 +3025,7 @@ const downloadAllFiles = async () => {
   
   .drop-zone {
     padding: 24px;
+    min-height: 220px;
   }
   
   .upload-icon {
@@ -2153,16 +3041,48 @@ const downloadAllFiles = async () => {
     flex-direction: column;
   }
   
-  .primary-button, .secondary-button {
-    width: 100%;
-  }
-  
   .image-thumbnails {
     justify-content: center;
   }
   
   .file-name {
     max-width: 200px;
+  }
+  
+  .preset-buttons {
+    gap: 6px;
+  }
+  
+  .preset-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .comparison-slider {
+    height: 250px;
+  }
+  
+  .theme-toggle {
+    bottom: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+  }
+  
+  /* Improve touch targets */
+  .checkbox-container, .dimension-input, .select-option, .primary-button, .secondary-button {
+    min-height: 44px;
+  }
+  
+  .download-file-button, .share-file-button {
+    width: 44px;
+    height: 44px;
+  }
+  
+  /* Fix slider for touch */
+  .slider-handle {
+    width: 40px;
+    height: 40px;
   }
 }
 
@@ -2205,11 +3125,12 @@ const downloadAllFiles = async () => {
     max-width: 150px;
   }
   
-  .theme-toggle {
-    bottom: 16px;
-    right: 16px;
-    width: 36px;
-    height: 36px;
+  .comparison-slider {
+    height: 200px;
+  }
+  
+  .file-actions {
+    flex-direction: column;
   }
 }
 </style>
