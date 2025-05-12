@@ -1,292 +1,139 @@
-<!-- pages/compress.vue -->
+<!-- pages/compressor.vue -->
 <template>
-  <div class="compressor">
-    <div class="header">
-      <h1 class="title">OUSA Images Compressor</h1>
-      <p class="description">Compress multiple images at once without losing quality</p>
-    </div>
+  <div class="app">
+    <header>
+      <h1>OUSA Images Compressor</h1>
+    </header>
 
     <!-- Upload Area -->
-    <div 
-      class="upload-area" 
-      :class="{ 'has-files': selectedFiles.length > 0 }"
-      @click="triggerFileInput"
-      @dragover.prevent
-      @drop.prevent="handleFileDrop"
-    >
+    <section class="upload-area" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleFileDrop">
       <input
         ref="fileInput"
         type="file"
         accept="image/*"
-        class="hidden-input"
+        class="hidden"
         multiple
         @change="handleFileChange"
       />
       
-      <template v-if="selectedFiles.length === 0">
-        <div class="upload-icon">📁</div>
-        <p class="upload-text">Drag images here or click to browse</p>
-        <p class="upload-hint">Supports multiple files: JPG, PNG, and WebP</p>
-      </template>
+      <div v-if="!selectedFiles.length" class="upload-prompt">
+        <div class="upload-icon">+</div>
+        <p>Drag images here or click to upload</p>
+      </div>
       
-      <template v-else>
-        <div class="selected-files">
-          <div 
-            v-for="(file, index) in selectedFiles" 
-            :key="index" 
-            class="file-item"
-          >
-            <img 
-              :src="previewUrls[index]" 
-              alt="Preview" 
-              class="file-preview" 
-            />
-            <div class="file-details">
-              <p class="file-name">{{ truncateFilename(file.name) }}</p>
-              <p class="file-size">{{ formatFileSize(file.size) }}</p>
-            </div>
-            <button 
-              @click.stop="removeFile(index)" 
-              class="remove-file-button"
-              aria-label="Remove file"
-            >
-              ✕
-            </button>
+      <div v-else class="selected-preview">
+        <div class="files-grid">
+          <div v-for="(file, index) in selectedFiles" :key="file.id" class="file-item">
+            <button class="remove-btn" @click.stop="removeFile(index)">×</button>
+            <img :src="file.previewUrl" alt="Preview" />
+            <div class="file-info">{{ truncateFilename(file.file.name) }}</div>
+          </div>
+          
+          <div class="add-more" @click.stop="triggerFileInput">
+            <div class="add-icon">+</div>
           </div>
         </div>
-        <div class="file-actions">
-          <button 
-            @click.stop="triggerFileInput" 
-            class="add-more-button"
-          >
-            Add More Images
-          </button>
-          <button 
-            @click.stop="clearFiles" 
-            class="clear-button"
-          >
-            Clear All
-          </button>
+        
+        <div class="actions-bar">
+          <button class="secondary-btn" @click.stop="clearFiles">Clear All</button>
         </div>
-      </template>
-    </div>
+      </div>
+    </section>
 
     <!-- Compression Controls -->
-    <div v-if="selectedFiles.length > 0" class="controls">
+    <section v-if="selectedFiles.length > 0" class="controls">
       <div class="control-group">
-        <label>
-          <span class="control-label">Quality: {{ quality }}%</span>
-          <input 
-            type="range" 
-            min="1" 
-            max="100" 
-            v-model.number="quality"
-            class="slider"
-          />
-          <div class="range-labels">
-            <span>Lower size</span>
-            <span>Higher quality</span>
-          </div>
+        <label>Quality: {{ quality }}%</label>
+        <input type="range" min="1" max="100" v-model.number="quality" />
+      </div>
+      
+      <div class="control-group">
+        <label>Max Width: {{ maxWidth }}px</label>
+        <input type="range" min="100" max="4000" step="100" v-model.number="maxWidth" />
+      </div>
+      
+      <div class="control-group format-control">
+        <label class="format-option" :class="{ active: outputFormat === 'jpeg' }">
+          <input type="radio" v-model="outputFormat" value="jpeg" class="hidden" />
+          <span>JPEG</span>
+        </label>
+        <label class="format-option" :class="{ active: outputFormat === 'png' }">
+          <input type="radio" v-model="outputFormat" value="png" class="hidden" />
+          <span>PNG</span>
+        </label>
+        <label class="format-option" :class="{ active: outputFormat === 'webp' }">
+          <input type="radio" v-model="outputFormat" value="webp" class="hidden" />
+          <span>WebP</span>
         </label>
       </div>
-      
-      <div class="control-group">
-        <label>
-          <span class="control-label">Max Width: {{ maxWidth }}px</span>
-          <input 
-            type="range" 
-            min="100" 
-            max="4000" 
-            step="100"
-            v-model.number="maxWidth"
-            class="slider"
-          />
-        </label>
-      </div>
-      
-      <div class="control-group">
-        <label class="control-label">Output Format</label>
-        <div class="format-options">
-          <label class="format-option">
-            <input 
-              type="radio" 
-              v-model="outputFormat" 
-              value="jpeg" 
-            />
-            <span>JPEG</span>
-          </label>
-          <label class="format-option">
-            <input 
-              type="radio" 
-              v-model="outputFormat" 
-              value="png" 
-            />
-            <span>PNG</span>
-          </label>
-          <label class="format-option">
-            <input 
-              type="radio" 
-              v-model="outputFormat" 
-              value="webp" 
-            />
-            <span>WebP</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- File prefix is now hardcoded to "ousa-" -->
-      
-      <!-- Download options section removed -->
       
       <button 
         @click="compressAllImages" 
-        class="compress-button"
+        class="primary-btn"
         :disabled="isCompressing"
       >
-        <span v-if="isCompressing">
-          <span class="processing-spinner"></span>
-          Compressing ({{ processedCount }}/{{ selectedFiles.length }})...
-        </span>
-        <span v-else>Compress All Images</span>
+        <template v-if="isCompressing">
+          <span class="spinner"></span>
+          <span>{{ processedCount }}/{{ selectedFiles.length }}</span>
+        </template>
+        <template v-else>Compress</template>
       </button>
-    </div>
+    </section>
 
     <!-- Results -->
-    <div v-if="compressedResults.length > 0" class="results">
+    <section v-if="compressedResults.length > 0" class="results">
       <div class="results-header">
-        <h2 class="results-title">Compressed Images</h2>
-        <div class="results-summary">
-          <p class="summary-text">
-            {{ compressedResults.length }} images compressed, 
-            saving {{ totalSavingsPercent }}% ({{ formatFileSize(totalBytesSaved) }})
-          </p>
-          <div class="results-actions">
-            <div class="select-actions">
-              <button 
-                @click="selectAllResults" 
-                class="select-button"
-                v-if="selectedResults.length < compressedResults.length"
-              >
-                Select All
-              </button>
-              <button 
-                @click="deselectAllResults" 
-                class="select-button"
-                v-else
-              >
-                Deselect All
-              </button>
-            </div>
-            <div class="multi-download-actions" v-if="selectedResults.length > 0">
-              <button 
-                @click="downloadSelectedImages" 
-                class="multi-download-button"
-              >
-                <span class="download-icon">↓</span>
-                Download {{ selectedResults.length }} Selected
-              </button>
-              <button 
-                @click="downloadSelectedAsZip" 
-                class="multi-download-button zip-button"
-                :disabled="isGeneratingZip"
-              >
-                <span v-if="isGeneratingZip">
-                  <span class="processing-spinner"></span>
-                  Preparing...
-                </span>
-                <span v-else>
-                  <span class="download-icon">↓</span>
-                  Download Selected as ZIP
-                </span>
-              </button>
-            </div>
-          </div>
+        <div class="results-info">
+          <span>{{ compressedResults.length }} images compressed</span>
+          <span>{{ totalSavingsPercent }}% saved ({{ formatFileSize(totalBytesSaved) }})</span>
+        </div>
+        
+        <div class="results-actions">
+          <button 
+            class="action-btn zip-btn" 
+            @click="downloadAllAsZip" 
+            :disabled="isGeneratingZip"
+          >
+            <span v-if="isGeneratingZip" class="spinner"></span>
+            <span v-else>Download ZIP</span>
+          </button>
+          <button class="action-btn" @click="clearResults">Clear</button>
         </div>
       </div>
       
-      <div class="results-list">
+      <div class="results-grid">
         <div 
           v-for="(result, index) in compressedResults" 
-          :key="index" 
-          class="result-item"
-          :class="{ 'selected': isResultSelected(result) }"
+          :key="result.id" 
+          class="result-card"
+          :class="{ selected: isResultSelected(result) }"
           @click="toggleResultSelection(result)"
         >
-          <div class="result-checkbox">
-            <input 
-              type="checkbox" 
-              :checked="isResultSelected(result)" 
-              @click.stop
-              @change="toggleResultSelection(result)"
-            />
-          </div>
-          
           <div class="result-preview">
-            <img :src="result.compressedUrl" alt="Compressed preview" />
+            <img :src="result.compressedUrl" alt="Compressed image" />
+            <div class="check-mark" v-if="isResultSelected(result)">✓</div>
           </div>
           
           <div class="result-details">
-            <div class="result-info">
-              <p class="result-filename">{{ truncateFilename(result.filename) }}</p>
-              <div class="result-stats">
-                <p class="result-sizes">
-                  Original: {{ formatFileSize(result.originalSize) }} → 
-                  Compressed: {{ formatFileSize(result.compressedSize) }}
-                </p>
-                <p class="result-savings" v-if="result.savings > 0">
-                  Saved {{ result.savings }}% ({{ formatFileSize(result.originalSize - result.compressedSize) }})
-                </p>
-              </div>
+            <div class="result-name">{{ truncateFilename(result.filename) }}</div>
+            <div class="result-stats">
+              <span>{{ formatFileSize(result.compressedSize) }}</span>
+              <span class="savings">-{{ result.savings }}%</span>
             </div>
-            <div class="result-actions">
-              <button 
-                @click.stop="downloadImage(result)" 
-                class="download-button"
-              >
-                <span class="download-icon">↓</span>
-                Download
-              </button>
-            </div>
+            <button class="download-btn" @click.stop="downloadImage(result)">↓</button>
           </div>
         </div>
       </div>
       
-      <div class="batch-actions">
-        <button 
-          @click="downloadAllAsZip" 
-          class="download-all-button"
-          :disabled="isGeneratingZip"
-        >
-          <span v-if="isGeneratingZip">
-            <span class="processing-spinner"></span>
-            Preparing ZIP...
-          </span>
-          <span v-else>
-            <span class="download-icon">↓</span>
-            Download All as ZIP
-          </span>
-        </button>
-        
-        <button 
-          @click="downloadAllImages" 
-          class="download-all-button all-files-button"
-        >
-          <span class="download-icon">↓</span>
-          Download All as Files
-        </button>
-        
-        <button 
-          @click="clearResults" 
-          class="clear-results-button"
-        >
-          Clear Results
-        </button>
+      <div v-if="selectedResults.length > 0" class="selection-bar">
+        <span>{{ selectedResults.length }} selected</span>
+        <button class="action-btn" @click="downloadSelectedImages">Download Selected</button>
       </div>
-    </div>
+    </section>
 
-    <div class="footer">
-      <p>© 2025 OUSA Images Compressor - Compress images in browser with no data uploaded to servers</p>
-    </div>
+    <footer>
+      <p>© OUSA Images Compressor - Client-side compression with no uploads</p>
+    </footer>
   </div>
 </template>
 
@@ -297,10 +144,12 @@ export default {
     return {
       title: 'OUSA Images Compressor',
       meta: [
+        { charset: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' },
         {
           hid: 'description',
           name: 'description',
-          content: 'Compress multiple images at once without losing quality - OUSA Images Compressor'
+          content: 'Compress multiple images without losing quality'
         }
       ]
     }
@@ -308,7 +157,6 @@ export default {
   data() {
     return {
       selectedFiles: [],
-      previewUrls: [],
       quality: 75,
       maxWidth: 1200,
       outputFormat: 'jpeg',
@@ -316,7 +164,8 @@ export default {
       processedCount: 0,
       compressedResults: [],
       selectedResults: [],
-      isGeneratingZip: false
+      isGeneratingZip: false,
+      fileIdCounter: 0
     }
   },
   computed: {
@@ -350,11 +199,16 @@ export default {
     addFiles(newFiles) {
       if (newFiles.length === 0) return
 
-      // Add new files to our array
+      // Add new files to our array in a structured way
       for (const file of newFiles) {
         if (file.type.startsWith('image/')) {
-          this.selectedFiles.push(file)
-          this.previewUrls.push(URL.createObjectURL(file))
+          const previewUrl = URL.createObjectURL(file)
+          this.selectedFiles.push({
+            id: 'file-' + (++this.fileIdCounter),
+            file: file,
+            previewUrl: previewUrl,
+            processed: false
+          })
         }
       }
       
@@ -363,19 +217,17 @@ export default {
     },
     removeFile(index) {
       // Revoke the object URL to prevent memory leaks
-      URL.revokeObjectURL(this.previewUrls[index])
+      URL.revokeObjectURL(this.selectedFiles[index].previewUrl)
       
-      // Remove the file from arrays
+      // Remove the file from array
       this.selectedFiles.splice(index, 1)
-      this.previewUrls.splice(index, 1)
     },
     clearFiles() {
       // Revoke all object URLs
-      this.previewUrls.forEach(url => URL.revokeObjectURL(url))
+      this.selectedFiles.forEach(fileObj => URL.revokeObjectURL(fileObj.previewUrl))
       
-      // Clear arrays
+      // Clear array
       this.selectedFiles = []
-      this.previewUrls = []
     },
     truncateFilename(filename) {
       if (filename.length <= 20) return filename
@@ -384,123 +236,139 @@ export default {
       return name.substring(0, 16) + '...' + extension
     },
     formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes'
+      if (bytes === 0) return '0 B'
       const k = 1024
-      const sizes = ['Bytes', 'KB', 'MB', 'GB']
+      const sizes = ['B', 'KB', 'MB', 'GB']
       const i = Math.floor(Math.log(bytes) / Math.log(k))
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
     },
     async compressAllImages() {
       if (this.selectedFiles.length === 0 || this.isCompressing) return
       
-      this.isCompressing = true
-      this.processedCount = 0
-      
-      // Clear previous results if any
-      this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl))
-      this.compressedResults = []
-      this.selectedResults = []
-      
-      const newResults = []
-      
-      for (let i = 0; i < this.selectedFiles.length; i++) {
-        const result = await this.compressImage(this.selectedFiles[i], i)
-        if (result) {
-          newResults.push(result)
-          this.processedCount++
-          
-          // Handle download options for individual images
-          if (this.downloadOption === 'single') {
-            this.downloadImage(result)
-          }
-        }
-      }
-      
-      // Update results
-      this.compressedResults = newResults
-      
-      // Handle download options for multiple images
-      if (this.downloadOption === 'multiple') {
-        this.downloadAllImages()
-      } else if (this.downloadOption === 'zip') {
-        this.downloadAllAsZip()
-      }
-      
-      this.isCompressing = false
-    },
-    compressImage(file, index) {
-      return new Promise((resolve) => {
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        const img = new Image()
+      try {
+        this.isCompressing = true
+        this.processedCount = 0
         
-        img.onload = () => {
-          // Calculate new dimensions while maintaining aspect ratio
-          let width = img.width
-          let height = img.height
+        const newResults = []
+        
+        // Process only unprocessed files
+        const unprocessedFiles = this.selectedFiles.filter(fileObj => !fileObj.processed)
+        
+        for (let i = 0; i < unprocessedFiles.length; i++) {
+          const fileObj = unprocessedFiles[i]
+          const result = await this.compressImage(fileObj)
           
-          if (width > this.maxWidth) {
-            const ratio = this.maxWidth / width
-            width = this.maxWidth
-            height = height * ratio
-          }
-          
-          // Set canvas dimensions
-          canvas.width = width
-          canvas.height = height
-          
-          // Draw image on canvas
-          ctx.drawImage(img, 0, 0, width, height)
-          
-          // Convert to desired format with quality setting
-          const mimeType = `image/${this.outputFormat}`
-          const quality = this.quality / 100
-          
-          canvas.toBlob((blob) => {
-            // Create URL for the compressed image
-            const compressedUrl = URL.createObjectURL(blob)
+          if (result) {
+            newResults.push(result)
+            this.processedCount++
             
-            // Calculate savings
-            const originalSize = file.size
-            const compressedSize = blob.size
-            const savings = Math.round(((originalSize - compressedSize) / originalSize) * 100)
-            
-            // Generate filename with prefix if provided
-            const originalFilename = file.name
-            const extension = this.outputFormat.toLowerCase()
-            let filename
-            
-            // Extract base name without extension
-            const lastDotIndex = originalFilename.lastIndexOf('.')
-            const baseName = originalFilename.substring(0, lastDotIndex > 0 ? lastDotIndex : originalFilename.length)
-            
-            // Always apply "ousa-" prefix (hardcoded)
-            filename = `ousa-${baseName}.${extension}`
-            
-            // Create result object
-            const result = {
-              id: Date.now() + '-' + index, // Unique ID for selection
-              originalFilename: file.name,
-              filename,
-              originalSize,
-              compressedSize,
-              compressedUrl,
-              compressedBlob: blob,
-              savings
+            // Mark as processed
+            const index = this.selectedFiles.findIndex(f => f.id === fileObj.id)
+            if (index !== -1) {
+              this.selectedFiles[index].processed = true
             }
-            
-            // Clean up
-            URL.revokeObjectURL(img.src)
-            resolve(result)
-          }, mimeType, quality)
+          }
         }
         
-        img.onerror = () => {
-          console.error('Error loading image:', file.name)
-          resolve(null)
+        // Add new results to existing ones
+        this.compressedResults = [...this.compressedResults, ...newResults]
+      } catch (error) {
+        console.error('Error during compression:', error)
+      } finally {
+        this.isCompressing = false
+      }
+    },
+    compressImage(fileObj) {
+      return new Promise((resolve, reject) => {
+        try {
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          const img = new Image()
+          
+          // Set up proper error handling
+          img.onerror = () => {
+            console.error('Error loading image:', fileObj.file.name)
+            resolve(null)
+          }
+          
+          img.onload = () => {
+            try {
+              // Calculate new dimensions while maintaining aspect ratio
+              let width = img.width
+              let height = img.height
+              
+              if (width > this.maxWidth) {
+                const ratio = this.maxWidth / width
+                width = this.maxWidth
+                height = height * ratio
+              }
+              
+              // Set canvas dimensions
+              canvas.width = width
+              canvas.height = height
+              
+              // Draw image on canvas
+              ctx.drawImage(img, 0, 0, width, height)
+              
+              // Convert to desired format with quality setting
+              const mimeType = `image/${this.outputFormat}`
+              const quality = this.quality / 100
+              
+              canvas.toBlob((blob) => {
+                if (!blob) {
+                  console.error('Blob creation failed')
+                  resolve(null)
+                  return
+                }
+                
+                // Create URL for the compressed image
+                const compressedUrl = URL.createObjectURL(blob)
+                
+                // Calculate savings
+                const originalSize = fileObj.file.size
+                const compressedSize = blob.size
+                const savings = Math.round(((originalSize - compressedSize) / originalSize) * 100)
+                
+                // Generate filename with prefix
+                const originalFilename = fileObj.file.name
+                const extension = this.outputFormat.toLowerCase()
+                
+                // Extract base name without extension
+                const lastDotIndex = originalFilename.lastIndexOf('.')
+                const baseName = originalFilename.substring(0, lastDotIndex > 0 ? lastDotIndex : originalFilename.length)
+                
+                // Always apply "ousa-" prefix (hardcoded)
+                const filename = `ousa-${baseName}.${extension}`
+                
+                // Create result object
+                const result = {
+                  id: 'result-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                  originalFileId: fileObj.id,
+                  originalFilename: fileObj.file.name,
+                  filename,
+                  originalSize,
+                  compressedSize,
+                  compressedUrl,
+                  compressedBlob: blob,
+                  savings
+                }
+                
+                // Clean up
+                URL.revokeObjectURL(img.src)
+                resolve(result)
+              }, mimeType, quality)
+            } catch (error) {
+              console.error('Error processing image:', error)
+              resolve(null)
+            }
+          }
+          
+          // Start loading the image
+          img.src = fileObj.previewUrl
+        } catch (error) {
+          console.error('Compression failed:', error)
+          reject(error)
         }
-        
-        img.src = this.previewUrls[index]
       })
     },
     downloadImage(result) {
@@ -554,9 +422,9 @@ export default {
       } catch (error) {
         console.error('Error creating ZIP:', error)
         alert('Failed to create ZIP file. Please try downloading images individually.')
+      } finally {
+        this.isGeneratingZip = false
       }
-      
-      this.isGeneratingZip = false
     },
     // Selection methods
     toggleResultSelection(result) {
@@ -570,51 +438,6 @@ export default {
     isResultSelected(result) {
       return this.selectedResults.some(r => r.id === result.id)
     },
-    selectAllResults() {
-      this.selectedResults = [...this.compressedResults]
-    },
-    deselectAllResults() {
-      this.selectedResults = []
-    },
-    async downloadSelectedAsZip() {
-      if (this.selectedResults.length === 0 || this.isGeneratingZip) return
-      
-      this.isGeneratingZip = true
-      
-      try {
-        // Dynamically import JSZip
-        const JSZipModule = await import('jszip')
-        const JSZip = JSZipModule.default
-        const zip = new JSZip()
-        
-        // Create a folder and add selected compressed images
-        const folder = zip.folder('ousa_selected_images')
-        
-        // Process each image
-        for (const result of this.selectedResults) {
-          folder.file(result.filename, result.compressedBlob)
-        }
-        
-        // Generate the ZIP file
-        const content = await zip.generateAsync({ type: 'blob' })
-        
-        // Create download link
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(content)
-        link.download = 'ousa_selected_images.zip'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        
-        // Clean up
-        URL.revokeObjectURL(link.href)
-      } catch (error) {
-        console.error('Error creating ZIP:', error)
-        alert('Failed to create ZIP file. Please try downloading images individually.')
-      }
-      
-      this.isGeneratingZip = false
-    },
     downloadSelectedImages() {
       // Create a small delay between downloads to avoid browser limitations
       this.selectedResults.forEach((result, index) => {
@@ -627,6 +450,11 @@ export default {
       // Revoke all object URLs
       this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl))
       
+      // Reset processed status for all files
+      this.selectedFiles.forEach(fileObj => {
+        fileObj.processed = false
+      })
+      
       // Clear results
       this.compressedResults = []
       this.selectedResults = []
@@ -634,638 +462,470 @@ export default {
   },
   beforeDestroy() {
     // Clean up all object URLs when component is destroyed
-    this.previewUrls.forEach(url => URL.revokeObjectURL(url))
+    this.selectedFiles.forEach(fileObj => URL.revokeObjectURL(fileObj.previewUrl))
     this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl))
   }
 }
 </script>
 
 <style scoped>
-.compressor {
-  max-width: 900px;
+/* Base Styles & Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.app {
+  max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   color: #333;
+  line-height: 1.4;
 }
 
-.header {
-  text-align: center;
-  padding: 20px 0 30px;
-  border-bottom: 1px solid #eaeaea;
-  margin-bottom: 30px;
-}
-
-.title {
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0 0 10px;
-  color: #0496FF;
-}
-
-.description {
-  font-size: 16px;
-  color: #666;
-  margin: 0;
-}
-
-.hidden-input {
+.hidden {
   display: none;
 }
 
-.upload-area {
-  border: 2px dashed #ccc;
-  border-radius: 12px;
-  padding: 30px;
-  text-align: center;
+button {
   cursor: pointer;
-  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+/* Typography */
+h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 30px;
+  color: #333;
+  text-align: center;
+}
+
+/* Section Styles */
+section {
   margin-bottom: 30px;
-  background-color: #f9f9f9;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Upload Area */
+.upload-area {
+  padding: 0;
+  cursor: pointer;
+  border: 2px dashed #ddd;
+  background-color: #fafafa;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 .upload-area:hover {
-  border-color: #0496FF;
-  background-color: #f5f8ff;
+  border-color: #0066FF;
+  background-color: #f7f9ff;
 }
 
-.upload-area.has-files {
-  border-style: solid;
-  background-color: #f5f8ff;
-  border-color: #0496FF;
+.upload-prompt {
+  padding: 40px 20px;
+  text-align: center;
 }
 
 .upload-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: #666;
+  font-size: 36px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  color: #888;
 }
 
-.upload-text {
-  font-size: 18px;
-  margin-bottom: 8px;
-  color: #333;
+.selected-preview {
+  width: 100%;
+  padding: 20px;
 }
 
-.upload-hint {
-  font-size: 14px;
-  color: #666;
-}
-
-.selected-files {
+.files-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
 }
 
 .file-item {
   position: relative;
-  background-color: white;
+  background: #f0f0f0;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
+  padding-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.file-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.file-preview {
+.file-item img {
   width: 100%;
-  height: 120px;
+  height: 100px;
   object-fit: cover;
-  object-position: center;
-  background-color: #f0f0f0;
+  display: block;
 }
 
-.file-details {
-  padding: 8px 12px;
-}
-
-.file-name {
-  font-size: 14px;
-  font-weight: 500;
-  margin: 0 0 4px;
-  color: #333;
-  word-break: break-word;
-}
-
-.file-size {
+.file-info {
   font-size: 12px;
-  color: #666;
-  margin: 0;
+  padding: 5px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.remove-file-button {
+.remove-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   border: none;
-  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  z-index: 1;
 }
 
-.remove-file-button:hover {
-  background-color: rgba(255, 0, 0, 0.7);
-}
-
-.file-actions {
+.add-more {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 12px;
-}
-
-.add-more-button {
-  background-color: #0496FF;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  background: #f0f0f0;
+  border-radius: 8px;
+  height: 120px;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.add-more-button:hover {
-  background-color: #0077CC;
+.add-icon {
+  font-size: 24px;
+  color: #888;
 }
 
-.clear-button {
-  background-color: transparent;
-  color: #ff4a4a;
-  border: 1px solid #ff4a4a;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.actions-bar {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.clear-button:hover {
-  background-color: #ff4a4a;
-  color: white;
-}
-
+/* Controls Section */
 .controls {
-  background-color: #f9f9f9;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 32px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 20px;
 }
 
 .control-group {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
-.control-group:last-child {
-  margin-bottom: 0;
-}
-
-.control-label {
+.control-group label {
   display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #333;
-}
-
-.slider {
-  width: 100%;
-  height: 8px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #e0e0e0;
-  outline: none;
-  border-radius: 4px;
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #0496FF;
-  cursor: pointer;
-  border: none;
-}
-
-.slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #0496FF;
-  cursor: pointer;
-  border: none;
-}
-
-.range-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.format-options {
-  display: flex;
-  gap: 16px;
-}
-
-.format-option, .radio-option {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.format-option input, .radio-option input {
-  margin-right: 6px;
-}
-
-.download-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 600px) {
-  .download-options {
-    grid-template-columns: 1fr;
-  }
-}
-
-.text-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  margin-bottom: 6px;
   font-size: 14px;
-  color: #333;
 }
 
-.text-input:focus {
-  border-color: #0496FF;
-  outline: none;
-}
-
-.compress-button {
+.control-group input[type="range"] {
   width: 100%;
-  background-color: #0496FF;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #eee;
+  outline: none;
+  border-radius: 3px;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0066FF;
+  cursor: pointer;
+}
+
+.format-control {
+  display: flex;
+  gap: 10px;
+}
+
+.format-option {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.format-option.active {
+  background-color: #0066FF;
+  border-color: #0066FF;
+  color: white;
+}
+
+/* Buttons */
+.primary-btn {
+  width: 100%;
+  background: #0066FF;
   color: white;
   border: none;
-  padding: 12px 0;
-  border-radius: 8px;
+  padding: 12px;
+  border-radius: 5px;
   font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  font-weight: 500;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
 }
 
-.compress-button:hover {
-  background-color: #0077CC;
+.primary-btn:hover {
+  background: #0055DD;
 }
 
-.compress-button:disabled {
-  background-color: #b3d9ff;
+.primary-btn:disabled {
+  background: #99BBFF;
   cursor: not-allowed;
 }
 
-.processing-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
+.secondary-btn {
+  background: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.secondary-btn:hover {
+  background: #f5f5f5;
 }
 
-.results {
-  margin-top: 40px;
-}
-
-.results-header {
-  margin-bottom: 20px;
-}
-
-.results-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 12px;
+.action-btn {
+  background: #f0f0f0;
   color: #333;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
-.results-summary {
+.action-btn:hover {
+  background: #e0e0e0;
+}
+
+.zip-btn {
+  background: #0066FF;
+  color: white;
+}
+
+.zip-btn:hover {
+  background: #0055DD;
+}
+
+.zip-btn:disabled {
+  background: #99BBFF;
+  cursor: not-allowed;
+}
+
+.download-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #0066FF;
+  color: white;
+  border: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.download-btn:hover {
+  background: #0055DD;
+}
+
+/* Results Section */
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.results-info {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-@media (min-width: 768px) {
-  .results-summary {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-}
-
-.summary-text {
-  margin: 0;
+  font-size: 14px;
   color: #666;
 }
 
 .results-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
 }
 
-.select-button {
-  background-color: transparent;
-  color: #0496FF;
-  border: 1px solid #0496FF;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+  padding: 20px;
 }
 
-.select-button:hover {
-  background-color: #e6f4ff;
-}
-
-.multi-download-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.multi-download-button {
-  background-color: #0496FF;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-}
-
-.multi-download-button:hover {
-  background-color: #0077CC;
-}
-
-.zip-button {
-  background-color: #7d3c98;
-}
-
-.zip-button:hover {
-  background-color: #6d2c88;
-}
-
-.results-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.result-item {
-  display: flex;
-  background-color: white;
+.result-card {
+  position: relative;
+  background: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  transition: all 0.2s;
   cursor: pointer;
 }
 
-.result-item:hover {
+.result-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.result-item.selected {
-  background-color: #f0f7ff;
-  border: 1px solid #0496FF;
-}
-
-.result-checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-}
-
-.result-checkbox input {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-
-@media (max-width: 600px) {
-  .result-item {
-    flex-direction: column;
-  }
-  
-  .result-checkbox {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 1;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 4px;
-    padding: 4px;
-  }
-  
-  .result-details {
-    flex-direction: column;
-  }
-  
-  .result-actions {
-    margin-top: 12px;
-  }
+.result-card.selected {
+  border: 2px solid #0066FF;
 }
 
 .result-preview {
-  width: 120px;
-  height: 120px;
-  flex-shrink: 0;
   position: relative;
-}
-
-@media (max-width: 600px) {
-  .result-preview {
-    width: 100%;
-    height: 160px;
-  }
+  height: 100px;
 }
 
 .result-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  display: block;
+}
+
+.check-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #0066FF;
+  color: white;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
 }
 
 .result-details {
-  padding: 16px;
-  flex-grow: 1;
+  padding: 10px;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
 }
 
-.result-info {
-  flex-grow: 1;
-}
-
-.result-filename {
-  font-weight: 600;
-  font-size: 16px;
-  margin: 0 0 8px;
-  color: #333;
+.result-name {
+  width: 100%;
+  font-weight: 500;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .result-stats {
-  margin-bottom: 0;
-}
-
-.result-sizes {
-  font-size: 14px;
-  color: #666;
-  margin: 0 0 4px;
-}
-
-.result-savings {
-  font-size: 14px;
-  color: #00a854;
-  font-weight: 500;
-  margin: 0;
-}
-
-.download-button {
-  background-color: #0496FF;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
   display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.savings {
+  color: #00aa55;
+  font-weight: 500;
+}
+
+.selection-bar {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  padding: 12px 20px;
+  background: #f0f7ff;
+  font-size: 14px;
+  border-top: 1px solid #eee;
 }
 
-.download-button:hover {
-  background-color: #0077CC;
-}
-
-.download-icon {
+/* Loading Spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
   margin-right: 6px;
-  font-weight: bold;
 }
 
-.batch-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 40px;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.batch-actions .download-all-button:first-child {
-  grid-column: 1 / 3;
+/* Footer */
+footer {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  margin-top: 40px;
 }
 
-@media (max-width: 500px) {
-  .batch-actions {
-    grid-template-columns: 1fr;
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+  .app {
+    padding: 15px;
   }
   
-  .batch-actions .download-all-button:first-child {
-    grid-column: auto;
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
-}
-
-.download-all-button {
-  background-color: #00a854;
-  color: white;
-  border: none;
-  padding: 14px 0;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.download-all-button:hover {
-  background-color: #008c46;
-}
-
-.download-all-button:disabled {
-  background-color: #7fd4a4;
-  cursor: not-allowed;
-}
-
-.all-files-button {
-  background-color: #0496FF;
-}
-
-.all-files-button:hover {
-  background-color: #0077CC;
-}
-
-.clear-results-button {
-  background-color: transparent;
-  color: #666;
-  border: 1px solid #ccc;
-  padding: 14px 0;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.clear-results-button:hover {
-  background-color: #f0f0f0;
-}
-
-.footer {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid #eaeaea;
-  text-align: center;
-  color: #888;
-  font-size: 12px;
+  
+  .results-header {
+    padding: 12px 15px;
+  }
+  
+  .format-control {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .selection-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .selection-bar .action-btn {
+    width: 100%;
+  }
 }
 </style>
