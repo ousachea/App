@@ -134,53 +134,9 @@
         </div>
       </div>
 
-      <div class="control-group">
-        <label class="control-label">File Prefix (optional)</label>
-        <input 
-          type="text" 
-          v-model="filePrefix" 
-          placeholder="E.g., ousa-compressed-" 
-          class="text-input"
-        />
-      </div>
+      <!-- File prefix is now hardcoded to "ousa-" -->
       
-      <div class="control-group">
-        <label class="control-label">Download Options</label>
-        <div class="download-options">
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              v-model="downloadOption" 
-              value="none" 
-            />
-            <span>Manual download</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              v-model="downloadOption" 
-              value="single" 
-            />
-            <span>Download each image</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              v-model="downloadOption" 
-              value="multiple" 
-            />
-            <span>Download all as separate files</span>
-          </label>
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              v-model="downloadOption" 
-              value="zip" 
-            />
-            <span>Download all as ZIP</span>
-          </label>
-        </div>
-      </div>
+      <!-- Download options section removed -->
       
       <button 
         @click="compressAllImages" 
@@ -356,8 +312,6 @@ export default {
       quality: 75,
       maxWidth: 1200,
       outputFormat: 'jpeg',
-      filePrefix: 'ousa-',
-      downloadOption: 'none', // none, single, multiple, zip
       isCompressing: false,
       processedCount: 0,
       compressedResults: [],
@@ -520,8 +474,8 @@ export default {
             const lastDotIndex = originalFilename.lastIndexOf('.')
             const baseName = originalFilename.substring(0, lastDotIndex > 0 ? lastDotIndex : originalFilename.length)
             
-            // Apply prefix if provided
-            filename = this.filePrefix ? `${this.filePrefix}${baseName}.${extension}` : `${baseName}.${extension}`
+            // Always apply "ousa-" prefix (hardcoded)
+            filename = `ousa-${baseName}.${extension}`
             
             // Create result object
             const result = {
