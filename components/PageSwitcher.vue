@@ -39,7 +39,8 @@ export default {
   { label: 'MPG', path: '/MPG', icon: '🚗' },
   { label: 'Phone', path: '/Phone', icon: '📱' },
   { label: 'Text Compare', path: '/TextCompare', icon: '🔍' },
-  { label: 'Text Converter', path: '/TextConverter', icon: '📝' }
+  { label: 'Text Converter', path: '/TextConverter', icon: '📝' },
+  { label: 'Food', path: '/food', icon: '🍝' }
       ]
     }
   },
