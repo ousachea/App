@@ -1,8 +1,9 @@
-<!-- pages/minimal-compressor.vue -->
+<!-- pages/pdf-compressor.vue -->
 <template>
   <div class="compressor-app">
     <header class="header">
-      <h1>OUSA Images Compressor</h1>
+      <h1>OUSA PDF Compressor</h1>
+      <p class="subtitle">Compress PDF files while maintaining quality</p>
     </header>
 
     <!-- Upload Zone -->
@@ -18,7 +19,7 @@
         <input
           ref="fileInput"
           type="file"
-          accept="image/*"
+          accept=".pdf,application/pdf"
           class="hidden"
           multiple
           @change="handleFileChange"
@@ -26,20 +27,23 @@
         
         <div v-if="!selectedFiles.length" class="upload-prompt">
           <div class="upload-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
             </svg>
           </div>
-          <p>Drag files here or click to upload</p>
+          <p>Drag PDF files here or click to upload</p>
+          <p class="file-info">Supports multiple PDF files</p>
         </div>
         
         <div v-else class="files-grid">
           <div 
             v-for="(file, index) in selectedFiles" 
             :key="file.id" 
-            class="file-item"
+            class="file-item pdf-item"
             :class="{ 'processed': file.processed }"
           >
             <button class="delete-btn" @click.stop="removeFile(index)">
@@ -48,8 +52,17 @@
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
-            <div class="file-preview">
-              <img :src="file.previewUrl" alt="Preview" />
+            <div class="file-preview pdf-preview">
+              <div class="pdf-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+              <div class="file-size">{{ formatFileSize(file.file.size) }}</div>
               <div v-if="isCompressing && !file.processed" class="progress-overlay">
                 <div class="loader"></div>
               </div>
@@ -77,46 +90,50 @@
     <section v-if="selectedFiles.length > 0" class="controls-section">
       <div class="controls-container">
         <div class="control-group">
-          <label>Quality: {{ quality }}%</label>
+          <label>Compression Level: {{ compressionLevelName }}</label>
           <div class="slider-container">
-            <input type="range" min="1" max="100" v-model.number="quality" class="slider" />
+            <input type="range" min="1" max="4" v-model.number="compressionLevel" class="slider" />
             <div class="quality-labels">
-              <span>Small File</span>
-              <span>High Quality</span>
+              <span>Maximum Compression</span>
+              <span>Best Quality</span>
             </div>
           </div>
         </div>
         
         <div class="control-group">
-          <label>Max Width: {{ maxWidth }}px</label>
+          <label>DPI Quality: {{ dpiQuality }}</label>
           <div class="slider-container">
-            <input type="range" min="100" max="4000" step="100" v-model.number="maxWidth" class="slider" />
+            <input type="range" min="72" max="300" step="24" v-model.number="dpiQuality" class="slider" />
+            <div class="quality-labels">
+              <span>72 DPI (Web)</span>
+              <span>300 DPI (Print)</span>
+            </div>
           </div>
         </div>
         
-        <div class="format-controls">
-          <button 
-            v-for="format in ['jpeg', 'png', 'webp']" 
-            :key="format"
-            class="format-btn" 
-            :class="{ active: outputFormat === format }"
-            @click="outputFormat = format"
-          >
-            {{ format.toUpperCase() }}
-          </button>
+        <div class="compression-options">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="removeMetadata" />
+            <span>Remove metadata</span>
+          </label>
+          
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="optimizeImages" />
+            <span>Optimize embedded images</span>
+          </label>
         </div>
         
         <button 
-          @click="compressAllImages" 
+          @click="compressAllPDFs" 
           class="btn btn-primary compress-btn"
           :disabled="isCompressing || !hasUnprocessedFiles"
         >
           <span v-if="isCompressing">
             <span class="loader-small"></span>
-            {{ processedCount }}/{{ selectedFiles.length }}
+            Compressing {{ processedCount }}/{{ selectedFiles.length }}
           </span>
           <span v-else-if="!hasUnprocessedFiles">All Compressed</span>
-          <span v-else>Compress</span>
+          <span v-else>Compress PDFs</span>
         </button>
       </div>
     </section>
@@ -125,7 +142,7 @@
     <section v-if="compressedResults.length > 0" class="results-section">
       <div class="results-header">
         <div class="results-stats">
-          <span class="stat">{{ compressedResults.length }} images compressed</span>
+          <span class="stat">{{ compressedResults.length }} PDFs compressed</span>
           <span class="stat highlight">{{ totalSavingsPercent }}% saved ({{ formatFileSize(totalBytesSaved) }})</span>
         </div>
         
@@ -155,7 +172,7 @@
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Download Files
+            Download All
           </button>
           <button class="btn btn-secondary" @click="clearResults">
             Clear
@@ -167,12 +184,20 @@
         <div 
           v-for="result in compressedResults" 
           :key="result.id" 
-          class="result-item"
+          class="result-item pdf-result"
           :class="{ selected: isResultSelected(result) }"
           @click="toggleResultSelection(result)"
         >
-          <div class="result-preview">
-            <img :src="result.compressedUrl" alt="Compressed image" />
+          <div class="result-preview pdf-result-preview">
+            <div class="pdf-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
             <div class="select-indicator" v-if="isResultSelected(result)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12" />
@@ -184,7 +209,7 @@
           <div class="result-details">
             <div class="result-name">{{ truncateFilename(result.filename) }}</div>
             <div class="result-size">{{ formatFileSize(result.compressedSize) }}</div>
-            <button class="download-btn" @click.stop="downloadImage(result)">
+            <button class="download-btn" @click.stop="downloadPDF(result)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -197,14 +222,14 @@
       
       <div v-if="selectedResults.length > 0" class="selection-bar">
         <span>{{ selectedResults.length }} selected</span>
-        <button class="btn btn-primary" @click="downloadSelectedImages">
+        <button class="btn btn-primary" @click="downloadSelectedPDFs">
           Download Selected
         </button>
       </div>
     </section>
 
     <footer class="footer">
-      <p>© OUSA Images Compressor - Client-side compression with no uploads</p>
+      <p>© OUSA PDF Compressor - Client-side compression with no uploads</p>
     </footer>
 
     <!-- Toast Notifications -->
@@ -225,17 +250,23 @@
 
 <script>
 export default {
-  name: 'MinimalImageCompressor',
+  name: 'PDFCompressor',
   head() {
     return {
-      title: 'OUSA Minimal Images Compressor',
+      title: 'OUSA PDF Compressor',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
         {
           hid: 'description',
           name: 'description',
-          content: 'Compress your images with a clean, minimal design'
+          content: 'Compress PDF files while maintaining quality with our client-side PDF compressor'
+        }
+      ],
+      script: [
+        {
+          src: 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+          defer: true
         }
       ]
     }
@@ -243,9 +274,10 @@ export default {
   data() {
     return {
       selectedFiles: [],
-      quality: 75,
-      maxWidth: 1200,
-      outputFormat: 'jpeg',
+      compressionLevel: 2, // 1-4 scale
+      dpiQuality: 150,
+      removeMetadata: true,
+      optimizeImages: true,
       isCompressing: false,
       processedCount: 0,
       compressedResults: [],
@@ -257,356 +289,431 @@ export default {
     }
   },
   computed: {
+    compressionLevelName() {
+      const levels = {
+        1: 'Maximum',
+        2: 'High',
+        3: 'Medium',
+        4: 'Low'
+      }
+      return levels[this.compressionLevel] || 'Medium'
+    },
     unprocessedFiles() {
-      return this.selectedFiles.filter(fileObj => !fileObj.processed);
+      return this.selectedFiles.filter(fileObj => !fileObj.processed)
     },
     hasUnprocessedFiles() {
-      return this.unprocessedFiles.length > 0;
+      return this.unprocessedFiles.length > 0
     },
     totalOriginalSize() {
-      return this.compressedResults.reduce((sum, result) => sum + result.originalSize, 0);
+      return this.compressedResults.reduce((sum, result) => sum + result.originalSize, 0)
     },
     totalCompressedSize() {
-      return this.compressedResults.reduce((sum, result) => sum + result.compressedSize, 0);
+      return this.compressedResults.reduce((sum, result) => sum + result.compressedSize, 0)
     },
     totalBytesSaved() {
-      return this.totalOriginalSize - this.totalCompressedSize;
+      return this.totalOriginalSize - this.totalCompressedSize
     },
     totalSavingsPercent() {
-      if (this.totalOriginalSize === 0) return 0;
-      const savings = (this.totalBytesSaved / this.totalOriginalSize) * 100;
-      return Math.round(savings);
+      if (this.totalOriginalSize === 0) return 0
+      const savings = (this.totalBytesSaved / this.totalOriginalSize) * 100
+      return Math.round(savings)
     }
   },
   methods: {
     triggerFileInput() {
-      this.$refs.fileInput.click();
+      this.$refs.fileInput.click()
     },
     handleFileChange(event) {
-      this.isDragging = false;
-      const newFiles = Array.from(event.target.files);
-      this.addFiles(newFiles);
+      this.isDragging = false
+      const newFiles = Array.from(event.target.files)
+      this.addFiles(newFiles)
     },
     handleFileDrop(event) {
-      this.isDragging = false;
-      const newFiles = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-      this.addFiles(newFiles);
+      this.isDragging = false
+      const newFiles = Array.from(event.dataTransfer.files).filter(file => file.type === 'application/pdf')
+      this.addFiles(newFiles)
     },
     addFiles(newFiles) {
-      if (newFiles.length === 0) return;
+      if (newFiles.length === 0) return
 
-      // Add new files to our array in a structured way
-      for (const file of newFiles) {
-        if (file.type.startsWith('image/')) {
-          const previewUrl = URL.createObjectURL(file);
-          this.selectedFiles.push({
-            id: 'file-' + (++this.fileIdCounter),
-            file: file,
-            previewUrl: previewUrl,
-            processed: false
-          });
-        }
+      const validFiles = newFiles.filter(file => file.type === 'application/pdf')
+      
+      if (validFiles.length !== newFiles.length) {
+        this.showToast('Only PDF files are supported', 'error')
+      }
+
+      for (const file of validFiles) {
+        this.selectedFiles.push({
+          id: 'file-' + (++this.fileIdCounter),
+          file: file,
+          processed: false
+        })
       }
       
-      // Reset form input to allow selecting the same file again
-      this.$refs.fileInput.value = '';
+      this.$refs.fileInput.value = ''
       
-      if (newFiles.length > 0) {
-        this.showToast(`Added ${newFiles.length} image${newFiles.length > 1 ? 's' : ''}`, 'success');
+      if (validFiles.length > 0) {
+        this.showToast(`Added ${validFiles.length} PDF${validFiles.length > 1 ? 's' : ''}`, 'success')
       }
     },
     removeFile(index) {
-      // Revoke the object URL to prevent memory leaks
-      URL.revokeObjectURL(this.selectedFiles[index].previewUrl);
-      
-      // Remove the file from array
-      this.selectedFiles.splice(index, 1);
+      this.selectedFiles.splice(index, 1)
     },
     clearFiles() {
-      // Revoke all object URLs
-      this.selectedFiles.forEach(fileObj => URL.revokeObjectURL(fileObj.previewUrl));
-      
-      // Clear array
-      this.selectedFiles = [];
+      this.selectedFiles = []
     },
     truncateFilename(filename) {
-      if (filename.length <= 20) return filename;
-      const extension = filename.split('.').pop();
-      const name = filename.substring(0, filename.length - extension.length - 1);
-      return name.substring(0, 16) + '...' + extension;
+      if (filename.length <= 20) return filename
+      const extension = filename.split('.').pop()
+      const name = filename.substring(0, filename.length - extension.length - 1)
+      return name.substring(0, 16) + '...' + extension
     },
     formatFileSize(bytes) {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      if (bytes === 0) return '0 B'
+      const k = 1024
+      const sizes = ['B', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
     },
-    async compressAllImages() {
-      if (!this.hasUnprocessedFiles || this.isCompressing) return;
+    async compressAllPDFs() {
+      if (!this.hasUnprocessedFiles || this.isCompressing) return
+      
+      // Check if PDF-lib is loaded
+      if (typeof window.PDFLib === 'undefined') {
+        this.showToast('PDF library not loaded. Please refresh the page.', 'error')
+        return
+      }
       
       try {
-        this.isCompressing = true;
-        this.processedCount = 0;
+        this.isCompressing = true
+        this.processedCount = 0
         
-        const newResults = [];
-        const filesToProcess = this.unprocessedFiles;
+        const newResults = []
+        const filesToProcess = this.unprocessedFiles
         
         for (let i = 0; i < filesToProcess.length; i++) {
-          const fileObj = filesToProcess[i];
-          const result = await this.compressImage(fileObj);
+          const fileObj = filesToProcess[i]
+          const result = await this.compressPDF(fileObj)
           
           if (result) {
-            newResults.push(result);
-            this.processedCount++;
+            newResults.push(result)
+            this.processedCount++
             
-            // Mark as processed with animation delay
-            const index = this.selectedFiles.findIndex(f => f.id === fileObj.id);
+            const index = this.selectedFiles.findIndex(f => f.id === fileObj.id)
             if (index !== -1) {
               setTimeout(() => {
-                this.selectedFiles[index].processed = true;
-              }, 300); // Slight delay for visual effect
+                this.selectedFiles[index].processed = true
+              }, 300)
             }
           }
         }
         
-        // Add new results to existing ones
-        this.compressedResults = [...this.compressedResults, ...newResults];
+        this.compressedResults = [...this.compressedResults, ...newResults]
         
         if (newResults.length > 0) {
-          this.showToast(`Successfully compressed ${newResults.length} image${newResults.length > 1 ? 's' : ''}!`, 'success');
+          this.showToast(`Successfully compressed ${newResults.length} PDF${newResults.length > 1 ? 's' : ''}!`, 'success')
         }
       } catch (error) {
-        console.error('Error during compression:', error);
-        this.showToast('Compression failed. Please try again.', 'error');
+        console.error('Error during compression:', error)
+        this.showToast('Compression failed. Please try again.', 'error')
       } finally {
-        this.isCompressing = false;
+        this.isCompressing = false
       }
     },
-    compressImage(fileObj) {
-      return new Promise((resolve, reject) => {
-        try {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          const img = new Image();
+    async compressPDF(fileObj) {
+      try {
+        const { PDFDocument, rgb } = window.PDFLib
+        
+        // Read the PDF file
+        const arrayBuffer = await fileObj.file.arrayBuffer()
+        const originalPdf = await PDFDocument.load(arrayBuffer)
+        
+        // Create a new PDF document for compression
+        const compressedPdf = await PDFDocument.create()
+        
+        // Get compression settings
+        const compressionSettings = this.getCompressionSettings()
+        
+        // Copy pages with compression
+        const pageCount = originalPdf.getPageCount()
+        
+        for (let i = 0; i < pageCount; i++) {
+          const [page] = await compressedPdf.copyPages(originalPdf, [i])
+          const addedPage = compressedPdf.addPage(page)
           
-          // Set up proper error handling
-          img.onerror = () => {
-            console.error('Error loading image:', fileObj.file.name);
-            resolve(null);
-          };
-          
-          img.onload = () => {
-            try {
-              // Calculate new dimensions while maintaining aspect ratio
-              let width = img.width;
-              let height = img.height;
-              
-              if (width > this.maxWidth) {
-                const ratio = this.maxWidth / width;
-                width = this.maxWidth;
-                height = height * ratio;
-              }
-              
-              // Set canvas dimensions
-              canvas.width = width;
-              canvas.height = height;
-              
-              // Draw image on canvas
-              ctx.drawImage(img, 0, 0, width, height);
-              
-              // Convert to desired format with quality setting
-              const mimeType = `image/${this.outputFormat}`;
-              const quality = this.quality / 100;
-              
-              canvas.toBlob((blob) => {
-                if (!blob) {
-                  console.error('Blob creation failed');
-                  resolve(null);
-                  return;
-                }
-                
-                // Create URL for the compressed image
-                const compressedUrl = URL.createObjectURL(blob);
-                
-                // Calculate savings
-                const originalSize = fileObj.file.size;
-                const compressedSize = blob.size;
-                const savings = Math.round(((originalSize - compressedSize) / originalSize) * 100);
-                
-                // Generate filename with prefix
-                const originalFilename = fileObj.file.name;
-                const extension = this.outputFormat.toLowerCase();
-                
-                // Extract base name without extension
-                const lastDotIndex = originalFilename.lastIndexOf('.');
-                const baseName = originalFilename.substring(0, lastDotIndex > 0 ? lastDotIndex : originalFilename.length);
-                
-                // Always apply "ousa-" prefix (hardcoded)
-                const filename = `ousa-${baseName}.${extension}`;
-                
-                // Create result object
-                const result = {
-                  id: 'result-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-                  originalFileId: fileObj.id,
-                  originalFilename: fileObj.file.name,
-                  filename,
-                  originalSize,
-                  compressedSize,
-                  compressedUrl,
-                  compressedBlob: blob,
-                  savings
-                };
-                
-                // Clean up
-                URL.revokeObjectURL(img.src);
-                resolve(result);
-              }, mimeType, quality);
-            } catch (error) {
-              console.error('Error processing image:', error);
-              resolve(null);
-            }
-          };
-          
-          // Start loading the image
-          img.src = fileObj.previewUrl;
-        } catch (error) {
-          console.error('Compression failed:', error);
-          reject(error);
+          // Apply DPI-based scaling if needed
+          if (this.dpiQuality < 150) {
+            const { width, height } = addedPage.getSize()
+            const scaleFactor = this.dpiQuality / 150
+            addedPage.scaleContent(scaleFactor, scaleFactor)
+            addedPage.setSize(width * scaleFactor, height * scaleFactor)
+          }
         }
-      });
+        
+        // Set basic metadata or remove if requested
+        if (this.removeMetadata) {
+          // Remove metadata by not setting any
+        } else {
+          compressedPdf.setTitle(originalPdf.getTitle() || '')
+          compressedPdf.setAuthor(originalPdf.getAuthor() || '')
+          compressedPdf.setCreator('OUSA PDF Compressor')
+          compressedPdf.setProducer('OUSA PDF Compressor')
+        }
+        
+        // Save with compression options
+        const pdfBytes = await compressedPdf.save({
+          useObjectStreams: compressionSettings.useObjectStreams,
+          addDefaultPage: false,
+          objectsPerTick: compressionSettings.objectsPerTick,
+          updateFieldAppearances: false
+        })
+        
+        // Create compressed blob
+        const compressedBlob = new Blob([pdfBytes], { type: 'application/pdf' })
+        
+        // If compression didn't reduce size significantly, try alternative method
+        let finalBlob = compressedBlob
+        const originalSize = fileObj.file.size
+        let compressedSize = compressedBlob.size
+        
+        // If no significant compression achieved, try image-based compression
+        if ((originalSize - compressedSize) / originalSize < 0.1) {
+          try {
+            const alternativeBlob = await this.compressPDFAlternative(arrayBuffer)
+            if (alternativeBlob && alternativeBlob.size < compressedSize) {
+              finalBlob = alternativeBlob
+              compressedSize = alternativeBlob.size
+            }
+          } catch (altError) {
+            console.warn('Alternative compression failed:', altError)
+          }
+        }
+        
+        const compressedUrl = URL.createObjectURL(finalBlob)
+        
+        // Calculate savings
+        const savings = Math.max(0, Math.round(((originalSize - compressedSize) / originalSize) * 100))
+        
+        // Generate filename with prefix
+        const originalFilename = fileObj.file.name
+        const baseName = originalFilename.replace('.pdf', '')
+        const filename = `ousa-${baseName}.pdf`
+        
+        return {
+          id: 'result-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+          originalFileId: fileObj.id,
+          originalFilename: fileObj.file.name,
+          filename,
+          originalSize,
+          compressedSize,
+          compressedUrl,
+          compressedBlob: finalBlob,
+          savings
+        }
+      } catch (error) {
+        console.error('PDF compression failed:', error)
+        this.showToast(`Failed to compress ${fileObj.file.name}`, 'error')
+        return null
+      }
+    },
+    
+    async compressPDFAlternative(arrayBuffer) {
+      try {
+        // This method converts PDF pages to images and back to PDF for heavy compression
+        const { PDFDocument } = window.PDFLib
+        const originalPdf = await PDFDocument.load(arrayBuffer)
+        const newPdf = await PDFDocument.create()
+        
+        // Load pdf.js for rendering
+        if (!window.pdfjsLib) {
+          await this.loadPdfJs()
+        }
+        
+        const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer })
+        const pdf = await loadingTask.promise
+        
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum)
+          
+          // Create canvas for rendering
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          
+          // Set viewport based on DPI quality
+          const viewport = page.getViewport({ scale: this.dpiQuality / 150 })
+          canvas.height = viewport.height
+          canvas.width = viewport.width
+          
+          // Render page to canvas
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise
+          
+          // Convert canvas to image blob
+          const imageBlob = await new Promise(resolve => {
+            canvas.toBlob(resolve, 'image/jpeg', this.compressionLevel / 4)
+          })
+          
+          // Convert blob to array buffer
+          const imageBytes = await imageBlob.arrayBuffer()
+          
+          // Embed image in new PDF
+          const image = await newPdf.embedJpg(imageBytes)
+          const pdfPage = newPdf.addPage([viewport.width, viewport.height])
+          pdfPage.drawImage(image, {
+            x: 0,
+            y: 0,
+            width: viewport.width,
+            height: viewport.height
+          })
+        }
+        
+        const pdfBytes = await newPdf.save()
+        return new Blob([pdfBytes], { type: 'application/pdf' })
+        
+      } catch (error) {
+        console.error('Alternative compression failed:', error)
+        return null
+      }
+    },
+    
+    async loadPdfJs() {
+      return new Promise((resolve, reject) => {
+        if (window.pdfjsLib) {
+          resolve()
+          return
+        }
+        
+        const script = document.createElement('script')
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+        script.onload = () => {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+          resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+    },
+    getCompressionSettings() {
+      // Adjust compression settings based on level
+      const settings = {
+        1: { objectsPerTick: 50 },   // Maximum compression
+        2: { objectsPerTick: 100 },  // High compression
+        3: { objectsPerTick: 200 },  // Medium compression
+        4: { objectsPerTick: 500 }   // Low compression
+      }
+      return settings[this.compressionLevel] || settings[2]
     },
     downloadAllFiles() {
-      if (this.compressedResults.length === 0) return;
+      if (this.compressedResults.length === 0) return
       
-      this.showToast(`Downloading ${this.compressedResults.length} files...`, 'info');
+      this.showToast(`Downloading ${this.compressedResults.length} files...`, 'info')
       
-      // We'll use a staggered approach to avoid browser limitations
       this.compressedResults.forEach((result, index) => {
         setTimeout(() => {
-          this.downloadImage(result, false); // Pass false to prevent individual toasts
-        }, index * 300); // 300ms delay between downloads to avoid browser throttling
-      });
+          this.downloadPDF(result, false)
+        }, index * 300)
+      })
     },
-    downloadImage(result, showToast = true) {
-      const link = document.createElement('a');
-      link.href = result.compressedUrl;
-      link.download = result.filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    downloadPDF(result, showToast = true) {
+      const link = document.createElement('a')
+      link.href = result.compressedUrl
+      link.download = result.filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
       
       if (showToast) {
-        this.showToast('Image downloaded!', 'success');
+        this.showToast('PDF downloaded!', 'success')
       }
-    },
-    downloadAllImages() {
-      // Create a small delay between downloads to avoid browser limitations
-      this.compressedResults.forEach((result, index) => {
-        setTimeout(() => {
-          this.downloadImage(result);
-        }, index * 100); // 100ms delay between downloads
-      });
     },
     async downloadAllAsZip() {
-      if (this.compressedResults.length === 0 || this.isGeneratingZip) return;
+      if (this.compressedResults.length === 0 || this.isGeneratingZip) return
       
-      this.isGeneratingZip = true;
-      this.showToast('Preparing ZIP file...', 'info');
+      this.isGeneratingZip = true
+      this.showToast('Preparing ZIP file...', 'info')
       
       try {
-        // Dynamically import JSZip
-        const JSZipModule = await import('jszip');
-        const JSZip = JSZipModule.default;
-        const zip = new JSZip();
+        const JSZipModule = await import('jszip')
+        const JSZip = JSZipModule.default
+        const zip = new JSZip()
         
-        // Create a folder and add all compressed images
-        const folder = zip.folder('ousa_compressed_images');
+        const folder = zip.folder('ousa_compressed_pdfs')
         
-        // Process each image
         for (const result of this.compressedResults) {
-          folder.file(result.filename, result.compressedBlob);
+          folder.file(result.filename, result.compressedBlob)
         }
         
-        // Generate the ZIP file
-        const content = await zip.generateAsync({ type: 'blob' });
+        const content = await zip.generateAsync({ type: 'blob' })
         
-        // Create download link
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(content);
-        link.download = 'ousa_compressed_images.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(content)
+        link.download = 'ousa_compressed_pdfs.zip'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
         
-        // Clean up
-        URL.revokeObjectURL(link.href);
+        URL.revokeObjectURL(link.href)
         
-        this.showToast('ZIP file downloaded!', 'success');
+        this.showToast('ZIP file downloaded!', 'success')
       } catch (error) {
-        console.error('Error creating ZIP:', error);
-        this.showToast('Failed to create ZIP file', 'error');
+        console.error('Error creating ZIP:', error)
+        this.showToast('Failed to create ZIP file', 'error')
       } finally {
-        this.isGeneratingZip = false;
+        this.isGeneratingZip = false
       }
     },
-    // Selection methods
     toggleResultSelection(result) {
-      const index = this.selectedResults.findIndex(r => r.id === result.id);
+      const index = this.selectedResults.findIndex(r => r.id === result.id)
       if (index === -1) {
-        this.selectedResults.push(result);
+        this.selectedResults.push(result)
       } else {
-        this.selectedResults.splice(index, 1);
+        this.selectedResults.splice(index, 1)
       }
     },
     isResultSelected(result) {
-      return this.selectedResults.some(r => r.id === result.id);
+      return this.selectedResults.some(r => r.id === result.id)
     },
-    downloadSelectedImages() {
-      if (this.selectedResults.length === 0) return;
+    downloadSelectedPDFs() {
+      if (this.selectedResults.length === 0) return
       
-      this.showToast(`Downloading ${this.selectedResults.length} image${this.selectedResults.length > 1 ? 's' : ''}...`, 'info');
+      this.showToast(`Downloading ${this.selectedResults.length} PDF${this.selectedResults.length > 1 ? 's' : ''}...`, 'info')
       
-      // Create a small delay between downloads to avoid browser limitations
       this.selectedResults.forEach((result, index) => {
         setTimeout(() => {
-          this.downloadImage(result, false); // Pass false to prevent individual toasts
-        }, index * 300); // 300ms delay between downloads
-      });
+          this.downloadPDF(result, false)
+        }, index * 300)
+      })
     },
     clearResults() {
-      // Revoke all object URLs
-      this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl));
+      this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl))
       
-      // Reset processed status for all files
       this.selectedFiles.forEach(fileObj => {
-        fileObj.processed = false;
-      });
+        fileObj.processed = false
+      })
       
-      // Clear results
-      this.compressedResults = [];
-      this.selectedResults = [];
+      this.compressedResults = []
+      this.selectedResults = []
       
-      this.showToast('Results cleared', 'info');
+      this.showToast('Results cleared', 'info')
     },
     showToast(message, type = 'info') {
-      const id = Date.now();
-      this.toasts.push({ id, message, type });
+      const id = Date.now()
+      this.toasts.push({ id, message, type })
       
       setTimeout(() => {
-        const index = this.toasts.findIndex(t => t.id === id);
+        const index = this.toasts.findIndex(t => t.id === id)
         if (index !== -1) {
-          this.toasts.splice(index, 1);
+          this.toasts.splice(index, 1)
         }
-      }, 3000);
+      }, 3000)
     }
   },
   beforeDestroy() {
-    // Clean up all object URLs when component is destroyed
-    this.selectedFiles.forEach(fileObj => URL.revokeObjectURL(fileObj.previewUrl));
-    this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl));
+    this.compressedResults.forEach(result => URL.revokeObjectURL(result.compressedUrl))
   }
-};
+}
 </script>
 
 <style>
@@ -628,6 +735,7 @@ export default {
   --border: #e2e8f0;
   --border-hover: #cbd5e1;
   --shadow: rgba(0, 0, 0, 0.1);
+  --pdf-color: #dc2626;
 }
 
 *, *::before, *::after {
@@ -664,8 +772,14 @@ body {
 .header h1 {
   font-weight: 600;
   font-size: 28px;
-  margin: 0;
+  margin: 0 0 8px 0;
   color: var(--text);
+}
+
+.subtitle {
+  color: var(--text-light);
+  margin: 0;
+  font-size: 16px;
 }
 
 /* Sections */
@@ -711,12 +825,50 @@ body {
   width: 48px;
   height: 48px;
   margin: 0 auto 16px;
-  color: var(--primary);
+  color: var(--pdf-color);
 }
 
 .upload-prompt p {
   color: var(--text-light);
   margin: 8px 0 0;
+}
+
+.file-info {
+  font-size: 14px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* PDF Specific Styles */
+.pdf-item {
+  border-color: var(--pdf-color);
+}
+
+.pdf-preview {
+  background: linear-gradient(135deg, #fee2e2, #fef2f2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pdf-icon {
+  color: var(--pdf-color);
+}
+
+.file-size {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.pdf-result-preview {
+  background: linear-gradient(135deg, #fee2e2, #fef2f2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
 /* File Grid */
@@ -770,30 +922,6 @@ body {
   height: 110px;
   position: relative;
   overflow: hidden;
-}
-
-.file-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-  display: block;
-}
-
-.file-item:hover .file-preview img {
-  transform: scale(1.05);
-}
-
-.file-info {
-  padding: 8px;
-  text-align: center;
-  background-color: var(--surface);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-grow: 1;
-  font-size: 14px;
-  color: var(--text);
 }
 
 .progress-overlay {
@@ -907,6 +1035,7 @@ body {
   background: var(--primary);
   cursor: pointer;
   box-shadow: 0 2px 4px var(--shadow);
+  border: none;
 }
 
 .quality-labels {
@@ -917,33 +1046,29 @@ body {
   color: var(--text-light);
 }
 
-/* Format Buttons */
-.format-controls {
+/* Compression Options */
+.compression-options {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 24px;
+  padding: 16px;
+  background: var(--background);
+  border-radius: 8px;
 }
 
-.format-btn {
-  padding: 8px 12px;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
-  transition: all 0.2s;
-  border-radius: 4px;
 }
 
-.format-btn:hover {
-  border-color: var(--border-hover);
-}
-
-.format-btn.active {
-  background-color: var(--primary);
-  color: white;
-  border-color: var(--primary);
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
 }
 
 /* Buttons */
@@ -1061,18 +1186,6 @@ body {
   overflow: hidden;
 }
 
-.result-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-  display: block;
-}
-
-.result-item:hover .result-preview img {
-  transform: scale(1.05);
-}
-
 .select-indicator {
   position: absolute;
   top: 8px;
@@ -1166,10 +1279,23 @@ body {
   gap: 12px;
 }
 
+/* Loaders */
+.loader {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
 .loader-small {
   width: 16px;
   height: 16px;
-  border-width: 2px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
   margin-right: 8px;
   display: inline-block;
   vertical-align: middle;
@@ -1261,6 +1387,10 @@ body {
   .results-actions {
     width: 100%;
   }
+
+  .compression-options {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1278,14 +1408,6 @@ body {
     gap: 10px;
   }
   
-  .format-controls {
-    flex-direction: column;
-  }
-  
-  .format-btn {
-    width: 100%;
-  }
-  
   .selection-bar {
     flex-direction: column;
     align-items: flex-start;
@@ -1298,6 +1420,15 @@ body {
   .controls-container,
   .results-section {
     padding: 16px;
+  }
+
+  .results-actions {
+    flex-direction: column;
+  }
+
+  .results-actions .btn {
+    width: 100%;
+    margin-bottom: 8px;
   }
 }
 </style>
