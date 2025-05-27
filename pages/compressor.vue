@@ -122,6 +122,20 @@
                 </svg>
                 <span>Compressed</span>
               </div>
+              
+              <!-- Individual Download Button -->
+              <button
+                v-if="processedFiles[index]"
+                @click="downloadSingleFile(index)"
+                class="button button--success button--small"
+                :title="`Download ${processedFiles[index].name}`"
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Download
+              </button>
+
               <button
                 @click="removeFile(index)"
                 class="button button--icon button--danger"
@@ -317,7 +331,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            Download All Files
+            Download All ({{ processedFiles.length }} files)
           </button>
 
           <button
@@ -339,6 +353,14 @@
             </svg>
             Start Over
           </button>
+        </div>
+
+        <!-- Individual Download Note -->
+        <div class="download-note">
+          <svg class="note-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>You can also download files individually using the download button next to each file above.</span>
         </div>
       </section>
     </div>
@@ -570,6 +592,21 @@ const compressFiles = async () => {
   }
   
   isProcessing.value = false
+}
+
+// Download single file
+const downloadSingleFile = (index) => {
+  const file = processedFiles.value[index]
+  if (!file) return
+  
+  const url = URL.createObjectURL(file)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = file.name
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // Download individual files
@@ -1140,6 +1177,26 @@ const handleDragEnter = (e) => {
   flex-wrap: wrap;
   gap: 1rem;
   justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.download-note {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.note-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #667eea;
+  flex-shrink: 0;
 }
 
 /* Buttons */
