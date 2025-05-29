@@ -26,6 +26,7 @@
     "filepond-plugin-image-resize": "^2.0.10",
     "filepond-plugin-image-transform": "^3.8.7",
     "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
     "qr-scanner": "^1.4.2",
     "vue-chartjs": "^5.3.2",
     "vue-filepond": "^7.0.4"
