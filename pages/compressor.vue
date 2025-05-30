@@ -88,14 +88,23 @@
               class="file-item"
               :class="file.status"
             >
-              <div class="file-preview">
-                <span>🖼️</span>
+              <div class="file-preview" @click="openPreviewModal(file)">
+                <img 
+                  v-if="file.previewUrl" 
+                  :src="file.previewUrl" 
+                  :alt="file.name"
+                  class="preview-image"
+                />
+                <span v-else>🖼️</span>
               </div>
               <div class="file-info">
                 <div class="file-name" :title="file.name">{{ truncateFileName(file.name) }}</div>
                 <div class="file-meta">
                   <span>{{ formatSize(file.size) }}</span>
                   <span v-if="file.compressedSize">→ {{ formatSize(file.compressedSize) }}</span>
+                  <div v-if="file.dimensions" class="file-dimensions">
+                    {{ file.dimensions.width }}×{{ file.dimensions.height }}
+                  </div>
                 </div>
               </div>
               <div class="file-actions">
@@ -176,6 +185,78 @@
       </div>
     </div>
 
+    <!-- Preview Modal -->
+    <div v-if="previewModal.show" class="preview-modal" @click="closePreviewModal">
+      <div class="preview-modal-content" @click.stop>
+        <div class="preview-modal-header">
+          <h3>{{ previewModal.file?.name }}</h3>
+          <button class="preview-modal-close" @click="closePreviewModal">×</button>
+        </div>
+        <div class="preview-modal-body">
+          <div class="preview-comparison" v-if="previewModal.file">
+            <!-- Original Image -->
+            <div class="preview-column">
+              <div class="preview-column-header">
+                <h4>Original</h4>
+                <div class="preview-info">
+                  <span>{{ formatSize(previewModal.file.size) }}</span>
+                  <span v-if="previewModal.file.dimensions">
+                    {{ previewModal.file.dimensions.width }}×{{ previewModal.file.dimensions.height }}
+                  </span>
+                </div>
+              </div>
+              <div class="preview-image-container">
+                <img 
+                  v-if="previewModal.file.previewUrl" 
+                  :src="previewModal.file.previewUrl" 
+                  :alt="previewModal.file.name"
+                  class="preview-modal-image"
+                />
+              </div>
+            </div>
+
+            <!-- Compressed Image (if available) -->
+            <div v-if="previewModal.file.compressedUrl" class="preview-column">
+              <div class="preview-column-header">
+                <h4>Compressed</h4>
+                <div class="preview-info">
+                  <span>{{ formatSize(previewModal.file.compressedSize) }}</span>
+                  <span class="compression-ratio">
+                    -{{ Math.round(((previewModal.file.size - previewModal.file.compressedSize) / previewModal.file.size) * 100) }}%
+                  </span>
+                </div>
+              </div>
+              <div class="preview-image-container">
+                <img 
+                  :src="previewModal.file.compressedUrl" 
+                  :alt="previewModal.file.name + ' (compressed)'"
+                  class="preview-modal-image"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-modal-footer">
+          <button 
+            v-if="previewModal.file?.status === 'compressed'" 
+            class="btn btn-primary"
+            @click="downloadFile(previewModal.file)"
+          >
+            <span>⬇️</span>
+            <span>Download</span>
+          </button>
+          <button 
+            v-else-if="previewModal.file?.status === 'ready'"
+            class="btn btn-primary"
+            @click="compressSingle(previewModal.file)"
+          >
+            <span>⚡</span>
+            <span>Compress This Image</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Error Messages -->
     <div v-if="error" class="error-message show">
       <div class="error-title">{{ error.title }}</div>
@@ -188,9 +269,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 
-// State
+// State variables
 const currentType = ref('image')
 const files = ref([])
 const isDragOver = ref(false)
@@ -199,23 +280,29 @@ const quality = ref(80)
 const progress = ref(0)
 const error = ref(null)
 
+// Preview modal state
+const previewModal = ref({
+  show: false,
+  file: null
+})
+
 // Stats
 const totalProcessed = ref(0)
 const totalSaved = ref(0)
 
-// Add mobile-specific computed property
+// Computed properties
 const isMobile = computed(() => {
-  if (typeof window !== 'undefined') {
+  if (process.client) {
     return window.innerWidth <= 768
   }
   return false
 })
+
 const compressedCount = computed(() => 
   files.value.filter(f => f.status === 'compressed').length
 )
 
 const sortedFiles = computed(() => {
-  // Files are already in correct order (newest first) since we use unshift()
   return files.value
 })
 
@@ -230,10 +317,9 @@ const avgReduction = computed(() => {
   return Math.round(((totalOriginal - totalCompressed) / totalOriginal) * 100)
 })
 
-// Utility function to truncate file names (mobile-aware)
+// Utility functions
 const truncateFileName = (fileName, maxLength = 25) => {
-  // Shorter names on mobile
-  const mobileMaxLength = typeof window !== 'undefined' && window.innerWidth <= 768 ? 20 : maxLength
+  const mobileMaxLength = process.client && window.innerWidth <= 768 ? 20 : maxLength
   
   if (fileName.length <= mobileMaxLength) return fileName
   
@@ -243,6 +329,7 @@ const truncateFileName = (fileName, maxLength = 25) => {
   
   return truncatedName + '.' + extension
 }
+
 const formatSize = (bytes) => {
   if (!bytes) return '0 B'
   const sizes = ['B', 'KB', 'MB', 'GB']
@@ -260,6 +347,48 @@ const getStatusText = (status) => {
   return statusMap[status] || 'Ready'
 }
 
+// Image preview generation
+const generatePreview = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // Create canvas for thumbnail
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        // Calculate thumbnail size (max 200px)
+        const maxSize = 200
+        let { width, height } = img
+        
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = (height * maxSize) / width
+            width = maxSize
+          } else {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0, width, height)
+        
+        resolve({
+          url: canvas.toDataURL('image/jpeg', 0.8),
+          dimensions: { width: img.naturalWidth, height: img.naturalHeight }
+        })
+      }
+      img.onerror = () => resolve({ url: null, dimensions: null })
+      img.src = e.target.result
+    }
+    reader.onerror = () => resolve({ url: null, dimensions: null })
+    reader.readAsDataURL(file)
+  })
+}
+
 // File handling
 const handleDrop = (e) => {
   isDragOver.value = false
@@ -270,11 +399,10 @@ const handleDrop = (e) => {
 const handleFileSelect = (e) => {
   const selectedFiles = Array.from(e.target.files)
   addFiles(selectedFiles)
-  // Clear input so same file can be selected again
   e.target.value = ''
 }
 
-const addFiles = (newFiles) => {
+const addFiles = async (newFiles) => {
   const imageFiles = newFiles.filter(file => {
     if (!file.type.startsWith('image/')) {
       showError('Invalid file type', `${file.name} is not an image file`)
@@ -287,25 +415,56 @@ const addFiles = (newFiles) => {
     return true
   })
 
-  const newFileObjects = imageFiles.map(file => ({
-    name: file.name,
-    size: file.size,
-    file: file,
-    status: 'ready',
-    compressedSize: null,
-    compressedBlob: null,
-    uploadTime: Date.now() // Add timestamp for sorting
-  }))
+  for (const file of imageFiles) {
+    const preview = await generatePreview(file)
+    
+    const newFileObject = {
+      name: file.name,
+      size: file.size,
+      file: file,
+      status: 'ready',
+      compressedSize: null,
+      compressedBlob: null,
+      compressedUrl: null,
+      previewUrl: preview.url,
+      dimensions: preview.dimensions,
+      uploadTime: Date.now()
+    }
 
-  // Add new files to the beginning of the array (newest first)
-  files.value.unshift(...newFileObjects)
+    files.value.unshift(newFileObject)
+  }
 }
 
 const removeFile = (index) => {
+  const file = files.value[index]
+  
+  // Clean up URLs to prevent memory leaks
+  if (file.previewUrl && file.previewUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(file.previewUrl)
+  }
+  if (file.compressedUrl && file.compressedUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(file.compressedUrl)
+  }
+  
   files.value.splice(index, 1)
 }
 
-// Simple and reliable compression
+// Preview modal functions
+const openPreviewModal = (file) => {
+  previewModal.value = {
+    show: true,
+    file: file
+  }
+}
+
+const closePreviewModal = () => {
+  previewModal.value = {
+    show: false,
+    file: null
+  }
+}
+
+// Compression functions
 const compressImage = (file, quality) => {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas')
@@ -313,7 +472,6 @@ const compressImage = (file, quality) => {
     const img = new Image()
 
     img.onload = () => {
-      // Calculate new size (max 1200px)
       let { width, height } = img
       const maxSize = 1200
       
@@ -336,23 +494,42 @@ const compressImage = (file, quality) => {
       }, 'image/jpeg', quality / 100)
     }
 
-    img.onerror = () => {
-      resolve(file) // Return original if compression fails
-    }
+    img.onerror = () => resolve(file)
 
-    // Use FileReader for more reliable loading
     const reader = new FileReader()
     reader.onload = (e) => {
       img.src = e.target.result
     }
-    reader.onerror = () => {
-      resolve(file)
-    }
+    reader.onerror = () => resolve(file)
     reader.readAsDataURL(file.file)
   })
 }
 
-// Main compression function
+const compressSingle = async (fileObj) => {
+  if (!fileObj || fileObj.status === 'compressed') return
+
+  try {
+    fileObj.status = 'processing'
+    
+    const compressedBlob = await compressImage(fileObj, quality.value)
+    
+    if (compressedBlob && compressedBlob.size > 0) {
+      fileObj.compressedBlob = compressedBlob
+      fileObj.compressedSize = compressedBlob.size
+      fileObj.compressedUrl = URL.createObjectURL(compressedBlob)
+      fileObj.status = 'compressed'
+      
+      totalProcessed.value++
+      totalSaved.value += (fileObj.size - compressedBlob.size)
+    } else {
+      fileObj.status = 'error'
+    }
+  } catch (error) {
+    console.error('Compression error:', error)
+    fileObj.status = 'error'
+  }
+}
+
 const compressAll = async () => {
   if (files.value.length === 0) return
 
@@ -367,98 +544,14 @@ const compressAll = async () => {
       continue
     }
 
-    try {
-      file.status = 'processing'
-      
-      const compressedBlob = await compressImage(file, quality.value)
-      
-      if (compressedBlob && compressedBlob.size > 0) {
-        file.compressedBlob = compressedBlob
-        file.compressedSize = compressedBlob.size
-        file.status = 'compressed'
-        
-        // Update stats
-        totalProcessed.value++
-        totalSaved.value += (file.size - compressedBlob.size)
-      } else {
-        file.status = 'error'
-      }
-    } catch (error) {
-      console.error('Compression error:', error)
-      file.status = 'error'
-    }
-
+    await compressSingle(file)
     progress.value = ((i + 1) / files.value.length) * 100
   }
 
   isProcessing.value = false
 }
 
-// Simple ZIP creation without external dependencies
-const createZip = async (files) => {
-  // Create a simple ZIP-like structure using existing browser APIs
-  const zipContent = []
-  
-  for (const file of files) {
-    if (file.compressedBlob) {
-      const arrayBuffer = await file.compressedBlob.arrayBuffer()
-      const fileName = file.name.replace(/\.[^/.]+$/, '_compressed.jpg')
-      zipContent.push({
-        name: fileName,
-        data: new Uint8Array(arrayBuffer)
-      })
-    }
-  }
-  
-  return zipContent
-}
-
-// Download as ZIP (simplified approach)
-const downloadAsZip = async () => {
-  const compressedFiles = files.value.filter(f => f.status === 'compressed')
-  
-  if (compressedFiles.length === 0) {
-    showError('No files to download', 'Please compress some files first')
-    return
-  }
-
-  try {
-    // Try to use JSZip if available (user needs to install it)
-    try {
-      const JSZip = (await import('jszip')).default
-      const zip = new JSZip()
-      
-      compressedFiles.forEach(file => {
-        if (file.compressedBlob) {
-          const fileName = file.name.replace(/\.[^/.]+$/, '_compressed.jpg')
-          zip.file(fileName, file.compressedBlob)
-        }
-      })
-      
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      
-      const url = URL.createObjectURL(zipBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `compressed_images_${new Date().toISOString().split('T')[0]}.zip`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      
-    } catch (jszipError) {
-      // Fallback: download files individually with delay
-      console.log('JSZip not available, downloading files individually')
-      showError('ZIP not available', 'JSZip library not found. Downloading files individually instead.')
-      downloadAll()
-    }
-    
-  } catch (error) {
-    console.error('Download error:', error)
-    showError('Download failed', 'Could not create ZIP file. Try downloading files individually.')
-  }
-}
-// Download individual file
+// Download functions
 const downloadFile = (file) => {
   if (!file.compressedBlob) return
 
@@ -472,7 +565,6 @@ const downloadFile = (file) => {
   URL.revokeObjectURL(url)
 }
 
-// Download all files individually
 const downloadAll = () => {
   const compressedFiles = files.value.filter(f => f.status === 'compressed')
   
@@ -484,8 +576,44 @@ const downloadAll = () => {
   compressedFiles.forEach((file, index) => {
     setTimeout(() => {
       downloadFile(file)
-    }, index * 500) // Delay between downloads to prevent browser blocking
+    }, index * 500)
   })
+}
+
+const downloadAsZip = async () => {
+  const compressedFiles = files.value.filter(f => f.status === 'compressed')
+  
+  if (compressedFiles.length === 0) {
+    showError('No files to download', 'Please compress some files first')
+    return
+  }
+
+  try {
+    const JSZip = await import('jszip')
+    const zip = new JSZip.default()
+    
+    compressedFiles.forEach(file => {
+      if (file.compressedBlob) {
+        const fileName = file.name.replace(/\.[^/.]+$/, '_compressed.jpg')
+        zip.file(fileName, file.compressedBlob)
+      }
+    })
+    
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    
+    const url = URL.createObjectURL(zipBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `compressed_images_${new Date().toISOString().split('T')[0]}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+  } catch (error) {
+    console.error('Download error:', error)
+    showError('Download failed', 'Could not create ZIP file. Try downloading files individually.')
+  }
 }
 
 // Error handling
@@ -495,6 +623,18 @@ const showError = (title, message) => {
     error.value = null
   }, 5000)
 }
+
+// Cleanup on unmount
+onUnmounted(() => {
+  files.value.forEach(file => {
+    if (file.previewUrl && file.previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(file.previewUrl)
+    }
+    if (file.compressedUrl && file.compressedUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(file.compressedUrl)
+    }
+  })
+})
 </script>
 
 <style scoped>
@@ -839,15 +979,29 @@ const showError = (title, message) => {
 }
 
 .file-preview {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
   background: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1rem;
   flex-shrink: 0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.file-preview:hover {
+  transform: scale(1.05);
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .file-info {
@@ -869,6 +1023,14 @@ const showError = (title, message) => {
 .file-meta {
   font-size: 0.65rem;
   color: #666;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.file-dimensions {
+  color: #888;
+  font-size: 0.6rem;
 }
 
 .file-actions {
@@ -1063,6 +1225,133 @@ const showError = (title, message) => {
   font-weight: 500;
 }
 
+/* Preview Modal Styles */
+.preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.preview-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-modal-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #666;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.preview-modal-close:hover {
+  background: #f0f0f0;
+}
+
+.preview-modal-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.preview-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.preview-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.preview-column-header {
+  margin-bottom: 1rem;
+}
+
+.preview-column-header h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 0.5rem 0;
+}
+
+.preview-info {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.compression-ratio {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.preview-image-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 200px;
+}
+
+.preview-modal-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.preview-modal-footer {
+  padding: 1rem;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 .error-message {
   position: fixed;
   top: 1rem;
@@ -1126,7 +1415,6 @@ const showError = (title, message) => {
     font-size: 0.8rem;
   }
 
-  /* Mobile Drop Zone */
   .drop-zone {
     padding: 1.5rem 1rem;
     min-height: 120px;
@@ -1158,7 +1446,6 @@ const showError = (title, message) => {
     font-size: 0.9rem;
   }
 
-  /* Mobile Type Selector */
   .type-selector {
     width: 100%;
     margin: 0 0 1rem 0;
@@ -1171,7 +1458,6 @@ const showError = (title, message) => {
     font-size: 0.85rem;
   }
 
-  /* Mobile Settings */
   .settings-panel {
     order: 3;
     margin-top: 1rem;
@@ -1194,7 +1480,6 @@ const showError = (title, message) => {
     margin-right: 1rem;
   }
 
-  /* Mobile File List */
   .file-list {
     order: 2;
     max-height: 50vh;
@@ -1213,8 +1498,8 @@ const showError = (title, message) => {
   }
 
   .file-preview {
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
     font-size: 0.9rem;
   }
 
@@ -1247,7 +1532,6 @@ const showError = (title, message) => {
     padding: 0.25rem 0.5rem;
   }
 
-  /* Mobile Download Options */
   .download-options {
     order: 4;
     margin-top: 1rem;
@@ -1274,7 +1558,6 @@ const showError = (title, message) => {
     font-size: 0.75rem;
   }
 
-  /* Mobile Action Bar */
   .action-bar {
     padding: 1rem 0 0.5rem 0;
     position: sticky;
@@ -1290,13 +1573,11 @@ const showError = (title, message) => {
     font-size: 1rem;
   }
 
-  /* Mobile Progress */
   .global-progress {
     margin: 0.5rem 0;
     height: 4px;
   }
 
-  /* Mobile Stats */
   .stats-footer {
     flex-direction: column;
     gap: 1rem;
@@ -1331,7 +1612,37 @@ const showError = (title, message) => {
     font-weight: 600;
   }
 
-  /* Mobile Error Messages */
+  /* Mobile Preview Modal */
+  .preview-modal {
+    padding: 0.5rem;
+  }
+
+  .preview-modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .preview-comparison {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+
+  .preview-modal-header h3 {
+    max-width: 250px;
+    font-size: 0.9rem;
+  }
+
+  .preview-modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .preview-modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .error-message {
     position: fixed;
     top: 1rem;
@@ -1361,24 +1672,20 @@ const showError = (title, message) => {
     justify-content: center;
   }
 
-  /* Mobile Tooltips - Disable */
   .tooltip::after {
     display: none;
   }
 
-  /* Ensure no horizontal overflow */
   * {
     max-width: 100%;
     box-sizing: border-box;
   }
 
-  /* Mobile scrolling improvements */
   .file-items-container {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
 
-  /* Improve touch targets */
   .btn, .download-option, .file-actions .btn {
     min-height: 44px;
     touch-action: manipulation;
