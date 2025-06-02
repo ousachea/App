@@ -623,7 +623,7 @@ export default {
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background: #3b82f6;
+  background: #f59e0b ;
   color: white;
   border: none;
   border-radius: 8px;
@@ -634,7 +634,7 @@ export default {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: #2563eb;
+  background: #fbbf24 ;
 }
 
 .refresh-btn:disabled {
@@ -671,8 +671,8 @@ export default {
 }
 
 .card.primary {
-  border-color: #3b82f6;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-color: #f59e0b ;
+  background: linear-gradient(135deg, #f59e0b  0%, #fbbf24  100%);
   color: white;
 }
 
@@ -766,7 +766,7 @@ export default {
 
 .calc-input:focus, .calc-select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #f59e0b ;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -898,7 +898,7 @@ export default {
 }
 
 .footer-link {
-  color: #3b82f6;
+  color: #f59e0b;
   text-decoration: none;
 }
 
@@ -974,7 +974,7 @@ export default {
 .calc-input:focus,
 .calc-select:focus,
 .info-toggle:focus {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #f59e0b ;
   outline-offset: 2px;
 }
 </style>
