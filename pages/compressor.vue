@@ -1,50 +1,4 @@
-.header-content {
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-}
-
-.header-text {
-  order: 1;
-}
-
-.clear-session-btn {
-  order: 2;
-  font-size: 0.85rem;
-  padding: 0.6rem 1.2rem;
-}  /* Mobile Empty State */
-.empty-state {
-  padding: 2rem 1rem;
-  flex: 1;
-  height: 100%;
-}
-
-.empty-state-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.empty-state-title {
-  font-size: 1.25rem;
-}
-
-.empty-state-description {
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.empty-state-features {
-  gap: 0.75rem;
-}
-
-.feature-item {
-  font-size: 0.8rem;
-  padding: 0.4rem 0.8rem;
-}
-
-.feature-icon {
-  font-size: 1rem;
-}<template>
+<template class="compressor-body">
 <div class="compressor-container">
   <div class="header">
     <div class="header-content">
@@ -753,7 +707,7 @@ color: #1a1a1a;
 line-height: 1.5;
 height: 100vh;
 overflow: hidden;
-max-width: 1200px;
+width: 100%;
 margin: 0 auto;
 padding: 1rem;
 display: flex;
@@ -1972,5 +1926,52 @@ gap: 0.5rem;
   min-height: 44px;
   touch-action: manipulation;
 }
+}
+.header-content {
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.header-text {
+  order: 1;
+}
+
+.clear-session-btn {
+  order: 2;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.2rem;
+}  /* Mobile Empty State */
+.empty-state {
+  padding: 2rem 1rem;
+  flex: 1;
+  height: 100%;
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state-title {
+  font-size: 1.25rem;
+}
+
+.empty-state-description {
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.empty-state-features {
+  gap: 0.75rem;
+}
+
+.feature-item {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.feature-icon {
+  font-size: 1rem;
 }
 </style>
