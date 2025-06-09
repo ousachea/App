@@ -1,171 +1,293 @@
 <!-- pages/index.vue -->
 
 <template>
-  <div class="app">
-    <!-- Minimal Header -->
+  <div class="app" :class="{ 'dark': isDarkMode }">
+    <!-- Enhanced Header -->
     <header class="header">
       <div class="container">
-        <h1 class="title">🏆 តម្លៃមាស Gold Price</h1>
-        <div class="update-status">
-          <div class="status-dot" :class="statusClass"></div>
-          <span class="update-time">{{ lastUpdated }}</span>
+        <div class="header-content">
+          <h1 class="title">តម្លៃមាស</h1>
+          <div class="header-controls">
+            <button @click="toggleDarkMode" class="theme-toggle" :title="isDarkMode ? 'Light mode' : 'Dark mode'">
+              <svg v-if="isDarkMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            </button>
+            <button @click="toggleCurrency" class="currency-toggle" :title="`Switch to ${currentCurrency === 'USD' ? 'KHR' : 'USD'}`">
+              {{ currentCurrency }}
+            </button>
+          </div>
+        </div>
+        <div class="status">
+          <div class="dot" :class="statusClass"></div>
+          <span class="time">{{ lastUpdated }}</span>
         </div>
       </div>
     </header>
 
     <main class="main">
-      <!-- Refresh Button -->
+      <!-- Refresh Section -->
       <div class="refresh-section">
-        <button @click="fetchGoldPrice(true)" :disabled="loading" class="refresh-btn">
+        <button @click="handleRefresh" :disabled="loading || isRefreshDisabled" class="refresh-btn">
           <svg class="icon" :class="{ 'spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
           </svg>
-          {{ loading ? 'កំពុងបន្ទាន់...' : 'ធ្វើបច្ចុប្បន្នភាព' }}
+          {{ refreshButtonText }}
         </button>
         
-        <!-- API Usage Indicator -->
-        <div class="api-usage">
-          <div class="usage-bar">
-            <div class="usage-fill" :style="{ width: (apiQuota.dailyCalls / apiQuota.dailyLimit * 100) + '%' }"></div>
+        <!-- Usage Bar -->
+        <div class="usage">
+          <div class="bar">
+            <div class="fill" :style="{ width: usagePercentage + '%' }" :class="usageClass"></div>
           </div>
-          <span class="usage-text">{{ apiQuota.dailyCalls }}/3 ថ្ងៃនេះ • {{ apiQuota.totalCalls }}/90 ខែនេះ</span>
+          <div class="usage-info">
+            <span class="usage-text">{{ apiQuota.dailyCalls }}/3 today • {{ apiQuota.totalCalls }}/90 month</span>
+            <span v-if="remainingCalls <= 10" class="usage-warning">{{ remainingCalls }} calls left</span>
+          </div>
         </div>
       </div>
 
-      <!-- Compact Price Cards -->
-      <div class="price-cards">
-        <!-- Damlung (Primary) -->
-        <div class="card primary">
-          <div class="card-header">
-            <span class="card-title">ដំឡឹង</span>
-            <span class="card-unit">37.5g</span>
+      <!-- Price History Chart -->
+      <div v-if="priceHistory.length > 1" class="chart-section">
+        <h3 class="section-title">Price Trend (7 days)</h3>
+        <div class="chart-container">
+          <svg class="price-chart" viewBox="0 0 300 100" preserveAspectRatio="none">
+            <polyline
+              :points="chartPoints"
+              fill="none"
+              stroke="#fbbf24"
+              stroke-width="2"
+              vector-effect="non-scaling-stroke"
+            />
+            <circle
+              v-for="(point, index) in chartData"
+              :key="index"
+              :cx="point.x"
+              :cy="point.y"
+              r="2"
+              fill="#fbbf24"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+          <div class="chart-labels">
+            <span class="chart-label">{{ formatChartDate(priceHistory[0].date) }}</span>
+            <span class="chart-label">{{ formatChartDate(priceHistory[priceHistory.length - 1].date) }}</span>
           </div>
-          <div class="price-display">
+        </div>
+      </div>
+
+      <!-- Price Cards -->
+      <div class="cards">
+        <!-- Damlung Primary -->
+        <div class="card primary" @click="setQuickAmount('damlung', 1)">
+          <div class="card-top">
+            <span class="unit">ដំឡឹង</span>
+            <span class="weight">37.5g</span>
+          </div>
+          <div class="price">
             <div v-if="loading" class="skeleton"></div>
-            <div v-else class="price">
-              <span class="amount">${{ formatPrice(convertToUnit('damlung', goldPrice)) }}</span>
+            <div v-else>
+              <span class="amount">{{ formatCurrencyDisplay(getDamlungPrice()) }}</span>
               <div v-if="priceChange.value" class="change" :class="priceChange.type">
                 {{ priceChange.value }}
               </div>
             </div>
           </div>
+          <div class="price-alert" v-if="alerts.damlung">
+            <small>Alert: {{ formatCurrencyDisplay(alerts.damlung) }}</small>
+          </div>
         </div>
 
         <!-- Chi -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">ជី</span>
-            <span class="card-unit">3.75g</span>
+        <div class="card" @click="setQuickAmount('chi', 1)">
+          <div class="card-top">
+            <span class="unit">ជី</span>
+            <span class="weight">3.75g</span>
           </div>
-          <div class="price-display">
+          <div class="price">
             <div v-if="loading" class="skeleton"></div>
-            <div v-else class="price">
-              <span class="amount">${{ formatPrice(convertToUnit('chi', goldPrice)) }}</span>
-            </div>
+            <span v-else class="amount">{{ formatCurrencyDisplay(getChiPrice()) }}</span>
           </div>
         </div>
 
         <!-- Troy Ounce -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">អោនស៏</span>
-            <span class="card-unit">Troy Oz</span>
+        <div class="card" @click="setQuickAmount('oz', 1)">
+          <div class="card-top">
+            <span class="unit">Troy Oz</span>
+            <span class="weight">31.1g</span>
           </div>
-          <div class="price-display">
+          <div class="price">
             <div v-if="loading" class="skeleton"></div>
-            <div v-else class="price">
-              <span class="amount">${{ formatPrice(goldPrice) }}</span>
-            </div>
+            <span v-else class="amount">{{ formatCurrencyDisplay(goldPrice) }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Compact Calculator -->
+      <!-- Enhanced Calculator -->
       <div v-if="goldPrice > 0" class="calculator">
-        <h3 class="calc-title">គណនាតម្លៃ</h3>
-        <div class="calc-inputs">
+        <div class="calc-header">
+          <h3 class="calc-title">Calculator</h3>
+          <button @click="saveToHistory" class="save-btn" :disabled="!calculatorAmount">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17,21 17,13 7,13 7,21"/>
+              <polyline points="7,3 7,8 15,8"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Quick Amount Buttons -->
+        <div class="quick-amounts">
+          <button 
+            v-for="preset in quickPresets" 
+            :key="preset.label"
+            @click="setQuickAmount(preset.unit, preset.amount)"
+            class="quick-btn"
+            :class="{ active: calculatorAmount === preset.amount && calculatorUnit === preset.unit }"
+          >
+            {{ preset.label }}
+          </button>
+        </div>
+
+        <div class="calc-row">
           <input 
             v-model.number="calculatorAmount" 
             type="number" 
             min="0" 
             step="0.1"
             class="calc-input"
-            placeholder="បរិមាណ"
+            placeholder="Amount"
+            @input="updateCalculatorHistory"
           >
-          <select v-model="calculatorUnit" class="calc-select">
+          <select v-model="calculatorUnit" class="calc-select" @change="updateCalculatorHistory">
             <option value="damlung">ដំឡឹង</option>
             <option value="chi">ជី</option>
-            <option value="oz">អោនស៏</option>
-            <option value="gram">ក្រាម</option>
+            <option value="oz">Troy Oz</option>
+            <option value="gram">Gram</option>
           </select>
         </div>
+        
         <div class="calc-result">
-          <span class="result-label">តម្លៃសរុប:</span>
-          <span class="result-value">${{ formatPrice(calculateTotalPrice()) }}</span>
-          <div v-if="calculatorUnit === 'damlung'" class="result-note">
-            ដំឡឹងជាឯកតាស្តង់ដារកម្ពុជា
+          <div class="result-main">
+            <span>Total: {{ formatCurrencyDisplay(calculateTotalPrice()) }}</span>
+            <button @click="sharePrice" class="share-btn" title="Share price">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16,6 12,2 8,6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+            </button>
+          </div>
+          <div class="result-breakdown">
+            <small>{{ formatCurrencyDisplay(getPricePerUnit()) }} per {{ getUnitLabel(calculatorUnit) }}</small>
+          </div>
+        </div>
+
+        <!-- Price Alert Setup -->
+        <div class="alert-setup">
+          <label class="alert-label">
+            <input 
+              v-model.number="alertPrice" 
+              type="number" 
+              step="0.01" 
+              placeholder="Set price alert"
+              class="alert-input"
+            >
+            <button @click="setAlert" :disabled="!alertPrice" class="alert-btn">
+              Set Alert
+            </button>
+          </label>
+        </div>
+      </div>
+
+      <!-- Calculation History -->
+      <div v-if="calculationHistory.length > 0" class="history-section">
+        <div class="history-header">
+          <h3 class="section-title">Recent Calculations</h3>
+          <button @click="clearHistory" class="clear-btn">Clear</button>
+        </div>
+        <div class="history-list">
+          <div v-for="(calc, index) in calculationHistory.slice(0, 5)" :key="index" class="history-item" @click="loadCalculation(calc)">
+            <span class="history-calc">{{ calc.amount }} {{ getUnitLabel(calc.unit) }}</span>
+            <span class="history-result">{{ formatCurrencyDisplay(calc.total) }}</span>
+            <small class="history-time">{{ formatTime(calc.timestamp) }}</small>
           </div>
         </div>
       </div>
 
-      <!-- Market Info (Collapsible) -->
-      <div v-if="priceInfo.length > 0" class="market-info">
-        <button @click="showMarketInfo = !showMarketInfo" class="info-toggle">
-          <span>ព័ត៌មានទីផ្សារ</span>
+      <!-- Market Info -->
+      <div v-if="priceInfo.length > 0" class="market">
+        <button @click="showMarketInfo = !showMarketInfo" class="market-toggle">
+          Market Info
           <svg class="chevron" :class="{ 'rotate': showMarketInfo }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 9l6 6 6-6"/>
           </svg>
         </button>
         
-        <div v-if="showMarketInfo" class="info-content">
-          <div class="info-grid">
-            <div v-for="(info, index) in priceInfo" :key="index" class="info-item">
-              <span class="info-label">{{ info.title.split('|')[0].trim() }}</span>
-              <span class="info-value">{{ info.value }}</span>
-            </div>
+        <div v-if="showMarketInfo" class="market-content">
+          <div v-for="(info, index) in priceInfo" :key="index" class="market-item">
+            <span class="label">{{ info.title }}</span>
+            <span class="value">{{ formatCurrencyDisplay(parseFloat(info.value.replace('$', ''))) }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Compact Tips -->
+      <!-- Tips -->
       <div class="tips">
         <div class="tip">
-          <span class="tip-label">ឯកតាខ្មែរ:</span>
-          <span class="tip-text">ដំឡឹងគឺជាឯកតាមាសប្រពៃណីខ្មែរ = ៣៧.៥ក្រាម</span>
+          <strong>Units:</strong> 1 ដំឡឹង = 10 ជី = 37.5 grams
         </div>
         <div class="tip">
-          <span class="tip-label">ការបម្លែង:</span>
-          <span class="tip-text">១ដំឡឹង = ១០ជី • ១អោនស៏ = ០.៨៣ដំឡឹង</span>
+          <strong>Currency:</strong> Tap currency button to switch between USD and KHR
         </div>
         <div class="tip">
-          <span class="tip-label">ចំណាំ:</span>
-          <span class="tip-text">តម្លៃជាក់ស្តែងអាចខុសពីតម្លៃដែលបង្ហាញ</span>
+          <strong>Quick calc:</strong> Tap price cards to auto-fill calculator
+        </div>
+        <div class="tip">
+          <strong>Note:</strong> Actual prices may vary from displayed rates
         </div>
       </div>
     </main>
 
-    <!-- Minimal Footer -->
+    <!-- Footer -->
     <footer class="footer">
       <div class="container">
-        <p class="footer-text">
-          © {{ new Date().getFullYear() }} Gold Price Tracker • 
-          <a href="https://www.goldapi.io" target="_blank" class="footer-link">Data: GoldAPI</a>
-        </p>
+        <p>© {{ new Date().getFullYear() }} Gold Price Tracker • Data: <a href="https://www.goldapi.io" target="_blank">GoldAPI</a></p>
       </div>
     </footer>
+
+    <!-- Alert Notifications -->
+    <div v-if="showAlert" class="alert-notification" @click="dismissAlert">
+      <div class="alert-content">
+        <strong>Price Alert!</strong>
+        <p>{{ alertMessage }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'MinimalGoldTracker',
+  name: 'EnhancedGoldTracker',
   data() {
     return {
       // Constants
       TROY_OUNCE_TO_GRAM: 31.1035,
       DAMLUNG_TO_GRAM: 37.5,
       CHI_TO_GRAM: 3.75,
+      USD_TO_KHR: 4100, // Approximate exchange rate
 
       // API settings
       apiKey: 'goldapi-vf9wd19m6tl90rg-io',
@@ -175,54 +297,59 @@ export default {
       goldPrice: 0,
       previousPrice: 0,
       loading: true,
-      lastUpdated: 'កំពុងទាញយក...',
+      lastUpdated: 'Loading...',
       priceInfo: [],
       showMarketInfo: false,
       
+      // UI State
+      isDarkMode: false,
+      currentCurrency: 'USD',
+      refreshCooldown: 0,
+      
       // Calculator
       calculatorAmount: 1,
-      calculatorUnit: 'damlung', // Default to damlung
+      calculatorUnit: 'damlung',
       
-      // Enhanced Cache with localStorage fallback
-      apiCache: {
-        timestamp: null,
-        data: null
-      },
+      // New Features
+      priceHistory: [],
+      calculationHistory: [],
+      alerts: {},
+      alertPrice: null,
+      showAlert: false,
+      alertMessage: '',
       
-      // Strict API quota management (90 calls/month)
+      // Quick presets
+      quickPresets: [
+        { label: '1g', unit: 'gram', amount: 1 },
+        { label: '5g', unit: 'gram', amount: 5 },
+        { label: '1ជី', unit: 'chi', amount: 1 },
+        { label: '1ដំឡឹង', unit: 'damlung', amount: 1 }
+      ],
+      
+      // API Management
       apiQuota: {
         totalCalls: 0,
         dailyCalls: 0,
         lastCallDate: null,
         monthlyLimit: 90,
-        dailyLimit: 3, // 90/30 = 3 calls per day max
-        emergencyReserve: 10 // Keep 10 calls for month-end
+        dailyLimit: 3,
+        emergencyReserve: 10
       },
       
-      // Enhanced caching for extreme conservation
       longTermCache: {
         data: null,
         timestamp: null,
-        expiryHours: 8 // 8-hour default cache
+        expiryHours: 8
       },
       
-      // User interaction tracking
-      userActivity: {
-        lastInteraction: null,
-        isActive: true,
-        manualRefreshRequests: 0
-      },
-      
-      // Alternative data sources
       fallbackPrices: {
-        basePrice: 2420, // Recent baseline in USD per troy ounce
-        baseDamlungPrice: 2929, // Approximate damlung price (2420 * 37.5/31.1035)
+        basePrice: 2420,
         lastKnownPrice: 0,
-        priceHistory: [],
         estimatedPrice: 0
       }
     };
   },
+  
   computed: {
     statusClass() {
       if (this.loading) return 'loading';
@@ -242,14 +369,94 @@ export default {
         value: `${change > 0 ? '+' : ''}${percentage}%`,
         type: change > 0 ? 'positive' : 'negative'
       };
+    },
+
+    refreshButtonText() {
+      if (this.loading) return 'Loading...';
+      if (this.refreshCooldown > 0) return `Wait ${this.refreshCooldown}s`;
+      if (this.isRefreshDisabled) return 'Limit Reached';
+      return 'Refresh';
+    },
+
+    isRefreshDisabled() {
+      return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
+    },
+
+    usagePercentage() {
+      return (this.apiQuota.dailyCalls / this.apiQuota.dailyLimit) * 100;
+    },
+
+    usageClass() {
+      const percentage = this.usagePercentage;
+      if (percentage >= 100) return 'critical';
+      if (percentage >= 66) return 'warning';
+      return 'normal';
+    },
+
+    remainingCalls() {
+      return this.apiQuota.monthlyLimit - this.apiQuota.totalCalls;
+    },
+
+    chartData() {
+      if (this.priceHistory.length < 2) return [];
+      
+      const prices = this.priceHistory.map(h => h.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceRange = maxPrice - minPrice || 1;
+      
+      return this.priceHistory.map((history, index) => ({
+        x: (index / (this.priceHistory.length - 1)) * 300,
+        y: 100 - ((history.price - minPrice) / priceRange) * 100
+      }));
+    },
+
+    chartPoints() {
+      return this.chartData.map(point => `${point.x},${point.y}`).join(' ');
     }
   },
+
   methods: {
+    toggleDarkMode() {
+      this.isDarkMode = !this.isDarkMode;
+      localStorage.setItem('darkMode', this.isDarkMode);
+    },
+
+    toggleCurrency() {
+      this.currentCurrency = this.currentCurrency === 'USD' ? 'KHR' : 'USD';
+      localStorage.setItem('currency', this.currentCurrency);
+    },
+
+    formatCurrencyDisplay(value) {
+      if (!value) return this.currentCurrency === 'USD' ? '$0.00' : '0 ៛';
+      
+      if (this.currentCurrency === 'USD') {
+        return `$${this.formatPrice(value)}`;
+      } else {
+        const khrValue = value * this.USD_TO_KHR;
+        return `${Math.round(khrValue).toLocaleString()} ៛`;
+      }
+    },
+
     formatPrice(value) {
       if (!value) return '0.00';
       return value.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
+      });
+    },
+
+    formatTime(timestamp) {
+      return new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    formatChartDate(date) {
+      return new Date(date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
       });
     },
 
@@ -265,355 +472,478 @@ export default {
       return price * (conversions[unit] / this.TROY_OUNCE_TO_GRAM);
     },
 
-    calculateTotalPrice() {
-      if (!this.calculatorAmount || !this.goldPrice) return 0;
-      
-      let pricePerUnit;
-      switch (this.calculatorUnit) {
-        case 'oz':
-          pricePerUnit = this.goldPrice;
-          break;
-        case 'damlung':
-          pricePerUnit = this.convertToUnit('damlung', this.goldPrice);
-          break;
-        case 'chi':
-          pricePerUnit = this.convertToUnit('chi', this.goldPrice);
-          break;
-        case 'gram':
-          pricePerUnit = this.convertToUnit('gram', this.goldPrice);
-          break;
-        default:
-          pricePerUnit = this.goldPrice;
-      }
-      
-      return this.calculatorAmount * pricePerUnit;
+    getDamlungPrice() {
+      return this.convertToUnit('damlung', this.goldPrice);
     },
 
-    async fetchGoldPrice(forceRefresh = false) {
-      // Rate limiting check
-      if (!forceRefresh && this.lastApiCall && 
-          (new Date() - this.lastApiCall) < this.minApiInterval) {
-        console.log('API call rate limited');
+    getChiPrice() {
+      return this.convertToUnit('chi', this.goldPrice);
+    },
+
+    getPricePerUnit() {
+      switch (this.calculatorUnit) {
+        case 'oz': return this.goldPrice;
+        case 'damlung': return this.getDamlungPrice();
+        case 'chi': return this.getChiPrice();
+        case 'gram': return this.convertToUnit('gram', this.goldPrice);
+        default: return this.goldPrice;
+      }
+    },
+
+    calculateTotalPrice() {
+      if (!this.calculatorAmount || !this.goldPrice) return 0;
+      return this.calculatorAmount * this.getPricePerUnit();
+    },
+
+    getUnitLabel(unit) {
+      const labels = {
+        'oz': 'Troy Oz',
+        'damlung': 'Damlung',
+        'chi': 'Chi',
+        'gram': 'Gram'
+      };
+      return labels[unit] || unit;
+    },
+
+    setQuickAmount(unit, amount) {
+      this.calculatorUnit = unit;
+      this.calculatorAmount = amount;
+      this.updateCalculatorHistory();
+    },
+
+    updateCalculatorHistory() {
+      if (!this.calculatorAmount || !this.goldPrice) return;
+      
+      const calculation = {
+        amount: this.calculatorAmount,
+        unit: this.calculatorUnit,
+        total: this.calculateTotalPrice(),
+        timestamp: Date.now()
+      };
+      
+      // Add to history (keep last 10)
+      this.calculationHistory.unshift(calculation);
+      this.calculationHistory = this.calculationHistory.slice(0, 10);
+      
+      // Save to localStorage
+      localStorage.setItem('calculationHistory', JSON.stringify(this.calculationHistory));
+    },
+
+    saveToHistory() {
+      this.updateCalculatorHistory();
+      // Could add visual feedback here
+    },
+
+    loadCalculation(calc) {
+      this.calculatorAmount = calc.amount;
+      this.calculatorUnit = calc.unit;
+    },
+
+    clearHistory() {
+      this.calculationHistory = [];
+      localStorage.removeItem('calculationHistory');
+    },
+
+    setAlert() {
+      if (!this.alertPrice) return;
+      
+      this.alerts[this.calculatorUnit] = this.alertPrice;
+      localStorage.setItem('priceAlerts', JSON.stringify(this.alerts));
+      
+      // Reset input
+      this.alertPrice = null;
+      
+      // Show confirmation (could be a toast notification)
+      console.log(`Alert set for ${this.formatCurrencyDisplay(this.alertPrice)}`);
+    },
+
+    checkAlerts() {
+      Object.keys(this.alerts).forEach(unit => {
+        const alertPrice = this.alerts[unit];
+        const currentPrice = this.getPricePerUnit();
+        
+        if (currentPrice >= alertPrice) {
+          this.showAlert = true;
+          this.alertMessage = `${this.getUnitLabel(unit)} reached ${this.formatCurrencyDisplay(alertPrice)}!`;
+          
+          // Remove triggered alert
+          delete this.alerts[unit];
+          localStorage.setItem('priceAlerts', JSON.stringify(this.alerts));
+        }
+      });
+    },
+
+    dismissAlert() {
+      this.showAlert = false;
+    },
+
+    sharePrice() {
+      const text = `Gold Price: ${this.formatCurrencyDisplay(this.calculateTotalPrice())} for ${this.calculatorAmount} ${this.getUnitLabel(this.calculatorUnit)}`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: 'Gold Price',
+          text: text,
+          url: window.location.href
+        });
+      } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(text).then(() => {
+          console.log('Price copied to clipboard');
+        });
+      }
+    },
+
+    addToPriceHistory(price) {
+      const today = new Date().toDateString();
+      const existingIndex = this.priceHistory.findIndex(h => 
+        new Date(h.date).toDateString() === today
+      );
+      
+      if (existingIndex >= 0) {
+        // Update today's price
+        this.priceHistory[existingIndex].price = price;
+      } else {
+        // Add new entry
+        this.priceHistory.push({
+          date: new Date(),
+          price: price
+        });
+      }
+      
+      // Keep last 7 days
+      this.priceHistory = this.priceHistory.slice(-7);
+      localStorage.setItem('priceHistory', JSON.stringify(this.priceHistory));
+    },
+
+    startRefreshCooldown() {
+      this.refreshCooldown = 30;
+      const timer = setInterval(() => {
+        this.refreshCooldown--;
+        if (this.refreshCooldown <= 0) {
+          clearInterval(timer);
+        }
+      }, 1000);
+    },
+
+    async handleRefresh() {
+      if (this.isRefreshDisabled || this.refreshCooldown > 0) return;
+      
+      try {
+        await this.fetchGoldPrice(true);
+        this.startRefreshCooldown();
+      } catch (error) {
+        console.error('Refresh failed:', error);
+      }
+    },
+
+    canMakeApiCall() {
+      const today = new Date().toDateString();
+      
+      if (this.apiQuota.lastCallDate !== today) {
+        this.apiQuota.dailyCalls = 0;
+        this.apiQuota.lastCallDate = today;
+      }
+      
+      if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit) {
+        return { allowed: false, reason: 'Daily limit reached' };
+      }
+      
+      if (this.apiQuota.totalCalls >= this.apiQuota.monthlyLimit - this.apiQuota.emergencyReserve) {
+        return { allowed: false, reason: 'Monthly limit approached' };
+      }
+      
+      return { allowed: true, reason: '' };
+    },
+
+    estimateCurrentPrice() {
+      if (this.fallbackPrices.lastKnownPrice > 0) {
+        const daysSinceUpdate = Math.floor((new Date() - this.longTermCache.timestamp) / (1000 * 60 * 60 * 24));
+        const randomVariation = (Math.random() - 0.5) * 0.01 * daysSinceUpdate;
+        this.fallbackPrices.estimatedPrice = this.fallbackPrices.lastKnownPrice * (1 + randomVariation);
+        return this.fallbackPrices.estimatedPrice;
+      }
+      return this.fallbackPrices.basePrice;
+    },
+
+    async fetchGoldPrice(userRequested = false) {
+      const canCall = this.canMakeApiCall();
+      
+      if (!canCall.allowed && !userRequested) {
+        this.goldPrice = this.estimateCurrentPrice();
+        this.lastUpdated = `Estimated (${canCall.reason})`;
+        return;
+      }
+
+      const now = new Date();
+      const cacheAgeHours = this.longTermCache.timestamp ? 
+        (now - this.longTermCache.timestamp) / (1000 * 60 * 60) : 999;
+      
+      const maxCacheAge = userRequested ? 4 : 8;
+      if (this.longTermCache.data && cacheAgeHours < maxCacheAge) {
+        this.goldPrice = this.longTermCache.data.price;
+        this.lastUpdated = `${Math.floor(cacheAgeHours)}h ago`;
         return;
       }
 
       this.loading = true;
       
       try {
-        let goldData;
-        const now = new Date();
+        const endpoint = `${this.apiBaseUrl}/XAU/USD`;
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: {
+            'x-access-token': this.apiKey,
+            'Content-Type': 'application/json'
+          },
+          signal: AbortSignal.timeout(15000)
+        });
         
-        // Extended cache check - 30 minutes for automatic refresh, 5 minutes for manual
-        const cacheTimeout = forceRefresh ? 300000 : 1800000; // 5min manual, 30min auto
-        
-        if (this.apiCache.data && 
-            this.apiCache.timestamp && 
-            (now - this.apiCache.timestamp) < cacheTimeout) {
-          goldData = this.apiCache.data;
-          console.log('Using cached data');
-        } else {
-          // Check if it's market hours (gold market is 24/7 but most active during business hours)
-          const hour = now.getHours();
-          const isMarketActive = hour >= 9 && hour <= 17; // 9 AM to 5 PM
-          
-          // If outside market hours and we have recent data (< 2 hours), don't call API
-          if (!forceRefresh && !isMarketActive && this.apiCache.data && 
-              (now - this.apiCache.timestamp) < 7200000) { // 2 hours
-            goldData = this.apiCache.data;
-            console.log('Using cached data - outside market hours');
-          } else {
-            // Make API call with retry logic
-            console.log('Making API call');
-            const endpoint = `${this.apiBaseUrl}/XAU/USD`;
-            
-            try {
-              const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: {
-                  'x-access-token': this.apiKey,
-                  'Content-Type': 'application/json'
-                },
-                // Add timeout to prevent hanging requests
-                signal: AbortSignal.timeout(10000) // 10 second timeout
-              });
-              
-              if (!response.ok) {
-                throw new Error(`API error: ${response.status}`);
-              }
-              
-              goldData = await response.json();
-              this.lastApiCall = now;
-              this.refreshAttempts = 0; // Reset on success
-              
-              // Cache the response with timestamp
-              this.apiCache = {
-                data: goldData,
-                timestamp: now
-              };
-              
-              // Store in localStorage as backup (if available)
-              try {
-                localStorage.setItem('goldPriceCache', JSON.stringify(this.apiCache));
-              } catch (e) {
-                console.log('localStorage not available');
-              }
-              
-            } catch (apiError) {
-              console.error('API call failed:', apiError);
-              this.refreshAttempts++;
-              
-              // Try localStorage backup first
-              try {
-                const cached = localStorage.getItem('goldPriceCache');
-                if (cached) {
-                  const parsedCache = JSON.parse(cached);
-                  // Use localStorage cache if less than 24 hours old
-                  if ((now - new Date(parsedCache.timestamp)) < 86400000) {
-                    goldData = parsedCache.data;
-                    console.log('Using localStorage backup');
-                  }
-                }
-              } catch (e) {
-                console.log('localStorage backup failed');
-              }
-              
-              // If still no data, use fallback
-              if (!goldData) {
-                throw apiError;
-              }
-            }
-          }
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
         }
         
+        const goldData = await response.json();
+        
+        // Update quota
+        this.apiQuota.dailyCalls++;
+        this.apiQuota.totalCalls++;
+        this.apiQuota.lastCallDate = now.toDateString();
+        
+        localStorage.setItem('apiQuota', JSON.stringify(this.apiQuota));
+        
+        // Update prices
         this.previousPrice = this.goldPrice;
         this.goldPrice = goldData.price;
+        this.fallbackPrices.lastKnownPrice = goldData.price;
+        
+        // Add to price history
+        this.addToPriceHistory(goldData.price);
+        
+        // Check alerts
+        this.checkAlerts();
+        
+        // Cache data
+        this.longTermCache = {
+          data: goldData,
+          timestamp: now,
+          expiryHours: 8
+        };
+        
+        localStorage.setItem('goldPriceLongCache', JSON.stringify(this.longTermCache));
         
         this.priceInfo = [
-          { title: 'បើក | Open', value: `${this.formatPrice(goldData.open_price)}` },
-          { title: 'ខ្ពស់ | High', value: `${this.formatPrice(goldData.high_price)}` },
-          { title: 'ទាប | Low', value: `${this.formatPrice(goldData.low_price)}` },
-          { title: 'មាស | Purity', value: `${goldData.metal_purity || '99.5%'}` }
+          { title: 'Open', value: `$${this.formatPrice(goldData.open_price)}` },
+          { title: 'High', value: `$${this.formatPrice(goldData.high_price)}` },
+          { title: 'Low', value: `$${this.formatPrice(goldData.low_price)}` },
+          { title: 'Purity', value: `${goldData.metal_purity || '99.5%'}` }
         ];
         
-        this.lastUpdated = new Date().toLocaleString('km-KH', {
-          month: 'short',
-          day: 'numeric',
+        this.lastUpdated = now.toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit'
         });
         
       } catch (error) {
-        console.error('Error fetching gold price:', error);
-        this.lastUpdated = 'មានបញ្ហា';
-        
-        // Use fallback price only if we have no data at all
-        if (this.goldPrice === 0) {
-          this.goldPrice = 2420; // Static fallback
-          this.lastUpdated = 'ទិន្នន័យបម្រុង';
-        }
-        
-        // Disable background refresh if too many failures
-        if (this.refreshAttempts >= this.maxRefreshAttempts) {
-          this.backgroundRefreshEnabled = false;
-          console.log('Background refresh disabled due to repeated failures');
-        }
+        this.goldPrice = this.estimateCurrentPrice();
+        this.lastUpdated = 'Error - estimate';
+        throw error;
       } finally {
         this.loading = false;
       }
-    },
-
-    // Smart refresh that considers various factors
-    smartRefresh() {
-      const now = new Date();
-      
-      // Don't refresh if disabled due to failures
-      if (!this.backgroundRefreshEnabled) {
-        return;
-      }
-      
-      // Don't refresh if user is not active (page not visible)
-      if (document.hidden) {
-        return;
-      }
-      
-      // Don't refresh during weekend (gold market less active)
-      const dayOfWeek = now.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
-        return;
-      }
-      
-      // Only refresh during active hours
-      const hour = now.getHours();
-      if (hour < 6 || hour > 22) { // Outside 6 AM - 10 PM
-        return;
-      }
-      
-      this.fetchGoldPrice(false);
     }
   },
+
   mounted() {
-    // Load quota tracking from localStorage
+    // Load saved preferences
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode !== null) {
+      this.isDarkMode = JSON.parse(savedDarkMode);
+    }
+
+    const savedCurrency = localStorage.getItem('currency');
+    if (savedCurrency) {
+      this.currentCurrency = savedCurrency;
+    }
+
+    // Load saved data
     try {
       const savedQuota = localStorage.getItem('apiQuota');
       if (savedQuota) {
         this.apiQuota = { ...this.apiQuota, ...JSON.parse(savedQuota) };
       }
+
+      const savedHistory = localStorage.getItem('calculationHistory');
+      if (savedHistory) {
+        this.calculationHistory = JSON.parse(savedHistory);
+      }
+
+      const savedAlerts = localStorage.getItem('priceAlerts');
+      if (savedAlerts) {
+        this.alerts = JSON.parse(savedAlerts);
+      }
+
+      const savedPriceHistory = localStorage.getItem('priceHistory');
+      if (savedPriceHistory) {
+        this.priceHistory = JSON.parse(savedPriceHistory);
+      }
       
       const longCache = localStorage.getItem('goldPriceLongCache');
       if (longCache) {
         this.longTermCache = JSON.parse(longCache);
-        // Use long cache if less than 24 hours old
         const cacheAge = (new Date() - new Date(this.longTermCache.timestamp)) / (1000 * 60 * 60);
         if (cacheAge < 24) {
           this.goldPrice = this.longTermCache.data.price;
-          this.lastUpdated = `${Math.floor(cacheAge)}ម៉ោងមុន (រក្សាទុក)`;
+          this.lastUpdated = `${Math.floor(cacheAge)}h ago`;
           this.loading = false;
-          
-          // Load additional cached data
-          const savedFallback = localStorage.getItem('fallbackPrices');
-          if (savedFallback) {
-            this.fallbackPrices = { ...this.fallbackPrices, ...JSON.parse(savedFallback) };
-          }
-          
-          return; // Don't make API call on startup if we have recent cache
+          return;
         }
       }
     } catch (e) {
       console.log('Failed to load saved data');
     }
     
-    // Only make API call on startup if no recent cache
     this.fetchGoldPrice(false);
-    
-    // NO automatic background refresh - user must manually refresh
-    // This saves all API calls for when users actually want fresh data
-    
-    // Only refresh when user returns to page after long absence
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        // Check if data is very stale (>12 hours) before auto-refreshing
-        const cacheAge = this.longTermCache.timestamp ? 
-          (new Date() - this.longTermCache.timestamp) / (1000 * 60 * 60) : 999;
-        
-        if (cacheAge > 12) {
-          const canCall = this.canMakeApiCall();
-          if (canCall.allowed) {
-            this.fetchGoldPrice(false);
-          }
-        }
-      }
-    });
   }
 }
 </script>
 
 <style scoped>
-/* Mobile-First Minimal Design */
+/* Enhanced Clean Design with Dark Mode */
 .app {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Khmer OS', sans-serif;
-  background: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #fafafa;
   min-height: 100vh;
-  color: #1e293b;
+  color: #333;
+  transition: all 0.3s ease;
+}
+
+.app.dark {
+  background: #1a1a1a;
+  color: #e5e5e5;
 }
 
 .container {
   max-width: 480px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 20px;
 }
 
-/* Header */
+/* Enhanced Header */
 .header {
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 16px 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  background: white;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 20px 0;
+  transition: all 0.3s ease;
+}
+
+.app.dark .header {
+  background: #2a2a2a;
+  border-bottom-color: #404040;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .title {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
-  margin: 0 0 8px 0;
-  color: #0f172a;
+  margin: 0;
+  color: inherit;
 }
 
-.update-status {
+.header-controls {
   display: flex;
-  align-items: center;
   gap: 8px;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.theme-toggle, .currency-toggle {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.status-dot.loading {
-  background: #f59e0b;
+.app.dark .theme-toggle,
+.app.dark .currency-toggle {
+  background: #404040;
+  border-color: #555;
+  color: #e5e5e5;
+}
+
+.theme-toggle:hover,
+.currency-toggle:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.app.dark .theme-toggle:hover,
+.app.dark .currency-toggle:hover {
+  background: #555;
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot.loading {
+  background: #fbbf24;
   animation: pulse 2s infinite;
 }
 
-.status-dot.success {
-  background: #10b981;
+.dot.success {
+  background: #22c55e;
 }
 
-.status-dot.error {
+.dot.error {
   background: #ef4444;
 }
 
-.update-time {
-  font-size: 12px;
-  color: #64748b;
+.time {
+  font-size: 13px;
+  color: #666;
 }
 
-/* Main Content */
+.app.dark .time {
+  color: #999;
+}
+
+/* Main */
 .main {
-  padding: 16px;
+  padding: 24px 20px;
   max-width: 480px;
   margin: 0 auto;
 }
 
-.result-note {
-  font-size: 11px;
-  color: #64748b;
-  margin-top: 4px;
-  font-style: italic;
-}
-
-/* API Usage Indicator */
-.api-usage {
-  margin-top: 8px;
-  text-align: center;
-}
-
-.usage-bar {
-  width: 100%;
-  height: 4px;
-  background: #e2e8f0;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.usage-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
-  transition: width 0.3s ease;
-}
-
-.usage-text {
-  font-size: 11px;
-  color: #64748b;
-  font-weight: 500;
-}
-
-/* Refresh Button */
+/* Refresh */
 .refresh-section {
-  margin-bottom: 20px;
+  margin-bottom: 32px;
 }
 
 .refresh-btn {
@@ -623,22 +953,27 @@ export default {
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background: #f59e0b ;
+  background: #111;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: opacity 0.2s;
+}
+
+.app.dark .refresh-btn {
+  background: #fbbf24;
+  color: #111;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: #fbbf24 ;
+  opacity: 0.9;
 }
 
 .refresh-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -651,71 +986,180 @@ export default {
   animation: spin 1s linear infinite;
 }
 
-/* Price Cards */
-.price-cards {
+/* Usage */
+.usage {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.bar {
+  width: 100%;
+  height: 3px;
+  background: #e5e5e5;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.app.dark .bar {
+  background: #404040;
+}
+
+.fill {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.fill.normal {
+  background: #22c55e;
+}
+
+.fill.warning {
+  background: #fbbf24;
+}
+
+.fill.critical {
+  background: #ef4444;
+}
+
+.usage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usage-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.app.dark .usage-text {
+  color: #999;
+}
+
+.usage-warning {
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Chart Section */
+.chart-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: inherit;
+}
+
+.chart-container {
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.app.dark .chart-container {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.price-chart {
+  width: 100%;
+  height: 80px;
+  margin-bottom: 8px;
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+}
+
+.app.dark .chart-labels {
+  color: #999;
+}
+
+/* Cards */
+.cards {
   display: grid;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
 .card {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
   border-radius: 8px;
-  padding: 16px;
-  transition: all 0.2s;
+  padding: 20px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.app.dark .card {
+  background: #2a2a2a;
+  border-color: #404040;
 }
 
 .card:hover {
-  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.app.dark .card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .card.primary {
-  border-color: #f59e0b ;
-  background: linear-gradient(135deg, #f59e0b  0%, #fbbf24  100%);
+  border-color: #fbbf24;
+  background: #fbbf24;
   color: white;
 }
 
-.card-header {
+.card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
-.card-title {
+.unit {
   font-size: 16px;
   font-weight: 600;
 }
 
-.card-unit {
+.weight {
   font-size: 12px;
   opacity: 0.7;
 }
 
-.price-display {
+.price {
   min-height: 32px;
 }
 
 .skeleton {
   height: 24px;
-  background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #e5e5e5;
   border-radius: 4px;
+  animation: shimmer 1.5s infinite;
 }
 
-.price {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+.app.dark .skeleton {
+  background: #404040;
+}
+
+.card.primary .skeleton {
+  background: rgba(255,255,255,0.3);
 }
 
 .amount {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
+  color: inherit;
 }
 
 .change {
@@ -723,6 +1167,8 @@ export default {
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
+  margin-top: 4px;
+  display: inline-block;
 }
 
 .change.positive {
@@ -735,82 +1181,337 @@ export default {
   color: #dc2626;
 }
 
-/* Calculator */
+.price-alert {
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* Enhanced Calculator */
 .calculator {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
+  padding: 20px;
+  margin-bottom: 32px;
+  transition: all 0.3s ease;
+}
+
+.app.dark .calculator {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.calc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 .calc-title {
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 12px 0;
+  margin: 0;
+  color: inherit;
 }
 
-.calc-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.save-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.app.dark .save-btn {
+  background: #404040;
+  border-color: #555;
+  color: #e5e5e5;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.quick-amounts {
+  display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.quick-btn {
+  padding: 6px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.app.dark .quick-btn {
+  background: #404040;
+  border-color: #555;
+  color: #e5e5e5;
+}
+
+.quick-btn:hover,
+.quick-btn.active {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: white;
+}
+
+.calc-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .calc-input, .calc-select {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  padding: 10px 12px;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
   font-size: 14px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.app.dark .calc-input,
+.app.dark .calc-select {
+  background: #404040;
+  border-color: #555;
+  color: #e5e5e5;
 }
 
 .calc-input:focus, .calc-select:focus {
   outline: none;
-  border-color: #f59e0b ;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #fbbf24;
 }
 
 .calc-result {
+  background: #f8f8f8;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.app.dark .calc-result {
+  background: #404040;
+}
+
+.result-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.share-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.share-btn:hover {
+  color: #fbbf24;
+}
+
+.share-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.result-breakdown {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+.app.dark .result-breakdown {
+  color: #999;
+}
+
+.alert-setup {
+  margin-top: 16px;
+}
+
+.alert-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.alert-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+}
+
+.app.dark .alert-input {
+  background: #404040;
+  border-color: #555;
+  color: #e5e5e5;
+}
+
+.alert-btn {
+  padding: 8px 16px;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  background: #fbbf24;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.alert-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* History Section */
+.history-section {
+  margin-bottom: 32px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.clear-btn {
+  padding: 4px 8px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.app.dark .clear-btn {
+  background: #404040;
+  border-color: #555;
+  color: #999;
+}
+
+.clear-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.app.dark .clear-btn:hover {
+  background: #555;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  background: #f8fafc;
-  border-radius: 6px;
-}
-
-.result-label {
-  font-size: 14px;
-  color: #64748b;
-}
-
-.result-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-/* Market Info */
-.market-info {
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  overflow: hidden;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.info-toggle {
+.app.dark .history-item {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.history-item:hover {
+  background: #f8f8f8;
+  border-color: #ccc;
+}
+
+.app.dark .history-item:hover {
+  background: #404040;
+}
+
+.history-calc {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.history-result {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.history-time {
+  font-size: 11px;
+  color: #666;
+}
+
+.app.dark .history-time {
+  color: #999;
+}
+
+/* Market */
+.market {
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  margin-bottom: 32px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.app.dark .market {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.market-toggle {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 16px 20px;
   background: none;
   border: none;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  color: #0f172a;
+  color: inherit;
 }
 
 .chevron {
@@ -823,97 +1524,135 @@ export default {
   transform: rotate(180deg);
 }
 
-.info-content {
-  border-top: 1px solid #e2e8f0;
+.market-content {
+  border-top: 1px solid #e5e5e5;
+  padding: 16px 20px;
 }
 
-.info-grid {
-  padding: 16px;
-  display: grid;
-  gap: 12px;
+.app.dark .market-content {
+  border-top-color: #404040;
 }
 
-.info-item {
+.market-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 8px;
 }
 
-.info-label {
+.market-item:last-child {
+  margin-bottom: 0;
+}
+
+.label {
   font-size: 14px;
-  color: #64748b;
+  color: #666;
 }
 
-.info-value {
+.app.dark .label {
+  color: #999;
+}
+
+.value {
   font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: inherit;
 }
 
 /* Tips */
 .tips {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
+  padding: 20px;
+  margin-bottom: 32px;
+  transition: all 0.3s ease;
+}
+
+.app.dark .tips {
+  background: #2a2a2a;
+  border-color: #404040;
 }
 
 .tip {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  font-size: 14px;
+  color: #666;
   margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.app.dark .tip {
+  color: #999;
 }
 
 .tip:last-child {
   margin-bottom: 0;
 }
 
-.tip-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-}
-
-.tip-text {
-  font-size: 14px;
-  color: #64748b;
-  line-height: 1.4;
+.tip strong {
+  color: inherit;
 }
 
 /* Footer */
 .footer {
   background: white;
-  border-top: 1px solid #e2e8f0;
-  padding: 16px 0;
+  border-top: 1px solid #e5e5e5;
+  padding: 20px 0;
   margin-top: auto;
+  transition: all 0.3s ease;
 }
 
-.footer-text {
+.app.dark .footer {
+  background: #2a2a2a;
+  border-top-color: #404040;
+}
+
+.footer p {
   font-size: 12px;
-  color: #64748b;
+  color: #666;
   text-align: center;
   margin: 0;
 }
 
-.footer-link {
-  color: #f59e0b;
+.app.dark .footer p {
+  color: #999;
+}
+
+.footer a {
+  color: #fbbf24;
   text-decoration: none;
 }
 
-.footer-link:hover {
-  text-decoration: underline;
+/* Alert Notification */
+.alert-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #fbbf24;
+  color: white;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  cursor: pointer;
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+  max-width: 300px;
+}
+
+.alert-content strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.alert-content p {
+  margin: 0;
+  font-size: 14px;
 }
 
 /* Animations */
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 @keyframes spin {
@@ -922,59 +1661,46 @@ export default {
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
-/* Larger screens */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
 @media (min-width: 481px) {
-  .container {
-    max-width: 600px;
-  }
-  
-  .main {
-    max-width: 600px;
-  }
-  
-  .price-cards {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
-  
-  .calc-inputs {
-    grid-template-columns: 2fr 1fr;
-  }
+  .container { max-width: 600px; }
+  .main { max-width: 600px; }
+  .cards { grid-template-columns: repeat(3, 1fr); }
+  .quick-amounts { justify-content: center; }
 }
 
 @media (min-width: 768px) {
-  .container {
-    max-width: 800px;
-  }
-  
-  .main {
-    max-width: 800px;
-    padding: 24px;
-  }
-  
-  .price-cards {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .container { max-width: 800px; }
+  .main { max-width: 800px; padding: 32px; }
 }
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-/* Focus styles */
-.refresh-btn:focus,
-.calc-input:focus,
-.calc-select:focus,
-.info-toggle:focus {
-  outline: 2px solid #f59e0b ;
-  outline-offset: 2px;
+@media (prefers-color-scheme: dark) {
+  .app:not(.dark) {
+    /* Option to auto-detect system dark mode preference */
+  }
 }
 </style>
