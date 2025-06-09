@@ -1685,6 +1685,22 @@
     overflow: visible;
   }
   
+  /* Enhanced Mobile Header */
+  .header {
+    padding: 1rem 0.5rem;
+    position: relative;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
+  
+  .header-text {
+    order: 1;
+  }
+  
   .header h1 {
     font-size: 1.5rem;
   }
@@ -1693,163 +1709,388 @@
     font-size: 0.8rem;
   }
   
+  .clear-session-btn {
+    order: 2;
+    font-size: 0.85rem;
+    padding: 0.75rem 1.5rem;
+    min-height: 44px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
+  }
+  
+  /* Improved Mobile Drop Zone */
+  .upload-section {
+    order: 1;
+  }
+  
   .drop-zone {
-    padding: 1.5rem 1rem;
-    min-height: 120px;
-    margin: 0.75rem;
+    padding: 2rem 1rem;
+    min-height: 180px;
+    margin: 1rem;
+    border-width: 3px;
+    border-radius: 16px;
+    touch-action: manipulation;
+  }
+  
+  .drop-zone:active {
+    transform: scale(0.98);
   }
   
   .drop-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
   }
   
   .drop-text {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
   }
   
   .drop-subtext {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
+    margin-bottom: 1.5rem;
   }
   
+  /* Better Mobile Buttons */
   .upload-actions {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
   }
   
   .upload-actions .btn {
     width: 100%;
     justify-content: center;
-    padding: 0.75rem;
-    font-size: 0.9rem;
+    padding: 1rem;
+    font-size: 1rem;
+    min-height: 50px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    touch-action: manipulation;
   }
   
+  .upload-actions .btn:active {
+    transform: scale(0.95);
+  }
+  
+  /* Mobile Settings Panel */
   .settings-panel {
     order: 3;
     margin-top: 1rem;
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+  
+  .settings-title {
+    font-size: 1rem;
+    margin-bottom: 1rem;
   }
   
   .setting-item {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+    align-items: stretch;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .setting-label {
+    font-size: 0.9rem;
+    justify-content: center;
   }
   
   .setting-control {
     width: 100%;
     justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
   }
   
   .quality-slider {
     flex: 1;
     width: auto;
     margin-right: 1rem;
+    height: 6px;
   }
   
+  .quality-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #007aff;
+    min-width: 50px;
+  }
+  
+  /* Enhanced Dimensions Info for Mobile */
+  .dimensions-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .info-item {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+    justify-content: center;
+    text-align: center;
+  }
+  
+  /* Mobile File List */
   .file-list {
     order: 2;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .file-list-header {
+    padding: 1.25rem;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+  
+  .file-list-title {
+    font-size: 1rem;
+  }
+  
+  .file-count {
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    align-self: center;
+  }
+  
+  .file-items-container {
     max-height: 50vh;
     overflow-y: auto;
   }
   
-  .file-items-container {
-    max-height: 40vh;
-    overflow-y: auto;
-  }
-  
+  /* Enhanced Mobile File Items */
   .file-item {
     padding: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
     min-height: auto;
+    border-radius: 12px;
+    margin-bottom: 0.5rem;
+    position: relative;
+    touch-action: manipulation;
+    background: white;
+    border: 1px solid #e0e0e0;
+  }
+  
+  .file-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .file-item:active {
+    background: #f8f9fa;
+    transform: scale(0.98);
+  }
+  
+  /* Mobile File Item Header */
+  .file-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
   }
   
   .file-preview {
-    width: 40px;
-    height: 40px;
-    font-size: 0.9rem;
+    width: 60px;
+    height: 60px;
+    font-size: 1.2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
   }
   
   .file-info {
     flex: 1;
-    min-width: 150px;
+    min-width: 0;
+    margin-right: 0;
+    margin-bottom: 0;
   }
   
   .file-name {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+    word-break: break-word;
   }
   
   .file-meta {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    gap: 0.5rem;
+    display: flex;
     flex-direction: column;
-    gap: 0.125rem;
+    align-items: flex-start;
+  }
+  
+  .file-size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .file-dimensions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  
+  .dimensions-preserved {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    background: #d4edda;
+    color: #155724;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  
+  /* Mobile File Actions Row */
+  .file-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
   }
   
   .file-actions {
-    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  
+  .file-actions .btn {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    margin-top: 0.5rem;
   }
   
   .file-status {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    font-size: 0.65rem;
-    padding: 0.25rem 0.5rem;
+    position: static;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    box-shadow: none;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   
+  /* Mobile Download Options */
   .download-options {
     order: 4;
     margin-top: 1rem;
+    border-radius: 16px;
+  }
+  
+  .download-header {
+    padding: 1.5rem;
+  }
+  
+  .download-title {
+    font-size: 1.2rem;
+  }
+  
+  .download-summary {
+    font-size: 0.85rem;
   }
   
   .download-actions-grid {
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 1rem;
+    padding: 1.5rem;
   }
   
   .download-option {
-    padding: 1.25rem;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    touch-action: manipulation;
+  }
+  
+  .download-option:active {
+    transform: scale(0.95);
   }
   
   .download-option-icon {
-    font-size: 1.75rem;
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
   }
   
   .download-option-title {
-    font-size: 0.85rem;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
   }
   
   .download-option-desc {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
   
+  /* Mobile Action Bar */
   .action-bar {
-    padding: 1rem 0 0.5rem 0;
+    padding: 1.5rem 0.5rem;
     position: sticky;
     bottom: 0;
-    background: #f8f9fa;
+    background: linear-gradient(to top, #f8f9fa 0%, #f8f9fa 80%, transparent 100%);
     z-index: 10;
+    backdrop-filter: blur(10px);
   }
   
   .main-action {
     max-width: none;
     width: 100%;
-    padding: 1rem;
-    font-size: 1rem;
+    padding: 1.25rem;
+    font-size: 1.1rem;
+    min-height: 56px;
+    border-radius: 16px;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+    touch-action: manipulation;
   }
   
+  .main-action:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  
+  /* Mobile Progress */
   .global-progress {
-    margin: 0.5rem 0;
-    height: 4px;
+    margin: 1rem 0;
+    height: 6px;
+    border-radius: 3px;
   }
   
+  .global-progress-fill {
+    border-radius: 3px;
+  }
+  
+  /* Mobile Stats Footer */
   .stats-footer {
     flex-direction: column;
     gap: 1rem;
-    padding: 1rem;
+    padding: 1.5rem;
     margin-top: 1rem;
-    position: relative;
+    border-radius: 16px;
   }
   
   .stat-item {
@@ -1857,22 +2098,19 @@
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 0.75rem;
+    padding: 1rem 1.25rem;
     background: #f8f9fa;
-    border-radius: 8px;
-  }
-  
-  .stat-item:last-child {
-    border-bottom: none;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   }
   
   .stat-number {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     order: 2;
   }
   
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     order: 1;
     text-transform: none;
     font-weight: 600;
@@ -1886,62 +2124,143 @@
   .preview-modal-content {
     max-width: 95vw;
     max-height: 95vh;
+    border-radius: 16px;
+  }
+  
+  .preview-modal-header {
+    padding: 1.25rem;
+  }
+  
+  .preview-modal-header h3 {
+    max-width: 250px;
+    font-size: 1rem;
+  }
+  
+  .preview-modal-close {
+    font-size: 1.8rem;
+    padding: 0.5rem;
+    min-height: 44px;
+    min-width: 44px;
   }
   
   .preview-comparison {
     grid-template-columns: 1fr;
     gap: 1.5rem;
-    padding: 1rem;
+    padding: 1.25rem;
   }
   
-  .preview-modal-header h3 {
-    max-width: 250px;
-    font-size: 0.9rem;
+  .preview-column-header {
+    margin-bottom: 1rem;
+  }
+  
+  .preview-column-header h4 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .preview-info {
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .preview-image-container {
+    min-height: 250px;
   }
   
   .preview-modal-footer {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    padding: 1.25rem;
   }
   
   .preview-modal-footer .btn {
     width: 100%;
     justify-content: center;
+    min-height: 50px;
+    font-size: 1rem;
+    border-radius: 12px;
   }
   
+  /* Mobile Error Messages */
   .error-message {
     position: fixed;
     top: 1rem;
     left: 0.5rem;
     right: 0.5rem;
     z-index: 1000;
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
   
   .error-title {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
   
   .error-desc {
-    font-size: 0.8rem;
-    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
   }
   
   .error-actions {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
   
   .error-actions .btn {
     width: 100%;
     justify-content: center;
+    min-height: 44px;
+    border-radius: 10px;
   }
   
+  /* Mobile Empty State */
+  .empty-state {
+    padding: 2.5rem 1.5rem;
+    flex: 1;
+    height: 100%;
+    border-radius: 16px;
+  }
+  
+  .empty-state-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .empty-state-title {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-state-description {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+  
+  .empty-state-features {
+    gap: 1rem;
+  }
+  
+  .feature-item {
+    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .feature-icon {
+    font-size: 1.2rem;
+  }
+  
+  /* Remove tooltips on mobile */
   .tooltip::after {
     display: none;
   }
   
+  /* Improved touch interactions */
   * {
     max-width: 100%;
     box-sizing: border-box;
@@ -1949,62 +2268,80 @@
   
   .file-items-container {
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
   }
   
-  .btn, .download-option, .file-actions .btn {
+  .file-items-container::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .btn, .download-option, .file-actions .btn, .main-action {
     min-height: 44px;
     touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   
-  .header-content {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
+  /* Add haptic feedback simulation */
+  .btn:active, .download-option:active, .file-item:active {
+    transition: transform 0.1s ease;
   }
   
-  .header-text {
-    order: 1;
+  /* Improve text readability */
+  .file-name, .file-meta, .settings-title, .download-title {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
-  .clear-session-btn {
-    order: 2;
-    font-size: 0.85rem;
-    padding: 0.6rem 1.2rem;
+  /* Better focus states for mobile */
+  .btn:focus, .file-item:focus, .download-option:focus {
+    outline: 2px solid #007aff;
+    outline-offset: 2px;
   }
   
-  /* Mobile Empty State */
-  .empty-state {
-    padding: 2rem 1rem;
-    flex: 1;
-    height: 100%;
-  }
-  
-  .empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-  
-  .empty-state-title {
-    font-size: 1.25rem;
-  }
-  
-  .empty-state-description {
-    font-size: 0.9rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .empty-state-features {
-    gap: 0.75rem;
-  }
-  
-  .feature-item {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
-  }
-  
-  .feature-icon {
-    font-size: 1rem;
+  /* Landscape orientation adjustments */
+  @media (max-width: 768px) and (orientation: landscape) {
+    .compressor-container {
+      padding: 0.5rem;
+    }
+    
+    .header {
+      padding: 0.75rem 0.5rem;
+    }
+    
+    .header-content {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    
+    .main-content {
+      gap: 1rem;
+    }
+    
+    .action-bar {
+      padding: 1rem 0.5rem;
+    }
+    
+    .stats-footer {
+      flex-direction: row;
+      gap: 0.5rem;
+    }
+    
+    .stat-item {
+      flex-direction: column;
+      text-align: center;
+      padding: 0.75rem;
+    }
+    
+    .stat-number {
+      order: 1;
+      font-size: 1.1rem;
+    }
+    
+    .stat-label {
+      order: 2;
+      font-size: 0.75rem;
+    }
   }
   }
   </style>
