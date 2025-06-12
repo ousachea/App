@@ -13,6 +13,7 @@
     "nuxt": "^2.15.3"
   },
   "dependencies": {
+    "@nuxt/icon": "^1.13.0",
     "browser-image-compression": "^2.0.2",
     "chart.js": "^4.4.9",
     "diff": "^7.0.0",
