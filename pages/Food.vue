@@ -71,12 +71,12 @@ export default {
       restaurants: [
         'Kungfu',
         'Gege',
-        'E Hong',
+        'ស៊ុប E Hong',
         'Oudon',
-        'By Pshar Jas',
-        "P'het IFL",
-        "P'het Orussey",
-        'Sach ko ang Orussey'
+        'បាយផ្សារចាស់',
+        "ប្រហិត IFL",
+        "ប្រហិត Orussey",
+        'សាច់​គោ​អាំង Orussey'
       ],
       selectedRestaurant: 'Ready to discover your next meal?',
       isSpinning: false,
