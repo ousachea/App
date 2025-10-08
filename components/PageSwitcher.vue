@@ -35,6 +35,7 @@ export default {
       default: () => [
       { label: 'Home', path: '/', icon: '🏠' },
   { label: 'Compressor', path: '/compressor', icon: '🔄' },
+  { label: 'Compressor V2', path: '/compressorv2', icon: '🔄' },
   { label: 'Gold', path: '/gold', icon: '✨' },
   { label: 'MPG', path: '/MPG', icon: '🚗' },
   { label: 'Phone', path: '/Phone', icon: '📱' },
