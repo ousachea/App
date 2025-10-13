@@ -317,7 +317,7 @@ export default {
       // Check cache
       const now = new Date();
       const cacheAgeHours = this.cache.timestamp ? 
-        (now - this.cache.timestamp) / (1000 * 60 * 60) : 999;
+        (now - new Date(this.cache.timestamp)) / (1000 * 60 * 60) : 999;
       
       if (this.cache.data && cacheAgeHours < 8 && !userRequested) {
         this.goldPrice = this.cache.data.price;
@@ -341,21 +341,31 @@ export default {
       this.loading = true;
       
       try {
-        const response = await this.$axios.$get(`${this.apiBaseUrl}/XAU/USD`, {
-          headers: {
-            'x-access-token': this.apiKey
-          },
-          timeout: 15000
-        });
+        const endpoint = `${this.apiBaseUrl}/XAU/USD`;
         
-        this.goldPrice = response.price;
+        // Use native fetch instead of axios
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: {
+            'x-access-token': this.apiKey,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        this.goldPrice = data.price;
         this.apiQuota.dailyCalls++;
         this.apiQuota.totalCalls++;
         this.apiQuota.lastCallDate = today;
         
         this.cache = {
-          data: response,
-          timestamp: now
+          data: data,
+          timestamp: now.toISOString()
         };
         
         if (process.client) {
@@ -370,7 +380,13 @@ export default {
         
       } catch (error) {
         console.error('API Error:', error);
-        this.lastUpdated = 'Error loading';
+        this.lastUpdated = 'Error - check console';
+        
+        // Use cached data if available
+        if (this.cache.data) {
+          this.goldPrice = this.cache.data.price;
+          this.lastUpdated = 'Using cached data';
+        }
       } finally {
         this.loading = false;
       }
