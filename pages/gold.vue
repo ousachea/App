@@ -34,17 +34,75 @@
       <div class="container">
         
         <!-- Manual Price Input -->
-        <div v-if="isManualMode" class="manual-input">
-          <input 
-            v-model.number="manualPrice" 
-            type="number" 
-            step="0.01"
-            min="0"
-            class="price-input"
-            placeholder="Enter Troy Oz price"
-            @input="updateManualPrice"
-          >
-          <button @click="clearManualPrice" class="link-btn">Use API</button>
+        <div class="manual-section" :class="{ 'expanded': isManualMode }">
+          <div v-if="!isManualMode" class="manual-prompt">
+            <div class="prompt-content">
+              <svg class="prompt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              <div>
+                <div class="prompt-title">Set Custom Price</div>
+                <div class="prompt-desc">Enter your own price to calculate</div>
+              </div>
+            </div>
+            <button @click="enableManualMode" class="prompt-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div v-else class="manual-input-expanded">
+            <div class="input-header">
+              <label class="input-label">Troy Oz Price (USD)</label>
+              <button @click="clearManualPrice" class="close-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div class="input-with-currency">
+              <span class="currency-symbol">$</span>
+              <input 
+                v-model.number="manualPrice" 
+                type="number" 
+                step="0.01"
+                min="0"
+                class="price-input"
+                placeholder="2650.00"
+                @input="updateManualPrice"
+                ref="manualInput"
+              >
+            </div>
+
+            <div v-if="manualPrice > 0" class="quick-conversions">
+              <div class="conversion-item">
+                <span class="conversion-label">ដំឡឹង</span>
+                <span class="conversion-value">{{ formatCurrencyDisplay(convertToUnit('damlung', manualPrice)) }}</span>
+              </div>
+              <div class="conversion-item">
+                <span class="conversion-label">ជី</span>
+                <span class="conversion-value">{{ formatCurrencyDisplay(convertToUnit('chi', manualPrice)) }}</span>
+              </div>
+              <div class="conversion-item">
+                <span class="conversion-label">Gram</span>
+                <span class="conversion-value">{{ formatCurrencyDisplay(convertToUnit('gram', manualPrice)) }}</span>
+              </div>
+            </div>
+
+            <div class="manual-badge-notice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              Using custom price (no API calls)
+            </div>
+          </div>
         </div>
 
         <!-- Price Display -->
@@ -115,7 +173,11 @@
             @click="enableManualMode" 
             class="btn btn-secondary"
           >
-            Manual Price
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Custom Price
           </button>
         </div>
 
@@ -123,7 +185,21 @@
         <div class="status">
           <span class="status-dot" :class="statusClass"></span>
           <span class="status-text">{{ lastUpdated }}</span>
-          <span class="quota-text">{{ apiQuota.dailyCalls }}/3 calls today</span>
+          <span class="quota-text">
+            {{ apiQuota.dailyCalls }}/{{ apiQuota.dailyLimit }} today • 
+            {{ apiQuota.totalCalls }}/{{ apiQuota.monthlyLimit }} month
+          </span>
+        </div>
+
+        <!-- Tips for Free API Usage -->
+        <div class="tip-box">
+          <p class="tip-title">💡 Tips for Free API</p>
+          <ul class="tip-list">
+            <li>Price cached for 24 hours</li>
+            <li>Use "Manual Price" to avoid API calls</li>
+            <li>3 refreshes per day maximum</li>
+            <li>Price updates once daily is recommended</li>
+          </ul>
         </div>
 
       </div>
@@ -174,19 +250,24 @@ export default {
       calculatorAmount: 1,
       calculatorUnit: 'damlung',
       
-      // API Quota
+      // API Quota - Optimized for free tier
       apiQuota: {
         dailyCalls: 0,
         totalCalls: 0,
         lastCallDate: null,
-        dailyLimit: 3
+        dailyLimit: 3,
+        monthlyLimit: 90
       },
       
-      // Cache
+      // Extended Cache - 24 hour cache to minimize API calls
       cache: {
         data: null,
-        timestamp: null
-      }
+        timestamp: null,
+        maxAgeHours: 24 // Cache for 24 hours instead of 8
+      },
+
+      // Fallback price for when API is unavailable
+      fallbackPrice: 2650 // Approximate gold price, update manually if needed
     };
   },
   
@@ -230,10 +311,18 @@ export default {
 
     enableManualMode() {
       this.isManualMode = true;
-      this.manualPrice = this.goldPrice;
+      this.manualPrice = this.goldPrice || 2650;
       if (process.client) {
         localStorage.setItem('isManualMode', true);
         localStorage.setItem('manualPrice', this.manualPrice);
+        
+        // Auto-focus input after Vue updates DOM
+        this.$nextTick(() => {
+          if (this.$refs.manualInput) {
+            this.$refs.manualInput.focus();
+            this.$refs.manualInput.select();
+          }
+        });
       }
     },
 
@@ -249,6 +338,14 @@ export default {
       if (process.client) {
         localStorage.removeItem('manualPrice');
         localStorage.removeItem('isManualMode');
+      }
+      
+      // Fetch fresh price if cache is old
+      const cacheAgeHours = this.cache.timestamp ? 
+        (new Date() - new Date(this.cache.timestamp)) / (1000 * 60 * 60) : 999;
+      
+      if (cacheAgeHours > 24) {
+        this.fetchGoldPrice(false);
       }
     },
 
@@ -314,36 +411,65 @@ export default {
     },
 
     async fetchGoldPrice(userRequested = false) {
-      // Check cache
       const now = new Date();
+      
+      // 1. Check cache first (24 hour cache)
       const cacheAgeHours = this.cache.timestamp ? 
         (now - new Date(this.cache.timestamp)) / (1000 * 60 * 60) : 999;
       
-      if (this.cache.data && cacheAgeHours < 8 && !userRequested) {
+      if (this.cache.data && cacheAgeHours < this.cache.maxAgeHours) {
         this.goldPrice = this.cache.data.price;
-        this.lastUpdated = `${Math.floor(cacheAgeHours)}h ago`;
+        const hours = Math.floor(cacheAgeHours);
+        const minutes = Math.floor((cacheAgeHours - hours) * 60);
+        this.lastUpdated = hours > 0 ? `${hours}h ago` : `${minutes}m ago`;
         this.loading = false;
         return;
       }
 
-      // Check quota
+      // 2. Check daily quota
       const today = new Date().toDateString();
       if (this.apiQuota.lastCallDate !== today) {
         this.apiQuota.dailyCalls = 0;
         this.apiQuota.lastCallDate = today;
       }
 
-      if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit && !userRequested) {
-        this.loading = false;
-        return;
+      // 3. Prevent unnecessary API calls
+      if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit) {
+        if (!userRequested) {
+          // Use cached or fallback price
+          if (this.cache.data) {
+            this.goldPrice = this.cache.data.price;
+            this.lastUpdated = 'Using cached (limit reached)';
+          } else {
+            this.goldPrice = this.fallbackPrice;
+            this.lastUpdated = 'Estimated (limit reached)';
+          }
+          this.loading = false;
+          return;
+        } else {
+          // User explicitly requested refresh but limit reached
+          this.lastUpdated = 'Daily limit reached (3/3)';
+          this.loading = false;
+          return;
+        }
       }
 
+      // 4. Check monthly quota (safety check)
+      if (this.apiQuota.totalCalls >= this.apiQuota.monthlyLimit - 5) {
+        if (!userRequested) {
+          this.goldPrice = this.cache.data?.price || this.fallbackPrice;
+          this.lastUpdated = 'Near monthly limit';
+          this.loading = false;
+          return;
+        }
+      }
+
+      // 5. Make API call
       this.loading = true;
       
       try {
         const endpoint = `${this.apiBaseUrl}/XAU/USD`;
         
-        // Use native fetch instead of axios
         const response = await fetch(endpoint, {
           method: 'GET',
           headers: {
@@ -358,14 +484,17 @@ export default {
 
         const data = await response.json();
         
+        // Update price and quota
         this.goldPrice = data.price;
         this.apiQuota.dailyCalls++;
         this.apiQuota.totalCalls++;
         this.apiQuota.lastCallDate = today;
         
+        // Cache the response for 24 hours
         this.cache = {
           data: data,
-          timestamp: now.toISOString()
+          timestamp: now.toISOString(),
+          maxAgeHours: 24
         };
         
         if (process.client) {
@@ -378,14 +507,20 @@ export default {
           minute: '2-digit'
         });
         
-      } catch (error) {
-        console.error('API Error:', error);
-        this.lastUpdated = 'Error - check console';
+        console.log(`✅ API call successful (${this.apiQuota.dailyCalls}/3 today, ${this.apiQuota.totalCalls}/90 month)`);
         
-        // Use cached data if available
+      } catch (error) {
+        console.error('❌ API Error:', error);
+        
+        // Fallback strategy
         if (this.cache.data) {
           this.goldPrice = this.cache.data.price;
-          this.lastUpdated = 'Using cached data';
+          this.lastUpdated = 'Using cached (API error)';
+          console.log('Using cached price from', this.cache.timestamp);
+        } else {
+          this.goldPrice = this.fallbackPrice;
+          this.lastUpdated = 'Estimated (API error)';
+          console.log('Using fallback price:', this.fallbackPrice);
         }
       } finally {
         this.loading = false;
@@ -541,51 +676,274 @@ export default {
   padding: 32px 0;
 }
 
-/* Manual Input */
-.manual-input {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+/* Manual Section */
+.manual-section {
   margin-bottom: 24px;
+  transition: all 0.3s ease;
+}
+
+.manual-section.expanded {
+  margin-bottom: 32px;
+}
+
+/* Manual Prompt (Collapsed State) */
+.manual-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: white;
+  border: 2px dashed #e5e5e5;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.app.dark .manual-prompt {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+}
+
+.manual-prompt:hover {
+  border-color: #fbbf24;
+  background: #fefcf5;
+}
+
+.app.dark .manual-prompt:hover {
+  background: #1f1a0f;
+}
+
+.prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.prompt-icon {
+  width: 24px;
+  height: 24px;
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.prompt-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.app.dark .prompt-title {
+  color: #e5e5e5;
+}
+
+.prompt-desc {
+  font-size: 12px;
+  color: #666;
+}
+
+.app.dark .prompt-desc {
+  color: #999;
+}
+
+.prompt-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: #fbbf24;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.prompt-btn:hover {
+  background: #f59e0b;
+  transform: scale(1.05);
+}
+
+.prompt-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Manual Input (Expanded State) */
+.manual-input-expanded {
+  background: white;
+  border: 2px solid #fbbf24;
+  border-radius: 16px;
+  padding: 20px;
+  animation: expandIn 0.3s ease;
+}
+
+.app.dark .manual-input-expanded {
+  background: #1a1a1a;
+}
+
+.input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.app.dark .input-label {
+  color: #999;
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #f5f5f5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.app.dark .close-btn {
+  background: #2a2a2a;
+}
+
+.close-btn:hover {
+  background: #fee;
+  color: #ef4444;
+}
+
+.close-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.input-with-currency {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.currency-symbol {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fbbf24;
+  pointer-events: none;
 }
 
 .price-input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 2px solid #fbbf24;
+  width: 100%;
+  padding: 16px 16px 16px 40px;
+  border: 2px solid #e5e5e5;
   border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  background: white;
+  font-size: 24px;
+  font-weight: 700;
+  background: #fafafa;
   color: #1a1a1a;
+  transition: all 0.2s;
 }
 
 .app.dark .price-input {
-  background: #1a1a1a;
+  background: #0a0a0a;
+  border-color: #2a2a2a;
   color: #e5e5e5;
 }
 
 .price-input:focus {
   outline: none;
-  border-color: #f59e0b;
+  border-color: #fbbf24;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
 }
 
-.link-btn {
-  padding: 0;
-  border: none;
-  background: none;
+.app.dark .price-input:focus {
+  background: #1a1a1a;
+}
+
+.price-input::placeholder {
+  color: #ccc;
+}
+
+/* Quick Conversions */
+.quick-conversions {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.app.dark .quick-conversions {
+  background: #0a0a0a;
+}
+
+.conversion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.conversion-label {
+  font-size: 13px;
   color: #666;
-  font-size: 14px;
-  cursor: pointer;
-  text-decoration: underline;
+  font-weight: 500;
 }
 
-.app.dark .link-btn {
+.app.dark .conversion-label {
   color: #999;
 }
 
-.link-btn:hover {
+.conversion-value {
+  font-size: 14px;
+  font-weight: 700;
   color: #fbbf24;
+}
+
+/* Manual Badge Notice */
+.manual-badge-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: #fef3cd;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #856404;
+  font-weight: 500;
+}
+
+.app.dark .manual-badge-notice {
+  background: #2a2410;
+  color: #fbbf24;
+}
+
+.manual-badge-notice svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Remove old manual input styles */
+.manual-input {
+  display: none;
+}
+
+.link-btn {
+  display: none;
 }
 
 /* Price Section */
@@ -810,6 +1168,50 @@ export default {
   font-size: 11px;
 }
 
+/* Tips Box */
+.tip-box {
+  margin-top: 32px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 3px solid #fbbf24;
+}
+
+.app.dark .tip-box {
+  background: #1a1a1a;
+}
+
+.tip-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #1a1a1a;
+}
+
+.app.dark .tip-title {
+  color: #e5e5e5;
+}
+
+.tip-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.app.dark .tip-list {
+  color: #999;
+}
+
+.tip-list li {
+  margin-bottom: 4px;
+}
+
+.tip-list li:last-child {
+  margin-bottom: 0;
+}
+
 /* Animations */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -819,6 +1221,17 @@ export default {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Responsive */
