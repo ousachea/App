@@ -73,7 +73,7 @@
                 step="0.01"
                 min="0"
                 class="price-input"
-                placeholder="2650.00"
+                placeholder="4242.00"
                 @input="updateManualPrice"
                 ref="manualInput"
               >
@@ -255,8 +255,8 @@ export default {
         dailyCalls: 0,
         totalCalls: 0,
         lastCallDate: null,
-        dailyLimit: 3,
-        monthlyLimit: 90
+        dailyLimit: 10,
+        monthlyLimit: 100
       },
       
       // Extended Cache - 24 hour cache to minimize API calls
@@ -311,7 +311,7 @@ export default {
 
     enableManualMode() {
       this.isManualMode = true;
-      this.manualPrice = this.goldPrice || 2650;
+      this.manualPrice = this.goldPrice || 4242;
       if (process.client) {
         localStorage.setItem('isManualMode', true);
         localStorage.setItem('manualPrice', this.manualPrice);
@@ -395,7 +395,7 @@ export default {
     },
 
     startRefreshCooldown() {
-      this.refreshCooldown = 30;
+      this.refreshCooldown = 3;
       const timer = setInterval(() => {
         this.refreshCooldown--;
         if (this.refreshCooldown <= 0) {
@@ -507,7 +507,7 @@ export default {
           minute: '2-digit'
         });
         
-        console.log(`✅ API call successful (${this.apiQuota.dailyCalls}/3 today, ${this.apiQuota.totalCalls}/90 month)`);
+        console.log(`✅ API call successful (${this.apiQuota.dailyCalls}/10 today, ${this.apiQuota.totalCalls}/100 month)`);
         
       } catch (error) {
         console.error('❌ API Error:', error);
