@@ -41,6 +41,7 @@ export default {
   { label: 'Phone', path: '/Phone', icon: '📱' },
   { label: 'Webflow inspector', path: '/webflowinspector', icon: '🔍' },
   { label: 'Text Converter', path: '/TextConverter', icon: '📝' },
+  { label: 'Silver', path: '/Silver', icon: '📝' },
   { label: 'Food', path: '/food', icon: '🍝' }
       ]
     }
