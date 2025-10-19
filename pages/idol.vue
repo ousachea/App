@@ -865,8 +865,7 @@ export default {
 }
 </script>
 
-<style scoped>
-* {
+<style scoped>* {
   box-sizing: border-box;
 }
 
@@ -894,7 +893,6 @@ body {
   margin: 0;
   padding: 20px;
 }
-
 
 /* Header */
 .header {
@@ -1325,14 +1323,14 @@ body {
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
 .work-card {
   display: flex;
   flex-direction: column;
-  padding: 14px;
+  padding: 16px;
   background: #f9fafb;
   border: 2px solid #e5e7eb;
   border-radius: 10px;
@@ -1377,7 +1375,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .works-container.dark-mode .work-image-large {
@@ -1818,7 +1816,7 @@ body {
   }
 
   .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   }
 
   .modal-content,
