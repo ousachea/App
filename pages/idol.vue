@@ -2,21 +2,33 @@
 <template>
   <div :class="['works-container', { 'dark-mode': darkMode }]">
     <div class="container">
+      <!-- Header -->
       <div class="header">
-        <h1>🎬 All Works Sorted by Code</h1>
-        <button @click="toggleDarkMode" class="theme-toggle" :title="darkMode ? 'Light Mode' : 'Dark Mode'">
-          {{ darkMode ? '☀️' : '🌙' }}
-        </button>
+        <div class="header-content">
+          <h1>🎬 Works Tracker</h1>
+          <p class="subtitle">Manage and track your collection</p>
+        </div>
+        <div class="header-controls">
+          <button @click="openAddModal" class="icon-btn add-btn" title="Add new item">
+            ➕
+          </button>
+          <button @click="toggleDarkMode" class="icon-btn theme-btn" :title="darkMode ? 'Light Mode' : 'Dark Mode'">
+            {{ darkMode ? '☀️' : '🌙' }}
+          </button>
+        </div>
       </div>
 
-      <!-- Controls Section -->
-      <div class="controls">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search by code or name..."
-          class="search-input"
-        />
+      <!-- Main Controls -->
+      <div class="controls-wrapper">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by code or name..."
+            class="search-input"
+          />
+        </div>
 
         <div class="button-group">
           <button
@@ -24,31 +36,27 @@
             :disabled="selectedCodes.length === 0"
             class="btn btn-primary"
           >
-            <span class="icon">⬇</span>
-            Export JSON ({{ selectedCodes.length }})
+            📥 JSON
           </button>
           <button
             @click="handleExportCSV"
             :disabled="selectedCodes.length === 0"
             class="btn btn-primary"
           >
-            <span class="icon">📊</span>
-            Export CSV
+            📊 CSV
           </button>
           <button
             @click="handleImportClick"
             class="btn btn-success"
           >
-            <span class="icon">⬆</span>
-            Import
+            📤 Import
           </button>
           <button
             v-if="selectedCodes.length > 0"
             @click="clearAll"
             class="btn btn-danger"
           >
-            <span class="icon">🗑</span>
-            Clear All
+            🗑️ Clear
           </button>
           <input
             ref="fileInput"
@@ -58,39 +66,41 @@
             class="hidden-input"
           />
         </div>
+      </div>
 
-        <!-- Selected Codes Tags -->
-        <div v-if="selectedCodes.length > 0" class="selected-codes">
-          <p class="selected-label">Selected:</p>
-          <div class="code-tags">
-            <span
-              v-for="code in selectedCodes"
-              :key="code"
-              class="code-tag"
+      <!-- Selected Tags -->
+      <div v-if="selectedCodes.length > 0" class="selected-tags-wrapper">
+        <p class="tags-label">Selected: {{ selectedCodes.length }} items</p>
+        <div class="code-tags">
+          <span
+            v-for="code in selectedCodes"
+            :key="code"
+            class="code-tag"
+          >
+            {{ code }}
+            <button
+              @click="removeCode(code)"
+              class="tag-remove"
             >
-              {{ code }}
-              <button
-                @click="removeCode(code)"
-                class="remove-btn"
-              >
-                ×
-              </button>
-            </span>
-          </div>
+              ✕
+            </button>
+          </span>
         </div>
       </div>
 
-      <!-- Progress Section -->
-      <div class="progress-section">
-        <p class="progress-label">
-          Progress: {{ selectedCodes.length }} / {{ totalCount }} ({{ progressPercentage }}%)
-        </p>
+      <!-- Progress Bar -->
+      <div class="progress-wrapper">
+        <div class="progress-info">
+          <span class="progress-text">Progress</span>
+          <span class="progress-percent">{{ selectedCodes.length }} / {{ totalCount }}</span>
+        </div>
         <div class="progress-bar">
           <div
             class="progress-fill"
             :style="{ width: progressPercentage + '%' }"
           />
         </div>
+        <span class="progress-percentage">{{ progressPercentage }}%</span>
       </div>
 
       <!-- Artists List -->
@@ -98,43 +108,70 @@
         <div
           v-for="artist in filteredArtists"
           :key="artist.name"
-          class="artist-section"
+          class="artist-card"
         >
-          <h2 class="artist-header">{{ artist.name }}</h2>
-          <p class="artist-period">{{ artist.period }}</p>
+          <div class="artist-header-info">
+            <h2 class="artist-name">{{ artist.name }}</h2>
+            <p class="artist-period">{{ artist.period }}</p>
+            <p class="artist-count">{{ artist.mainWorks.length + artist.compilations.length }} works</p>
+          </div>
 
           <!-- Main Works -->
-          <div v-if="artist.mainWorks.length > 0" class="works-category">
-            <h3 class="category-title">Main Works</h3>
+          <div v-if="artist.mainWorks.length > 0" class="works-section">
+            <h3 class="section-title">📌 Main Works</h3>
             <div class="works-grid">
               <div
                 v-for="work in artist.mainWorks"
                 :key="work.code"
                 @click="toggleCode(work.code)"
-                :class="['work-item', { 'work-item-selected': selectedCodes.includes(work.code) }]"
+                :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
               >
-                <p class="work-code">{{ work.code }}</p>
-                <p class="work-name">{{ work.name }}</p>
+                <div class="work-checkbox">
+                  <input
+                    type="checkbox"
+                    :checked="selectedCodes.includes(work.code)"
+                    @change="toggleCode(work.code)"
+                  />
+                </div>
+                <div class="work-info">
+                  <p class="work-code">{{ work.code }}</p>
+                  <p class="work-name">{{ work.name }}</p>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Compilations -->
-          <div v-if="artist.compilations.length > 0" class="works-category">
-            <h3 class="category-title">Compilations</h3>
+          <div v-if="artist.compilations.length > 0" class="works-section">
+            <h3 class="section-title">📂 Compilations</h3>
             <div class="works-grid">
               <div
                 v-for="work in artist.compilations"
                 :key="work.code"
                 @click="toggleCode(work.code)"
-                :class="['work-item', { 'work-item-selected': selectedCodes.includes(work.code) }]"
+                :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
               >
-                <p class="work-code">{{ work.code }}</p>
-                <p class="work-name">{{ work.name }}</p>
+                <div class="work-checkbox">
+                  <input
+                    type="checkbox"
+                    :checked="selectedCodes.includes(work.code)"
+                    @change="toggleCode(work.code)"
+                  />
+                </div>
+                <div class="work-info">
+                  <p class="work-code">{{ work.code }}</p>
+                  <p class="work-name">{{ work.name }}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="filteredArtists.length === 0" class="empty-state">
+        <p>❌ No results found</p>
+        <p class="empty-text">Try adjusting your search</p>
       </div>
     </div>
 
@@ -145,15 +182,93 @@
       </div>
     </transition>
 
-    <!-- Confirmation Modal -->
+    <!-- Clear Modal -->
     <transition name="modal">
       <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">
         <div class="modal-content" @click.stop>
-          <h3>Clear All Selections?</h3>
-          <p>This will remove all {{ selectedCodes.length }} selected items. This action cannot be undone.</p>
-          <div class="modal-buttons">
+          <div class="modal-header">
+            <h3>Clear All Selections?</h3>
+          </div>
+          <div class="modal-body">
+            <p>This will remove all <strong>{{ selectedCodes.length }}</strong> selected items.</p>
+            <p class="warning">⚠️ This action cannot be undone.</p>
+          </div>
+          <div class="modal-footer">
             <button @click="showConfirmModal = false" class="btn btn-secondary">Cancel</button>
             <button @click="confirmClearAll" class="btn btn-danger">Clear All</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Add Item Modal -->
+    <transition name="modal">
+      <div v-if="showAddModal" class="modal-overlay" @click="closeAddModal">
+        <div class="modal-content modal-large" @click.stop>
+          <div class="modal-header">
+            <h3>➕ Add New Item</h3>
+            <button @click="closeAddModal" class="modal-close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Artist Name</label>
+                <input
+                  v-model="newItem.artist"
+                  type="text"
+                  placeholder="e.g., New Artist"
+                  class="form-input"
+                  @keyup.enter="addNewItem"
+                />
+              </div>
+              <div class="form-group">
+                <label>Code</label>
+                <input
+                  v-model="newItem.code"
+                  type="text"
+                  placeholder="e.g., SSIS-001"
+                  class="form-input"
+                  @keyup.enter="addNewItem"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Work Name</label>
+              <input
+                v-model="newItem.name"
+                type="text"
+                placeholder="e.g., Work Title"
+                class="form-input"
+                @keyup.enter="addNewItem"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Type</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input
+                    v-model="newItem.type"
+                    type="radio"
+                    value="mainWorks"
+                  />
+                  📌 Main Works
+                </label>
+                <label class="radio-label">
+                  <input
+                    v-model="newItem.type"
+                    type="radio"
+                    value="compilations"
+                  />
+                  📂 Compilations
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="closeAddModal" class="btn btn-secondary">Cancel</button>
+            <button @click="addNewItem" class="btn btn-primary">Add Item</button>
           </div>
         </div>
       </div>
@@ -170,6 +285,13 @@ export default {
       selectedCodes: [],
       darkMode: false,
       showConfirmModal: false,
+      showAddModal: false,
+      newItem: {
+        artist: '',
+        code: '',
+        name: '',
+        type: 'mainWorks'
+      },
       toast: {
         show: false,
         message: '',
@@ -306,27 +428,50 @@ export default {
   watch: {
     selectedCodes: {
       handler(newVal) {
-        localStorage.setItem('selectedCodes', JSON.stringify(newVal))
+        if (process.client) {
+          localStorage.setItem('selectedCodes', JSON.stringify(newVal))
+        }
       },
       deep: true
     },
     darkMode(newVal) {
-      localStorage.setItem('darkMode', JSON.stringify(newVal))
+      if (process.client) {
+        localStorage.setItem('darkMode', JSON.stringify(newVal))
+      }
+    },
+    artists: {
+      handler(newVal) {
+        if (process.client) {
+          localStorage.setItem('artists', JSON.stringify(newVal))
+        }
+      },
+      deep: true
     }
   },
   mounted() {
-    const stored = localStorage.getItem('selectedCodes')
-    if (stored) {
-      try {
-        this.selectedCodes = JSON.parse(stored)
-      } catch (e) {
-        console.error('Error loading selected codes:', e)
+    if (process.client) {
+      const stored = localStorage.getItem('selectedCodes')
+      if (stored) {
+        try {
+          this.selectedCodes = JSON.parse(stored)
+        } catch (e) {
+          console.error('Error loading selected codes:', e)
+        }
       }
-    }
 
-    const darkModeStored = localStorage.getItem('darkMode')
-    if (darkModeStored) {
-      this.darkMode = JSON.parse(darkModeStored)
+      const darkModeStored = localStorage.getItem('darkMode')
+      if (darkModeStored) {
+        this.darkMode = JSON.parse(darkModeStored)
+      }
+
+      const artistsStored = localStorage.getItem('artists')
+      if (artistsStored) {
+        try {
+          this.artists = JSON.parse(artistsStored)
+        } catch (e) {
+          console.error('Error loading artists:', e)
+        }
+      }
     }
   },
   methods: {
@@ -454,6 +599,73 @@ export default {
     },
     toggleDarkMode() {
       this.darkMode = !this.darkMode
+    },
+    openAddModal() {
+      this.newItem = {
+        artist: '',
+        code: '',
+        name: '',
+        type: 'mainWorks'
+      }
+      this.showAddModal = true
+    },
+    closeAddModal() {
+      this.showAddModal = false
+    },
+    addNewItem() {
+      if (!this.newItem.artist.trim()) {
+        this.showToast('Please enter artist name', 'error')
+        return
+      }
+      if (!this.newItem.code.trim()) {
+        this.showToast('Please enter code', 'error')
+        return
+      }
+      if (!this.newItem.name.trim()) {
+        this.showToast('Please enter work name', 'error')
+        return
+      }
+
+      const code = this.newItem.code.toUpperCase()
+
+      // Check if code already exists
+      const codeExists = this.artists.some(artist =>
+        artist.mainWorks.some(w => w.code === code) ||
+        artist.compilations.some(w => w.code === code)
+      )
+
+      if (codeExists) {
+        this.showToast(`Code ${code} already exists`, 'error')
+        return
+      }
+
+      // Find or create artist
+      let artist = this.artists.find(a => a.name === this.newItem.artist)
+      if (!artist) {
+        artist = {
+          name: this.newItem.artist,
+          period: new Date().getFullYear().toString(),
+          mainWorks: [],
+          compilations: []
+        }
+        this.artists.push(artist)
+      }
+
+      // Add new work
+      const work = {
+        code: code,
+        name: this.newItem.name
+      }
+
+      if (this.newItem.type === 'mainWorks') {
+        artist.mainWorks.push(work)
+      } else {
+        artist.compilations.push(work)
+      }
+
+      this.showAddModal = false
+      this.showToast(`✅ Added ${code}`, 'success')
+      this.$forceUpdate()
     }
   }
 }
@@ -464,49 +676,78 @@ export default {
   box-sizing: border-box;
 }
 
+body {
+  margin: 0;
+  padding: 0;
+}
+
 .works-container {
-  background: #f8f9fa;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
   padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  transition: background-color 0.3s, color 0.3s;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+  transition: background 0.3s;
 }
 
 .works-container.dark-mode {
-  background: #1a1a1a;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   color: #e0e0e0;
 }
 
 .container {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
+/* Header */
 .header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  text-align: center;
+  align-items: flex-start;
   margin-bottom: 30px;
+  padding: 30px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
 }
 
-.header h1 {
-  font-size: 2.5em;
-  color: #333;
+.works-container.dark-mode .header {
+  background: #2a2a3e;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.header-content h1 {
+  font-size: 2.2em;
   margin: 0;
-  flex: 1;
+  color: #2563eb;
 }
 
-.works-container.dark-mode .header h1 {
-  color: #e0e0e0;
+.works-container.dark-mode .header-content h1 {
+  color: #64b5f6;
 }
 
-.theme-toggle {
-  background: none;
-  border: 2px solid #2563eb;
-  border-radius: 50%;
-  width: 45px;
-  height: 45px;
+.subtitle {
+  margin: 5px 0 0 0;
+  color: #666;
+  font-size: 0.95em;
+}
+
+.works-container.dark-mode .subtitle {
+  color: #aaa;
+}
+
+.header-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.icon-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  background: white;
   font-size: 24px;
   cursor: pointer;
   transition: all 0.3s;
@@ -515,43 +756,72 @@ export default {
   justify-content: center;
 }
 
-.theme-toggle:hover {
-  background: #2563eb;
-  transform: scale(1.1);
+.works-container.dark-mode .icon-btn {
+  border-color: #444;
+  background: #3a3a4e;
 }
 
-.works-container.dark-mode .theme-toggle {
+.icon-btn:hover {
+  transform: scale(1.05);
+  border-color: #2563eb;
+  background: #f0f7ff;
+}
+
+.works-container.dark-mode .icon-btn:hover {
   border-color: #64b5f6;
+  background: #1d3a5c;
 }
 
-.controls {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.add-btn {
+  border-color: #16a34a;
+}
+
+.add-btn:hover {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.works-container.dark-mode .add-btn:hover {
+  border-color: #16a34a;
+  background: #1d4e1d;
+}
+
+/* Controls */
+.controls-wrapper {
+  display: flex;
+  gap: 15px;
   margin-bottom: 20px;
-  transition: background-color 0.3s;
+  flex-wrap: wrap;
 }
 
-.works-container.dark-mode .controls {
-  background: #2a2a2a;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+.search-wrapper {
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 15px;
+  font-size: 18px;
+  pointer-events: none;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px;
-  font-size: 16px;
+  padding: 12px 15px 12px 45px;
   border: 2px solid #e0e0e0;
-  border-radius: 4px;
-  transition: border-color 0.3s, background-color 0.3s, color 0.3s;
-  margin-bottom: 15px;
+  border-radius: 12px;
+  font-size: 15px;
   background: white;
   color: #333;
+  transition: all 0.3s;
 }
 
 .works-container.dark-mode .search-input {
-  background: #3a3a3a;
+  background: #3a3a4e;
   color: #e0e0e0;
   border-color: #444;
 }
@@ -559,305 +829,446 @@ export default {
 .search-input:focus {
   outline: none;
   border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .button-group {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
   flex-wrap: wrap;
 }
 
 .btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
+  padding: 12px 18px;
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s;
+  white-space: nowrap;
 }
 
 .btn-primary {
-  background-color: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
 }
 
 .btn-primary:disabled {
-  background-color: #ccc;
+  background: #ccc;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-success {
-  background-color: #16a34a;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
   color: white;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
 
 .btn-success:hover {
-  background-color: #15803d;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.4);
 }
 
 .btn-danger {
-  background-color: #dc2626;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   color: white;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
 .btn-danger:hover {
-  background-color: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
 }
 
 .btn-secondary {
-  background-color: #6b7280;
+  background: #6b7280;
   color: white;
 }
 
 .btn-secondary:hover {
-  background-color: #4b5563;
-}
-
-.icon {
-  font-size: 16px;
+  background: #4b5563;
+  transform: translateY(-2px);
 }
 
 .hidden-input {
   display: none;
 }
 
-.selected-codes {
-  margin-top: 15px;
+/* Selected Tags */
+.selected-tags-wrapper {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
 }
 
-.selected-label {
-  display: block;
+.works-container.dark-mode .selected-tags-wrapper {
+  background: #2a2a3e;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.tags-label {
   font-weight: 600;
   color: #333;
-  margin-bottom: 8px;
+  margin: 0 0 12px 0;
   font-size: 14px;
-  margin: 0 0 8px 0;
 }
 
-.works-container.dark-mode .selected-label {
+.works-container.dark-mode .tags-label {
   color: #e0e0e0;
 }
 
 .code-tags {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .code-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+  animation: slideIn 0.3s ease;
 }
 
-.remove-btn {
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tag-remove {
   background: none;
   border: none;
   color: white;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   padding: 0;
-  line-height: 1;
   display: flex;
   align-items: center;
-}
-
-.remove-btn:hover {
   opacity: 0.8;
+  transition: opacity 0.2s;
 }
 
-.progress-section {
-  margin-bottom: 20px;
+.tag-remove:hover {
+  opacity: 1;
 }
 
-.progress-label {
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+/* Progress */
+.progress-wrapper {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+}
+
+.works-container.dark-mode .progress-wrapper {
+  background: #2a2a3e;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.progress-info {
   display: flex;
-  justify-content: flex-end;
-  margin: 0 0 8px 0;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
 }
 
-.works-container.dark-mode .progress-label {
+.progress-text {
+  color: #333;
+}
+
+.works-container.dark-mode .progress-text {
   color: #e0e0e0;
+}
+
+.progress-percent {
+  color: #2563eb;
+  font-size: 14px;
 }
 
 .progress-bar {
   width: 100%;
-  height: 24px;
+  height: 10px;
   background: #e5e7eb;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 8px;
+  position: relative;
 }
 
 .works-container.dark-mode .progress-bar {
-  background: #3a3a3a;
+  background: #3a3a4e;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 50%, #16a34a 100%);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
 }
 
+.progress-percentage {
+  display: block;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* Artists List */
 .artists-list {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
+  display: grid;
+  gap: 20px;
 }
 
-.artist-section {
+.artist-card {
   background: white;
+  border-radius: 16px;
   padding: 25px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
 }
 
-.works-container.dark-mode .artist-section {
-  background: #2a2a2a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+.works-container.dark-mode .artist-card {
+  background: #2a2a3e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-.artist-header {
-  font-size: 1.8em;
+.artist-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.artist-header-info {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.works-container.dark-mode .artist-header-info {
+  border-bottom-color: #3a3a4e;
+}
+
+.artist-name {
+  font-size: 1.6em;
   color: #2563eb;
   margin: 0 0 5px 0;
 }
 
+.works-container.dark-mode .artist-name {
+  color: #64b5f6;
+}
+
 .artist-period {
   color: #666;
-  margin: 0 0 20px 0;
-  font-size: 14px;
+  font-size: 13px;
+  margin: 5px 0;
 }
 
 .works-container.dark-mode .artist-period {
   color: #aaa;
 }
 
-.works-category {
-  margin-bottom: 20px;
+.artist-count {
+  color: #999;
+  font-size: 13px;
+  margin: 5px 0;
 }
 
-.works-category:last-child {
+.works-container.dark-mode .artist-count {
+  color: #777;
+}
+
+/* Works Sections */
+.works-section {
+  margin-bottom: 25px;
+}
+
+.works-section:last-child {
   margin-bottom: 0;
 }
 
-.category-title {
-  font-size: 1.1em;
+.section-title {
+  font-size: 1em;
+  font-weight: 700;
   color: #444;
-  margin: 15px 0 10px 0;
+  margin: 0 0 15px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.works-container.dark-mode .category-title {
+.works-container.dark-mode .section-title {
   color: #bbb;
 }
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
 }
 
-.work-item {
-  padding: 10px 12px;
-  background: #f8f9fa;
-  border-left: 4px solid #2563eb;
-  border-radius: 4px;
+.work-card {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: all 0.2s;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
   cursor: pointer;
+  transition: all 0.2s;
   user-select: none;
 }
 
-.works-container.dark-mode .work-item {
-  background: #3a3a3a;
+.works-container.dark-mode .work-card {
+  background: #3a3a4e;
+  border-color: #444;
 }
 
-.work-item:hover {
+.work-card:hover {
+  border-color: #2563eb;
   background: #eff6ff;
 }
 
-.works-container.dark-mode .work-item:hover {
-  background: #444;
-}
-
-.work-item-selected {
-  background: #dbeafe;
-  border-left-color: #1d4ed8;
-  box-shadow: 0 0 0 2px #2563eb;
-}
-
-.works-container.dark-mode .work-item-selected {
+.works-container.dark-mode .work-card:hover {
   background: #1d3a5c;
-  border-left-color: #64b5f6;
-  box-shadow: 0 0 0 2px #2563eb;
+  border-color: #64b5f6;
+}
+
+.work-card-selected {
+  background: #dbeafe;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.works-container.dark-mode .work-card-selected {
+  background: #1d3a5c;
+  border-color: #64b5f6;
+}
+
+.work-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+}
+
+.work-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
+.work-info {
+  flex: 1;
 }
 
 .work-code {
-  font-weight: 600;
+  font-weight: 700;
   color: #2563eb;
-  font-size: 15px;
+  font-size: 14px;
   margin: 0;
 }
 
 .work-name {
   color: #666;
-  font-size: 14px;
-  margin: 0;
+  font-size: 13px;
+  margin: 3px 0 0 0;
 }
 
 .works-container.dark-mode .work-name {
   color: #aaa;
 }
 
-/* Toast Notification */
-/* Toast Notification */
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.works-container.dark-mode .empty-state {
+  color: #aaa;
+}
+
+.empty-state p:first-child {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #999;
+}
+
+.works-container.dark-mode .empty-text {
+  color: #777;
+}
+
+/* Toast */
 .toast {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  padding: 15px 20px;
-  border-radius: 6px;
+  padding: 16px 20px;
+  border-radius: 10px;
   color: white;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   max-width: 350px;
-  word-wrap: break-word;
+  animation: toastSlide 0.3s ease;
+}
+
+@keyframes toastSlide {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .toast-success {
-  background-color: #16a34a;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
 }
 
 .toast-error {
-  background-color: #dc2626;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
 }
 
 .toast-info {
-  background-color: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 /* Modal */
@@ -872,49 +1283,186 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
   background: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  max-width: 400px;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 90%;
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-large {
+  max-width: 550px;
 }
 
 .works-container.dark-mode .modal-content {
-  background: #2a2a2a;
+  background: #2a2a3e;
   color: #e0e0e0;
 }
 
-.modal-content h3 {
-  margin: 0 0 10px 0;
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.works-container.dark-mode .modal-header {
+  border-bottom-color: #3a3a4e;
+}
+
+.modal-header h3 {
+  margin: 0;
   font-size: 1.3em;
   color: #333;
 }
 
-.works-container.dark-mode .modal-content h3 {
+.works-container.dark-mode .modal-header h3 {
   color: #e0e0e0;
 }
 
-.modal-content p {
-  margin: 0 0 20px 0;
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
   color: #666;
-  line-height: 1.5;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
-.works-container.dark-mode .modal-content p {
+.modal-close:hover {
+  background: #f0f0f0;
+}
+
+.works-container.dark-mode .modal-close {
   color: #aaa;
 }
 
-.modal-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+.works-container.dark-mode .modal-close:hover {
+  background: #3a3a4e;
 }
 
-.modal-buttons .btn {
-  padding: 10px 16px;
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 24px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.works-container.dark-mode .modal-footer {
+  border-top-color: #3a3a4e;
+}
+
+/* Form */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 14px;
+}
+
+.works-container.dark-mode .form-group label {
+  color: #e0e0e0;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  transition: all 0.3s;
+}
+
+.works-container.dark-mode .form-input {
+  background: #3a3a4e;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.works-container.dark-mode .radio-label {
+  color: #e0e0e0;
+}
+
+.radio-label input[type="radio"] {
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.modal-body .warning {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 /* Transitions */
@@ -939,48 +1487,46 @@ export default {
   opacity: 0;
 }
 
-.modal-enter .modal-content,
-.modal-leave-to .modal-content {
-  transform: scale(0.95);
-}
-
-.modal-enter-active .modal-content,
-.modal-leave-active .modal-content {
-  transition: transform 0.3s ease;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
-  .works-container {
-    padding: 15px;
+  .header {
+    flex-direction: column;
+    gap: 15px;
   }
 
-  .header h1 {
-    font-size: 2em;
+  .header-content h1 {
+    font-size: 1.8em;
   }
 
-  .works-grid {
-    grid-template-columns: 1fr;
+  .controls-wrapper {
+    flex-direction: column;
   }
 
   .button-group {
-    flex-wrap: wrap;
+    width: 100%;
   }
 
   .btn {
     flex: 1;
-    min-width: 150px;
+  }
+
+  .works-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content,
+  .modal-large {
+    max-width: 90%;
   }
 
   .toast {
-    left: 20px;
-    right: 20px;
-    max-width: none;
-    bottom: 20px;
-  }
-
-  .modal-content {
-    margin: 20px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
   }
 }
 </style>
