@@ -213,6 +213,25 @@
           )
       }
     },
+    watch: {
+      selectedCodes: {
+        handler(newVal) {
+          if (process.client) {
+            localStorage.setItem('selectedCodes', JSON.stringify(newVal))
+          }
+        },
+        deep: true
+      }
+    },
+    mounted() {
+      if (process.client && localStorage.getItem('selectedCodes')) {
+        try {
+          this.selectedCodes = JSON.parse(localStorage.getItem('selectedCodes'))
+        } catch (e) {
+          console.error('Error loading selected codes:', e)
+        }
+      }
+    },
     methods: {
       filterWorks(works) {
         const query = this.searchQuery.toLowerCase()
