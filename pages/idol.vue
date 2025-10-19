@@ -61,7 +61,7 @@
           <input
             ref="fileInput"
             type="file"
-            accept=".json"
+            accept=".json,.csv"
             @change="handleImport"
             class="hidden-input"
           />
@@ -120,16 +120,35 @@
           <div v-if="artist.mainWorks.length > 0" class="works-section">
             <h3 class="section-title">📌 Main Works</h3>
             <div class="works-grid">
-              <div v-for="work in artist.mainWorks"
+              <div
+                v-for="work in artist.mainWorks"
                 :key="work.code"
-                @click="toggleCode(work.code)"
                 :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
               >
-                <div v-if="work.imageUrl" class="work-image-large">
-                  <img :src="work.imageUrl" :alt="work.code" class="work-img">
-                </div>
-                <div v-else class="work-image-large work-image-placeholder">
-                  <span>📷</span>
+                <template v-if="work.imageUrl">
+                  <div
+                    class="work-image-large"
+                    @click.stop="toggleCode(work.code)"
+                  >
+                    <img :src="work.imageUrl" :alt="work.code" class="work-img" onerror="this.style.display='none'">
+                  </div>
+                </template>
+                <template v-else>
+                  <div
+                    class="work-image-large work-image-placeholder"
+                    @click.stop="toggleCode(work.code)"
+                  >
+                    <span>📷</span>
+                  </div>
+                </template>
+                <div class="work-card-overlay">
+                  <button
+                    @click.stop="openEditModal(work, artist.name)"
+                    class="edit-btn"
+                    title="Edit item"
+                  >
+                    ✏️
+                  </button>
                 </div>
                 <div class="work-card-content">
                   <div class="work-checkbox">
@@ -155,14 +174,32 @@
               <div
                 v-for="work in artist.compilations"
                 :key="work.code"
-                @click="toggleCode(work.code)"
                 :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
               >
-                <div v-if="work.imageUrl" class="work-image-large">
-                  <img :src="work.imageUrl" :alt="work.code" class="work-img">
-                </div>
-                <div v-else class="work-image-large work-image-placeholder">
-                  <span>📷</span>
+                <template v-if="work.imageUrl">
+                  <div
+                    class="work-image-large"
+                    @click.stop="toggleCode(work.code)"
+                  >
+                    <img :src="work.imageUrl" :alt="work.code" class="work-img" onerror="this.style.display='none'">
+                  </div>
+                </template>
+                <template v-else>
+                  <div
+                    class="work-image-large work-image-placeholder"
+                    @click.stop="toggleCode(work.code)"
+                  >
+                    <span>📷</span>
+                  </div>
+                </template>
+                <div class="work-card-overlay">
+                  <button
+                    @click.stop="openEditModal(work, artist.name)"
+                    class="edit-btn"
+                    title="Edit item"
+                  >
+                    ✏️
+                  </button>
                 </div>
                 <div class="work-card-content">
                   <div class="work-checkbox">
@@ -227,10 +264,7 @@
           <div class="modal-body">
             <div class="form-group">
               <label>Artist</label>
-              <select
-                v-model="newItem.artist"
-                class="form-input"
-              >
+              <select v-model="newItem.artist" class="form-input">
                 <option value="">-- Select Artist --</option>
                 <option v-for="artist in artists" :key="artist.name" :value="artist.name">
                   {{ artist.name }}
@@ -292,6 +326,47 @@
         </div>
       </div>
     </transition>
+
+    <!-- Edit Item Modal -->
+    <transition name="modal">
+      <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+        <div class="modal-content modal-compact" @click.stop>
+          <div class="modal-header">
+            <h3>✏️ Edit Item</h3>
+            <button @click="closeEditModal" class="modal-close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Code</label>
+              <input
+                v-model="editItem.code"
+                type="text"
+                class="form-input"
+                disabled
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Image URL</label>
+              <input
+                v-model="editItem.imageUrl"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                class="form-input"
+              />
+              <div v-if="editItem.imageUrl" class="image-preview">
+                <img :src="editItem.imageUrl" alt="Preview" @error="editImageError = true">
+                <span v-if="editImageError" class="image-error">❌ Image failed to load</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="closeEditModal" class="btn btn-secondary">Cancel</button>
+            <button @click="saveEditedItem" class="btn btn-primary">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -305,6 +380,7 @@ export default {
       darkMode: false,
       showConfirmModal: false,
       showAddModal: false,
+      showEditModal: false,
       newItem: {
         artist: '',
         code: '',
@@ -312,7 +388,13 @@ export default {
         type: 'mainWorks',
         imageUrl: ''
       },
+      editItem: {
+        code: '',
+        imageUrl: '',
+        artist: ''
+      },
       imageError: false,
+      editImageError: false,
       toast: {
         show: false,
         message: '',
@@ -323,99 +405,99 @@ export default {
           name: 'Anzai Rara (安斎らら)',
           period: '2019–2022 (25–28)',
           mainWorks: [
-            { code: 'SSIS-025', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-050', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-103', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-124', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-136', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-172', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-203', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-232', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-262', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-269', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSIS-357', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-643', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-671', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-700', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-727', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-752', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-777', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-799', name: 'Anzai Rara (安斎らら)' },
-            { code: 'SSNI-822', name: 'Anzai Rara (安斎らら)' }
+            { code: 'SSIS-025', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00025/ssis00025pl.jpg' },
+            { code: 'SSIS-050', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00050/ssis00050pl.jpg' },
+            { code: 'SSIS-103', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00103/ssis00103pl.jpg' },
+            { code: 'SSIS-124', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00124/ssis00124pl.jpg' },
+            { code: 'SSIS-136', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00136/ssis00136pl.jpg' },
+            { code: 'SSIS-172', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00172/ssis00172pl.jpg' },
+            { code: 'SSIS-203', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00203/ssis00203pl.jpg' },
+            { code: 'SSIS-232', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00232/ssis00232pl.jpg' },
+            { code: 'SSIS-262', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00262/ssis00262pl.jpg' },
+            { code: 'SSIS-269', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00269/ssis00269pl.jpg' },
+            { code: 'SSIS-357', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00357/ssis00357pl.jpg' },
+            { code: 'SSNI-643', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00643/ssni00643pl.jpg' },
+            { code: 'SSNI-671', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00671/ssni00671pl.jpg' },
+            { code: 'SSNI-700', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00700/ssni00700pl.jpg' },
+            { code: 'SSNI-727', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00727/ssni00727pl.jpg' },
+            { code: 'SSNI-752', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00752/ssni00752pl.jpg' },
+            { code: 'SSNI-777', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00777/ssni00777pl.jpg' },
+            { code: 'SSNI-799', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00799/ssni00799pl.jpg' },
+            { code: 'SSNI-822', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00822/ssni00822pl.jpg' }
           ],
           compilations: [
-            { code: 'OFJE-279', name: 'Anzai Rara (安斎らら)' },
-            { code: 'OFJE-288', name: 'Anzai Rara (安斎らら)' },
-            { code: 'OFJE-354', name: 'Anzai Rara (安斎らら)' },
-            { code: 'OFJE-410', name: 'Anzai Rara (安斎らら)' }
+            { code: 'OFJE-279', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00279/ofje00279pl.jpg' },
+            { code: 'OFJE-288', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00288/ofje00288pl.jpg' },
+            { code: 'OFJE-354', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00354/ofje00354pl.jpg' },
+            { code: 'OFJE-410', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00410/ofje00410pl.jpg' }
           ]
         },
         {
           name: 'RION',
           period: '2015–2018 (21–24)',
           mainWorks: [
-            { code: 'SNIS-517', name: 'RION' },
-            { code: 'SNIS-539', name: 'RION' },
-            { code: 'SNIS-561', name: 'RION' },
-            { code: 'SNIS-594', name: 'RION' },
-            { code: 'SNIS-603', name: 'RION' },
-            { code: 'SNIS-623', name: 'RION' },
-            { code: 'SNIS-640', name: 'RION' },
-            { code: 'SNIS-656', name: 'RION' },
-            { code: 'SNIS-673', name: 'RION' },
-            { code: 'SNIS-692', name: 'RION' },
-            { code: 'SNIS-712', name: 'RION' },
-            { code: 'SNIS-731', name: 'RION' },
-            { code: 'SNIS-752', name: 'RION' },
-            { code: 'SNIS-774', name: 'RION' },
-            { code: 'SNIS-787', name: 'RION' },
-            { code: 'SNIS-811', name: 'RION' },
-            { code: 'SNIS-824', name: 'RION' },
-            { code: 'SNIS-895', name: 'RION' },
-            { code: 'SNIS-918', name: 'RION' },
-            { code: 'SNIS-939', name: 'RION' },
-            { code: 'SNIS-963', name: 'RION' },
-            { code: 'SNIS-985', name: 'RION' },
-            { code: 'SSNI-008', name: 'RION' },
-            { code: 'SSNI-029', name: 'RION' },
-            { code: 'SSNI-053', name: 'RION' },
-            { code: 'SSNI-100', name: 'RION' },
-            { code: 'SSNI-126', name: 'RION' },
-            { code: 'SSNI-151', name: 'RION' },
-            { code: 'SSNI-177', name: 'RION' },
-            { code: 'SSNI-204', name: 'RION' },
-            { code: 'SSNI-228', name: 'RION' },
-            { code: 'SSNI-241', name: 'RION' },
-            { code: 'SSNI-268', name: 'RION' },
-            { code: 'SSNI-290', name: 'RION' },
-            { code: 'EBOD-609', name: 'RION' }
+            { code: 'SNIS-517', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00517/snis00517pl.jpg' },
+            { code: 'SNIS-539', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00539/snis00539pl.jpg' },
+            { code: 'SNIS-561', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00561/snis00561pl.jpg' },
+            { code: 'SNIS-594', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00594/snis00594pl.jpg' },
+            { code: 'SNIS-603', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00603/snis00603pl.jpg' },
+            { code: 'SNIS-623', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00623/snis00623pl.jpg' },
+            { code: 'SNIS-640', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00640/snis00640pl.jpg' },
+            { code: 'SNIS-656', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00656/snis00656pl.jpg' },
+            { code: 'SNIS-673', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00673/snis00673pl.jpg' },
+            { code: 'SNIS-692', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00692/snis00692pl.jpg' },
+            { code: 'SNIS-712', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00712/snis00712pl.jpg' },
+            { code: 'SNIS-731', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00731/snis00731pl.jpg' },
+            { code: 'SNIS-752', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00752/snis00752pl.jpg' },
+            { code: 'SNIS-774', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00774/snis00774pl.jpg' },
+            { code: 'SNIS-787', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00787/snis00787pl.jpg' },
+            { code: 'SNIS-811', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00811/snis00811pl.jpg' },
+            { code: 'SNIS-824', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00824/snis00824pl.jpg' },
+            { code: 'SNIS-895', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00895/snis00895pl.jpg' },
+            { code: 'SNIS-918', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00918/snis00918pl.jpg' },
+            { code: 'SNIS-939', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00939/snis00939pl.jpg' },
+            { code: 'SNIS-963', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00963/snis00963pl.jpg' },
+            { code: 'SNIS-985', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00985/snis00985pl.jpg' },
+            { code: 'SSNI-008', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00008/ssni00008pl.jpg' },
+            { code: 'SSNI-029', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00029/ssni00029pl.jpg' },
+            { code: 'SSNI-053', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00053/ssni00053pl.jpg' },
+            { code: 'SSNI-100', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00100/ssni00100pl.jpg' },
+            { code: 'SSNI-126', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00126/ssni00126pl.jpg' },
+            { code: 'SSNI-151', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00151/ssni00151pl.jpg' },
+            { code: 'SSNI-177', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00177/ssni00177pl.jpg' },
+            { code: 'SSNI-204', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00204/ssni00204pl.jpg' },
+            { code: 'SSNI-228', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00228/ssni00228pl.jpg' },
+            { code: 'SSNI-241', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00241/ssni00241pl.jpg' },
+            { code: 'SSNI-268', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00268/ssni00268pl.jpg' },
+            { code: 'SSNI-290', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssni00290/ssni00290pl.jpg' },
+            { code: 'EBOD-609', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ebod00609/ebod00609pl.jpg' }
           ],
           compilations: [
-            { code: 'OFJE-104', name: 'RION' },
-            { code: 'OFJE-144', name: 'RION' },
-            { code: 'OFJE-255', name: 'RION' }
+            { code: 'OFJE-104', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00104/ofje00104pl.jpg' },
+            { code: 'OFJE-144', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00144/ofje00144pl.jpg' },
+            { code: 'OFJE-255', name: 'RION', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00255/ofje00255pl.jpg' }
           ]
         },
         {
           name: 'Utsunomiya Shion (宇都宮しをん)',
           period: '2013–2014 (19–20)',
           mainWorks: [
-            { code: 'SOE-992', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-009', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-027', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-048', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-070', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-091', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-110', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-129', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-147', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-166', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'AVOP-004', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'SNIS-205', name: 'Utsunomiya Shion (宇都宮しをん)' }
+            { code: 'SOE-992', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/soe00992/soe00992pl.jpg' },
+            { code: 'SNIS-009', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00009/snis00009pl.jpg' },
+            { code: 'SNIS-027', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00027/snis00027pl.jpg' },
+            { code: 'SNIS-048', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00048/snis00048pl.jpg' },
+            { code: 'SNIS-070', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00070/snis00070pl.jpg' },
+            { code: 'SNIS-091', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00091/snis00091pl.jpg' },
+            { code: 'SNIS-110', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00110/snis00110pl.jpg' },
+            { code: 'SNIS-129', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00129/snis00129pl.jpg' },
+            { code: 'SNIS-147', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00147/snis00147pl.jpg' },
+            { code: 'SNIS-166', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00166/snis00166pl.jpg' },
+            { code: 'AVOP-004', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/avop00004/avop00004pl.jpg' },
+            { code: 'SNIS-205', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/snis00205/snis00205pl.jpg' }
           ],
           compilations: [
-            { code: 'ONSD-850', name: 'Utsunomiya Shion (宇都宮しをん)' },
-            { code: 'ONSD-899', name: 'Utsunomiya Shion (宇都宮しをん)' }
+            { code: 'ONSD-850', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/onsd00850/onsd00850pl.jpg' },
+            { code: 'ONSD-899', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/onsd00899/onsd00899pl.jpg' }
           ]
         }
       ]
@@ -550,7 +632,7 @@ export default {
     handleExportCSV() {
       const timestamp = new Date().toISOString().split('T')[0]
       
-      let csv = 'Code,Name,Artist,Type\n'
+      let csv = 'Code,Name,Artist,Type,Image URL\n'
       
       this.selectedCodes.forEach(code => {
         for (const artist of this.artists) {
@@ -558,14 +640,14 @@ export default {
           
           const mainWork = artist.mainWorks.find(w => w.code === code)
           if (mainWork) {
-            csv += `${mainWork.code},"${mainWork.name}","${artist.name}","Main Works"\n`
+            csv += `${mainWork.code},"${mainWork.name}","${artist.name}","Main Works","${mainWork.imageUrl || ''}"\n`
             found = true
           }
           
           if (!found) {
             const compilation = artist.compilations.find(w => w.code === code)
             if (compilation) {
-              csv += `${compilation.code},"${compilation.name}","${artist.name}","Compilation"\n`
+              csv += `${compilation.code},"${compilation.name}","${artist.name}","Compilation","${compilation.imageUrl || ''}"\n`
               found = true
             }
           }
@@ -595,12 +677,62 @@ export default {
       const reader = new FileReader()
       reader.onload = (event) => {
         try {
-          const data = JSON.parse(event.target.result)
-          if (data.codes && Array.isArray(data.codes)) {
-            this.selectedCodes = data.codes
-            this.showToast(`Imported ${data.codes.length} items from ${data.timestamp}`, 'success')
+          const content = event.target.result
+          
+          // Check if it's JSON
+          if (file.name.endsWith('.json')) {
+            const data = JSON.parse(content)
+            if (data.codes && Array.isArray(data.codes)) {
+              this.selectedCodes = data.codes
+              this.showToast(`Imported ${data.codes.length} items from ${data.timestamp}`, 'success')
+            } else {
+              this.showToast('Invalid JSON format', 'error')
+            }
+          } 
+          // Check if it's CSV
+          else if (file.name.endsWith('.csv')) {
+            const lines = content.split('\n')
+            if (lines.length < 2) {
+              this.showToast('Invalid CSV format', 'error')
+              return
+            }
+            
+            const codes = []
+            // Skip header row (line 0)
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim()
+              if (!line) continue
+              
+              // Parse CSV line, handling quoted fields
+              const matches = line.match(/"([^"]*)"|([^,]+)/g)
+              if (matches && matches.length > 0) {
+                let code = matches[0].replace(/"/g, '').trim()
+                codes.push(code)
+              }
+            }
+            
+            if (codes.length === 0) {
+              this.showToast('No valid codes found in CSV', 'error')
+              return
+            }
+            
+            // Validate codes exist in current data
+            const validCodes = codes.filter(code => 
+              this.artists.some(artist =>
+                artist.mainWorks.some(w => w.code === code) ||
+                artist.compilations.some(w => w.code === code)
+              )
+            )
+            
+            if (validCodes.length === 0) {
+              this.showToast('No matching codes found in your collection', 'error')
+              return
+            }
+            
+            this.selectedCodes = validCodes
+            this.showToast(`Imported ${validCodes.length} items from CSV`, 'success')
           } else {
-            this.showToast('Invalid file format', 'error')
+            this.showToast('Please upload a JSON or CSV file', 'error')
           }
         } catch (error) {
           this.showToast('Error reading file: ' + error.message, 'error')
@@ -635,6 +767,54 @@ export default {
     closeAddModal() {
       this.showAddModal = false
     },
+    openEditModal(work, artistName) {
+      this.editItem = {
+        code: work.code,
+        imageUrl: work.imageUrl || '',
+        artist: artistName
+      }
+      this.editImageError = false
+      this.showEditModal = true
+    },
+    closeEditModal() {
+      this.showEditModal = false
+    },
+    saveEditedItem() {
+      if (!this.editItem.code.trim()) {
+        this.showToast('Code is required', 'error')
+        return
+      }
+
+      const artist = this.artists.find(a => a.name === this.editItem.artist)
+      if (!artist) {
+        this.showToast('Artist not found', 'error')
+        return
+      }
+
+      let work = artist.mainWorks.find(w => w.code === this.editItem.code)
+      let isMainWork = true
+      
+      if (!work) {
+        work = artist.compilations.find(w => w.code === this.editItem.code)
+        isMainWork = false
+      }
+
+      if (work) {
+        work.imageUrl = this.editItem.imageUrl || null
+        
+        if (isMainWork) {
+          artist.mainWorks = [...artist.mainWorks]
+        } else {
+          artist.compilations = [...artist.compilations]
+        }
+        
+        this.artists = [...this.artists]
+        this.closeEditModal()
+        this.showToast(`✅ Updated ${this.editItem.code}`, 'success')
+      } else {
+        this.showToast('Item not found', 'error')
+      }
+    },
     addNewItem() {
       if (!this.newItem.artist.trim()) {
         this.showToast('Please select an artist', 'error')
@@ -647,7 +827,6 @@ export default {
 
       const code = this.newItem.code.toUpperCase()
 
-      // Check if code already exists
       const codeExists = this.artists.some(artist =>
         artist.mainWorks.some(w => w.code === code) ||
         artist.compilations.some(w => w.code === code)
@@ -658,14 +837,12 @@ export default {
         return
       }
 
-      // Find artist
       const artist = this.artists.find(a => a.name === this.newItem.artist)
       if (!artist) {
         this.showToast('Artist not found', 'error')
         return
       }
 
-      // Add new work with artist name as work name
       const work = {
         code: code,
         name: artist.name,
@@ -674,13 +851,15 @@ export default {
 
       if (this.newItem.type === 'mainWorks') {
         artist.mainWorks.push(work)
+        artist.mainWorks = [...artist.mainWorks]
       } else {
         artist.compilations.push(work)
+        artist.compilations = [...artist.compilations]
       }
 
+      this.artists = [...this.artists]
       this.showAddModal = false
       this.showToast(`✅ Added ${code}`, 'success')
-      this.$forceUpdate()
     }
   }
 }
@@ -1143,14 +1322,13 @@ body {
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
 }
 
 .work-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   padding: 14px;
   background: #f9fafb;
   border: 2px solid #e5e7eb;
@@ -1158,6 +1336,7 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   user-select: none;
+  position: relative;
 }
 
 .works-container.dark-mode .work-card {
@@ -1210,29 +1389,45 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+.work-card-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.work-card:hover .work-card-overlay {
+  opacity: 1;
+}
+
+.edit-btn {
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.edit-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
 }
 
 .work-card-content {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.work-code {
-  font-weight: 700;
-  color: #2563eb;
-  font-size: 14px;
-  margin: 0;
-}
-
-.work-name {
-  color: #666;
-  font-size: 13px;
-  margin: 3px 0 0 0;
-}
-
-.works-container.dark-mode .work-name {
-  color: #aaa;
 }
 
 .work-checkbox {
@@ -1253,6 +1448,23 @@ body {
 
 .work-info {
   flex: 1;
+}
+
+.work-code {
+  font-weight: 700;
+  color: #2563eb;
+  font-size: 14px;
+  margin: 0;
+}
+
+.work-name {
+  color: #666;
+  font-size: 13px;
+  margin: 3px 0 0 0;
+}
+
+.works-container.dark-mode .work-name {
+  color: #aaa;
 }
 
 /* Empty State */
@@ -1351,10 +1563,6 @@ body {
   animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-large {
-  max-width: 550px;
-}
-
 .modal-compact {
   max-width: 400px;
 }
@@ -1442,12 +1650,6 @@ body {
 }
 
 /* Form */
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
 .form-group {
   margin-bottom: 15px;
 }
@@ -1485,6 +1687,17 @@ body {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-input:disabled {
+  background: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.works-container.dark-mode .form-input:disabled {
+  background: #3a3a4e;
+  color: #777;
 }
 
 .radio-group {
@@ -1568,6 +1781,16 @@ body {
   opacity: 0;
 }
 
+.modal-enter .modal-content,
+.modal-leave-to .modal-content {
+  transform: scale(0.95);
+}
+
+.modal-enter-active .modal-content,
+.modal-leave-active .modal-content {
+  transition: transform 0.3s ease;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header {
@@ -1595,12 +1818,8 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
   .modal-content,
-  .modal-large {
+  .modal-compact {
     max-width: 90%;
   }
 
