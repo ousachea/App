@@ -1,9 +1,12 @@
 <!-- pages/works.vue -->
 <template>
-  <div class="works-container">
+  <div :class="['works-container', { 'dark-mode': darkMode }]">
     <div class="container">
       <div class="header">
         <h1>🎬 All Works Sorted by Code</h1>
+        <button @click="toggleDarkMode" class="theme-toggle" :title="darkMode ? 'Light Mode' : 'Dark Mode'">
+          {{ darkMode ? '☀️' : '🌙' }}
+        </button>
       </div>
 
       <!-- Controls Section -->
@@ -22,7 +25,15 @@
             class="btn btn-primary"
           >
             <span class="icon">⬇</span>
-            Export ({{ selectedCodes.length }})
+            Export JSON ({{ selectedCodes.length }})
+          </button>
+          <button
+            @click="handleExportCSV"
+            :disabled="selectedCodes.length === 0"
+            class="btn btn-primary"
+          >
+            <span class="icon">📊</span>
+            Export CSV
           </button>
           <button
             @click="handleImportClick"
@@ -30,6 +41,14 @@
           >
             <span class="icon">⬆</span>
             Import
+          </button>
+          <button
+            v-if="selectedCodes.length > 0"
+            @click="clearAll"
+            class="btn btn-danger"
+          >
+            <span class="icon">🗑</span>
+            Clear All
           </button>
           <input
             ref="fileInput"
@@ -118,6 +137,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Toast Notification -->
+    <transition name="toast">
+      <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">
+        {{ toast.message }}
+      </div>
+    </transition>
+
+    <!-- Confirmation Modal -->
+    <transition name="modal">
+      <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">
+        <div class="modal-content" @click.stop>
+          <h3>Clear All Selections?</h3>
+          <p>This will remove all {{ selectedCodes.length }} selected items. This action cannot be undone.</p>
+          <div class="modal-buttons">
+            <button @click="showConfirmModal = false" class="btn btn-secondary">Cancel</button>
+            <button @click="confirmClearAll" class="btn btn-danger">Clear All</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -128,6 +168,13 @@ export default {
     return {
       searchQuery: '',
       selectedCodes: [],
+      darkMode: false,
+      showConfirmModal: false,
+      toast: {
+        show: false,
+        message: '',
+        type: 'success'
+      },
       artists: [
         {
           name: 'Anzai Rara (安斎らら)',
@@ -262,6 +309,9 @@ export default {
         localStorage.setItem('selectedCodes', JSON.stringify(newVal))
       },
       deep: true
+    },
+    darkMode(newVal) {
+      localStorage.setItem('darkMode', JSON.stringify(newVal))
     }
   },
   mounted() {
@@ -272,6 +322,11 @@ export default {
       } catch (e) {
         console.error('Error loading selected codes:', e)
       }
+    }
+
+    const darkModeStored = localStorage.getItem('darkMode')
+    if (darkModeStored) {
+      this.darkMode = JSON.parse(darkModeStored)
     }
   },
   methods: {
@@ -294,6 +349,16 @@ export default {
     removeCode(code) {
       this.selectedCodes = this.selectedCodes.filter(c => c !== code)
     },
+    showToast(message, type = 'success') {
+      this.toast = {
+        show: true,
+        message,
+        type
+      }
+      setTimeout(() => {
+        this.toast.show = false
+      }, 3000)
+    },
     handleExport() {
       const timestamp = new Date().toISOString().split('T')[0]
       const data = {
@@ -314,6 +379,45 @@ export default {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      this.showToast(`Exported ${this.selectedCodes.length} items as JSON`, 'success')
+    },
+    handleExportCSV() {
+      const timestamp = new Date().toISOString().split('T')[0]
+      
+      let csv = 'Code,Name,Artist,Type\n'
+      
+      this.selectedCodes.forEach(code => {
+        for (const artist of this.artists) {
+          let found = false
+          
+          const mainWork = artist.mainWorks.find(w => w.code === code)
+          if (mainWork) {
+            csv += `${mainWork.code},"${mainWork.name}","${artist.name}","Main Works"\n`
+            found = true
+          }
+          
+          if (!found) {
+            const compilation = artist.compilations.find(w => w.code === code)
+            if (compilation) {
+              csv += `${compilation.code},"${compilation.name}","${artist.name}","Compilation"\n`
+              found = true
+            }
+          }
+          
+          if (found) break
+        }
+      })
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `works-tracker-${timestamp}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      this.showToast(`Exported ${this.selectedCodes.length} items as CSV`, 'success')
     },
     handleImportClick() {
       this.$refs.fileInput.click()
@@ -328,16 +432,28 @@ export default {
           const data = JSON.parse(event.target.result)
           if (data.codes && Array.isArray(data.codes)) {
             this.selectedCodes = data.codes
-            alert(`Imported ${data.codes.length} items from ${data.timestamp}`)
+            this.showToast(`Imported ${data.codes.length} items from ${data.timestamp}`, 'success')
           } else {
-            alert('Invalid file format')
+            this.showToast('Invalid file format', 'error')
           }
         } catch (error) {
-          alert('Error reading file: ' + error.message)
+          this.showToast('Error reading file: ' + error.message, 'error')
         }
       }
       reader.readAsText(file)
       e.target.value = ''
+    },
+    clearAll() {
+      this.showConfirmModal = true
+    },
+    confirmClearAll() {
+      const count = this.selectedCodes.length
+      this.selectedCodes = []
+      this.showConfirmModal = false
+      this.showToast(`Cleared ${count} selections`, 'info')
+    },
+    toggleDarkMode() {
+      this.darkMode = !this.darkMode
     }
   }
 }
@@ -353,6 +469,12 @@ export default {
   min-height: 100vh;
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.works-container.dark-mode {
+  background: #1a1a1a;
+  color: #e0e0e0;
 }
 
 .container {
@@ -361,6 +483,9 @@ export default {
 }
 
 .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   text-align: center;
   margin-bottom: 30px;
 }
@@ -369,6 +494,34 @@ export default {
   font-size: 2.5em;
   color: #333;
   margin: 0;
+  flex: 1;
+}
+
+.works-container.dark-mode .header h1 {
+  color: #e0e0e0;
+}
+
+.theme-toggle {
+  background: none;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+.works-container.dark-mode .theme-toggle {
+  border-color: #64b5f6;
 }
 
 .controls {
@@ -377,6 +530,12 @@ export default {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  transition: background-color 0.3s;
+}
+
+.works-container.dark-mode .controls {
+  background: #2a2a2a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .search-input {
@@ -385,8 +544,16 @@ export default {
   font-size: 16px;
   border: 2px solid #e0e0e0;
   border-radius: 4px;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s, color 0.3s;
   margin-bottom: 15px;
+  background: white;
+  color: #333;
+}
+
+.works-container.dark-mode .search-input {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border-color: #444;
 }
 
 .search-input:focus {
@@ -398,6 +565,7 @@ export default {
   display: flex;
   gap: 10px;
   margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -436,6 +604,24 @@ export default {
   background-color: #15803d;
 }
 
+.btn-danger {
+  background-color: #dc2626;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+.btn-secondary {
+  background-color: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #4b5563;
+}
+
 .icon {
   font-size: 16px;
 }
@@ -455,6 +641,10 @@ export default {
   margin-bottom: 8px;
   font-size: 14px;
   margin: 0 0 8px 0;
+}
+
+.works-container.dark-mode .selected-label {
+  color: #e0e0e0;
 }
 
 .code-tags {
@@ -504,6 +694,10 @@ export default {
   margin: 0 0 8px 0;
 }
 
+.works-container.dark-mode .progress-label {
+  color: #e0e0e0;
+}
+
 .progress-bar {
   width: 100%;
   height: 24px;
@@ -511,6 +705,10 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.works-container.dark-mode .progress-bar {
+  background: #3a3a3a;
 }
 
 .progress-fill {
@@ -530,6 +728,12 @@ export default {
   padding: 25px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s;
+}
+
+.works-container.dark-mode .artist-section {
+  background: #2a2a2a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .artist-header {
@@ -542,6 +746,10 @@ export default {
   color: #666;
   margin: 0 0 20px 0;
   font-size: 14px;
+}
+
+.works-container.dark-mode .artist-period {
+  color: #aaa;
 }
 
 .works-category {
@@ -558,6 +766,10 @@ export default {
   margin: 15px 0 10px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.works-container.dark-mode .category-title {
+  color: #bbb;
 }
 
 .works-grid {
@@ -579,13 +791,27 @@ export default {
   user-select: none;
 }
 
+.works-container.dark-mode .work-item {
+  background: #3a3a3a;
+}
+
 .work-item:hover {
   background: #eff6ff;
+}
+
+.works-container.dark-mode .work-item:hover {
+  background: #444;
 }
 
 .work-item-selected {
   background: #dbeafe;
   border-left-color: #1d4ed8;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+.works-container.dark-mode .work-item-selected {
+  background: #1d3a5c;
+  border-left-color: #64b5f6;
   box-shadow: 0 0 0 2px #2563eb;
 }
 
@@ -602,6 +828,128 @@ export default {
   margin: 0;
 }
 
+.works-container.dark-mode .work-name {
+  color: #aaa;
+}
+
+/* Toast Notification */
+/* Toast Notification */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px 20px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-width: 350px;
+  word-wrap: break-word;
+}
+
+.toast-success {
+  background-color: #16a34a;
+}
+
+.toast-error {
+  background-color: #dc2626;
+}
+
+.toast-info {
+  background-color: #2563eb;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+}
+
+.works-container.dark-mode .modal-content {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.modal-content h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.3em;
+  color: #333;
+}
+
+.works-container.dark-mode .modal-content h3 {
+  color: #e0e0e0;
+}
+
+.modal-content p {
+  margin: 0 0 20px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.works-container.dark-mode .modal-content p {
+  color: #aaa;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-buttons .btn {
+  padding: 10px 16px;
+}
+
+/* Transitions */
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter .modal-content,
+.modal-leave-to .modal-content {
+  transform: scale(0.95);
+}
+
+.modal-enter-active .modal-content,
+.modal-leave-active .modal-content {
+  transition: transform 0.3s ease;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .works-container {
     padding: 15px;
@@ -622,6 +970,17 @@ export default {
   .btn {
     flex: 1;
     min-width: 150px;
+  }
+
+  .toast {
+    left: 20px;
+    right: 20px;
+    max-width: none;
+    bottom: 20px;
+  }
+
+  .modal-content {
+    margin: 20px;
   }
 }
 </style>
