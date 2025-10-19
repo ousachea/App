@@ -120,22 +120,29 @@
           <div v-if="artist.mainWorks.length > 0" class="works-section">
             <h3 class="section-title">📌 Main Works</h3>
             <div class="works-grid">
-              <div
-                v-for="work in artist.mainWorks"
+              <div v-for="work in artist.mainWorks"
                 :key="work.code"
                 @click="toggleCode(work.code)"
                 :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
               >
-                <div class="work-checkbox">
-                  <input
-                    type="checkbox"
-                    :checked="selectedCodes.includes(work.code)"
-                    @change="toggleCode(work.code)"
-                  />
+                <div v-if="work.imageUrl" class="work-image-large">
+                  <img :src="work.imageUrl" :alt="work.code" class="work-img">
                 </div>
-                <div class="work-info">
-                  <p class="work-code">{{ work.code }}</p>
-                  <p class="work-name">{{ work.name }}</p>
+                <div v-else class="work-image-large work-image-placeholder">
+                  <span>📷</span>
+                </div>
+                <div class="work-card-content">
+                  <div class="work-checkbox">
+                    <input
+                      type="checkbox"
+                      :checked="selectedCodes.includes(work.code)"
+                      @change="toggleCode(work.code)"
+                    />
+                  </div>
+                  <div class="work-info">
+                    <p class="work-code">{{ work.code }}</p>
+                    <p class="work-name">{{ work.name }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -151,16 +158,24 @@
                 @click="toggleCode(work.code)"
                 :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
               >
-                <div class="work-checkbox">
-                  <input
-                    type="checkbox"
-                    :checked="selectedCodes.includes(work.code)"
-                    @change="toggleCode(work.code)"
-                  />
+                <div v-if="work.imageUrl" class="work-image-large">
+                  <img :src="work.imageUrl" :alt="work.code" class="work-img">
                 </div>
-                <div class="work-info">
-                  <p class="work-code">{{ work.code }}</p>
-                  <p class="work-name">{{ work.name }}</p>
+                <div v-else class="work-image-large work-image-placeholder">
+                  <span>📷</span>
+                </div>
+                <div class="work-card-content">
+                  <div class="work-checkbox">
+                    <input
+                      type="checkbox"
+                      :checked="selectedCodes.includes(work.code)"
+                      @change="toggleCode(work.code)"
+                    />
+                  </div>
+                  <div class="work-info">
+                    <p class="work-code">{{ work.code }}</p>
+                    <p class="work-name">{{ work.name }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -204,44 +219,48 @@
     <!-- Add Item Modal -->
     <transition name="modal">
       <div v-if="showAddModal" class="modal-overlay" @click="closeAddModal">
-        <div class="modal-content modal-large" @click.stop>
+        <div class="modal-content modal-compact" @click.stop>
           <div class="modal-header">
             <h3>➕ Add New Item</h3>
             <button @click="closeAddModal" class="modal-close">✕</button>
           </div>
           <div class="modal-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Artist Name</label>
-                <input
-                  v-model="newItem.artist"
-                  type="text"
-                  placeholder="e.g., New Artist"
-                  class="form-input"
-                  @keyup.enter="addNewItem"
-                />
-              </div>
-              <div class="form-group">
-                <label>Code</label>
-                <input
-                  v-model="newItem.code"
-                  type="text"
-                  placeholder="e.g., SSIS-001"
-                  class="form-input"
-                  @keyup.enter="addNewItem"
-                />
-              </div>
+            <div class="form-group">
+              <label>Artist</label>
+              <select
+                v-model="newItem.artist"
+                class="form-input"
+              >
+                <option value="">-- Select Artist --</option>
+                <option v-for="artist in artists" :key="artist.name" :value="artist.name">
+                  {{ artist.name }}
+                </option>
+              </select>
             </div>
 
             <div class="form-group">
-              <label>Work Name</label>
+              <label>Code</label>
               <input
-                v-model="newItem.name"
+                v-model="newItem.code"
                 type="text"
-                placeholder="e.g., Work Title"
+                placeholder="e.g., SSIS-001"
                 class="form-input"
                 @keyup.enter="addNewItem"
               />
+            </div>
+
+            <div class="form-group">
+              <label>Image URL</label>
+              <input
+                v-model="newItem.imageUrl"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                class="form-input"
+              />
+              <div v-if="newItem.imageUrl" class="image-preview">
+                <img :src="newItem.imageUrl" alt="Preview" @error="imageError = true">
+                <span v-if="imageError" class="image-error">❌ Image failed to load</span>
+              </div>
             </div>
 
             <div class="form-group">
@@ -290,8 +309,10 @@ export default {
         artist: '',
         code: '',
         name: '',
-        type: 'mainWorks'
+        type: 'mainWorks',
+        imageUrl: ''
       },
+      imageError: false,
       toast: {
         show: false,
         message: '',
@@ -605,8 +626,10 @@ export default {
         artist: '',
         code: '',
         name: '',
-        type: 'mainWorks'
+        type: 'mainWorks',
+        imageUrl: ''
       }
+      this.imageError = false
       this.showAddModal = true
     },
     closeAddModal() {
@@ -614,15 +637,11 @@ export default {
     },
     addNewItem() {
       if (!this.newItem.artist.trim()) {
-        this.showToast('Please enter artist name', 'error')
+        this.showToast('Please select an artist', 'error')
         return
       }
       if (!this.newItem.code.trim()) {
         this.showToast('Please enter code', 'error')
-        return
-      }
-      if (!this.newItem.name.trim()) {
-        this.showToast('Please enter work name', 'error')
         return
       }
 
@@ -639,22 +658,18 @@ export default {
         return
       }
 
-      // Find or create artist
-      let artist = this.artists.find(a => a.name === this.newItem.artist)
+      // Find artist
+      const artist = this.artists.find(a => a.name === this.newItem.artist)
       if (!artist) {
-        artist = {
-          name: this.newItem.artist,
-          period: new Date().getFullYear().toString(),
-          mainWorks: [],
-          compilations: []
-        }
-        this.artists.push(artist)
+        this.showToast('Artist not found', 'error')
+        return
       }
 
-      // Add new work
+      // Add new work with artist name as work name
       const work = {
         code: code,
-        name: this.newItem.name
+        name: artist.name,
+        imageUrl: this.newItem.imageUrl || null
       }
 
       if (this.newItem.type === 'mainWorks') {
@@ -1171,6 +1186,55 @@ body {
   border-color: #64b5f6;
 }
 
+.work-image-large {
+  width: 100%;
+  aspect-ratio: 3/2;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.works-container.dark-mode .work-image-large {
+  background: #4a4a5e;
+}
+
+.work-image-placeholder {
+  font-size: 32px;
+}
+
+.work-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.work-card-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.work-code {
+  font-weight: 700;
+  color: #2563eb;
+  font-size: 14px;
+  margin: 0;
+}
+
+.work-name {
+  color: #666;
+  font-size: 13px;
+  margin: 3px 0 0 0;
+}
+
+.works-container.dark-mode .work-name {
+  color: #aaa;
+}
+
 .work-checkbox {
   display: flex;
   align-items: center;
@@ -1189,23 +1253,6 @@ body {
 
 .work-info {
   flex: 1;
-}
-
-.work-code {
-  font-weight: 700;
-  color: #2563eb;
-  font-size: 14px;
-  margin: 0;
-}
-
-.work-name {
-  color: #666;
-  font-size: 13px;
-  margin: 3px 0 0 0;
-}
-
-.works-container.dark-mode .work-name {
-  color: #aaa;
 }
 
 /* Empty State */
@@ -1306,6 +1353,10 @@ body {
 
 .modal-large {
   max-width: 550px;
+}
+
+.modal-compact {
+  max-width: 400px;
 }
 
 .works-container.dark-mode .modal-content {
@@ -1460,6 +1511,36 @@ body {
 }
 
 .modal-body .warning {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.image-preview {
+  margin-top: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e0e0e0;
+  background: #f9fafb;
+  max-height: 150px;
+}
+
+.works-container.dark-mode .image-preview {
+  border-color: #444;
+  background: #3a3a4e;
+}
+
+.image-preview img {
+  width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  display: block;
+}
+
+.image-error {
+  display: block;
+  padding: 10px;
+  text-align: center;
   color: #dc2626;
   font-weight: 600;
   font-size: 13px;
