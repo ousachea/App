@@ -402,10 +402,10 @@ export default {
       },
       artists: [
       {
-          name: '百田光稀',
+          name: 'Mitsuki Momota (百田光稀)',
           period: '2019–2022 (25–28)',
           mainWorks: [
-            { code: 'MIDA-026', name: '百田光稀', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00026/mida00026pl.jpg' },
+            { code: 'MIDA-026', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00026/mida00026pl.jpg' },
          
           ],
           compilations: [
