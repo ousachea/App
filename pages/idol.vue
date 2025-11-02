@@ -433,7 +433,7 @@ export default {
 { code: 'MDVR-317', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mdvr00317/mdvr00317pl.jpg' },
 { code: 'MDVR-288', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mdvr00288/mdvr00288pl.jpg' },
 { code: 'MIDA-385', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00385/mida00385pl.jpg' },
-{ code: 'NAAC-032', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/naac00032/naac00032pl.jpg' },
+{ code: 'NAAC-032', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/h_706naac00032b/h_706naac00032bpl.jpg' },
 { code: 'MIDV-698', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/midv00698/midv00698pl.jpg' },
          
           ],
