@@ -401,6 +401,18 @@ export default {
         type: 'success'
       },
       artists: [
+      {
+          name: '百田光稀',
+          period: '2019–2022 (25–28)',
+          mainWorks: [
+            { code: 'MIDA-026', name: '百田光稀', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00026/mida00026pl.jpg' },
+         
+          ],
+          compilations: [
+            { code: 'OFJE-279', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00279/ofje00279pl.jpg' },
+    
+          ]
+        },
         {
           name: 'Anzai Rara (安斎らら)',
           period: '2019–2022 (25–28)',
