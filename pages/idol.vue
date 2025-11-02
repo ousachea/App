@@ -406,7 +406,7 @@ export default {
           period: '2019–2022 (25–28)',
           mainWorks: [
             { code: 'MIDA-026', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00026/mida00026pl.jpg' },
-            { code: 'REBD-854', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/rebd00854/rebd00854pl.jpg' },
+            { code: 'REBD-854', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/h_346rebd00854/h_346rebd00854pl.jpg' },
 { code: 'OAE-253', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/oae00253/oae00253pl.jpg' },
 { code: 'FWAY-047', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/fway00047/fway00047pl.jpg' },
 { code: 'MIDV-869', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/midv00869/midv00869pl.jpg' },
