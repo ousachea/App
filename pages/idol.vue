@@ -1,3 +1,6 @@
+Works fixed · VUE
+Copy
+
 <!-- pages/works.vue -->
 <template>
   <div :class="['works-container', { 'dark-mode': darkMode }]">
@@ -113,11 +116,11 @@
           <div class="artist-header-info">
             <h2 class="artist-name">{{ artist.name }}</h2>
             <p class="artist-period">{{ artist.period }}</p>
-            <p class="artist-count">{{ artist.mainWorks.length + artist.compilations.length }} works</p>
+            <p class="artist-count">{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
           </div>
 
           <!-- Main Works -->
-          <div v-if="artist.mainWorks.length > 0" class="works-section">
+          <div v-if="artist.mainWorks && artist.mainWorks.length > 0" class="works-section">
             <h3 class="section-title">📌 Main Works</h3>
             <div class="works-grid">
               <div
@@ -168,7 +171,7 @@
           </div>
 
           <!-- Compilations -->
-          <div v-if="artist.compilations.length > 0" class="works-section">
+          <div v-if="artist.compilations && artist.compilations.length > 0" class="works-section">
             <h3 class="section-title">📂 Compilations</h3>
             <div class="works-grid">
               <div
@@ -546,9 +549,10 @@ export default {
   },
   computed: {
     totalCount() {
+      if (!Array.isArray(this.artists)) return 0
       return this.artists.reduce(
         (sum, artist) =>
-          sum + artist.mainWorks.length + artist.compilations.length,
+          sum + (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0),
         0
       )
     },
@@ -557,11 +561,12 @@ export default {
       return Math.round((this.selectedCodes.length / this.totalCount) * 100)
     },
     filteredArtists() {
+      if (!Array.isArray(this.artists)) return []
       return this.artists
         .map(artist => ({
           ...artist,
-          mainWorks: this.filterWorks(artist.mainWorks),
-          compilations: this.filterWorks(artist.compilations)
+          mainWorks: this.filterWorks(artist.mainWorks || []),
+          compilations: this.filterWorks(artist.compilations || [])
         }))
         .filter(
           artist =>
@@ -594,37 +599,62 @@ export default {
   },
   mounted() {
     if (process.client) {
+      // Load selected codes
       const stored = localStorage.getItem('selectedCodes')
       if (stored) {
         try {
-          this.selectedCodes = JSON.parse(stored)
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) {
+            this.selectedCodes = parsed
+          }
         } catch (e) {
           console.error('Error loading selected codes:', e)
+          this.selectedCodes = []
         }
       }
 
+      // Load dark mode
       const darkModeStored = localStorage.getItem('darkMode')
       if (darkModeStored) {
-        this.darkMode = JSON.parse(darkModeStored)
+        try {
+          this.darkMode = JSON.parse(darkModeStored)
+        } catch (e) {
+          console.error('Error loading dark mode:', e)
+          this.darkMode = false
+        }
       }
 
+      // Load artists - only if valid data exists
       const artistsStored = localStorage.getItem('artists')
       if (artistsStored) {
         try {
-          this.artists = JSON.parse(artistsStored)
+          const parsed = JSON.parse(artistsStored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Validate structure
+            const isValid = parsed.every(artist => 
+              artist.name && 
+              Array.isArray(artist.mainWorks) && 
+              Array.isArray(artist.compilations)
+            )
+            if (isValid) {
+              this.artists = parsed
+            }
+          }
         } catch (e) {
           console.error('Error loading artists:', e)
+          // Keep the default artists data if loading fails
         }
       }
     }
   },
   methods: {
     filterWorks(works) {
+      if (!Array.isArray(works)) return []
       const query = this.searchQuery.toLowerCase()
       return works.filter(
         work =>
-          work.code.toLowerCase().includes(query) ||
-          work.name.toLowerCase().includes(query)
+          work.code?.toLowerCase().includes(query) ||
+          work.name?.toLowerCase().includes(query)
       )
     },
     toggleCode(code) {
@@ -679,14 +709,14 @@ export default {
         for (const artist of this.artists) {
           let found = false
           
-          const mainWork = artist.mainWorks.find(w => w.code === code)
+          const mainWork = artist.mainWorks?.find(w => w.code === code)
           if (mainWork) {
             csv += `${mainWork.code},"${mainWork.name}","${artist.name}","Main Works","${mainWork.imageUrl || ''}"\n`
             found = true
           }
           
           if (!found) {
-            const compilation = artist.compilations.find(w => w.code === code)
+            const compilation = artist.compilations?.find(w => w.code === code)
             if (compilation) {
               csv += `${compilation.code},"${compilation.name}","${artist.name}","Compilation","${compilation.imageUrl || ''}"\n`
               found = true
@@ -760,8 +790,8 @@ export default {
             // Validate codes exist in current data
             const validCodes = codes.filter(code => 
               this.artists.some(artist =>
-                artist.mainWorks.some(w => w.code === code) ||
-                artist.compilations.some(w => w.code === code)
+                artist.mainWorks?.some(w => w.code === code) ||
+                artist.compilations?.some(w => w.code === code)
               )
             )
             
@@ -832,11 +862,11 @@ export default {
         return
       }
 
-      let work = artist.mainWorks.find(w => w.code === this.editItem.code)
+      let work = artist.mainWorks?.find(w => w.code === this.editItem.code)
       let isMainWork = true
       
       if (!work) {
-        work = artist.compilations.find(w => w.code === this.editItem.code)
+        work = artist.compilations?.find(w => w.code === this.editItem.code)
         isMainWork = false
       }
 
@@ -869,8 +899,8 @@ export default {
       const code = this.newItem.code.toUpperCase()
 
       const codeExists = this.artists.some(artist =>
-        artist.mainWorks.some(w => w.code === code) ||
-        artist.compilations.some(w => w.code === code)
+        artist.mainWorks?.some(w => w.code === code) ||
+        artist.compilations?.some(w => w.code === code)
       )
 
       if (codeExists) {
