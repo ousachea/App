@@ -286,43 +286,51 @@
           </div>
 
           <div v-if="historyExpanded" class="history-list">
-            <div v-for="(purchase, index) in sortedPurchases" :key="index" class="history-item">
-              <div class="history-item-header">
-                <div class="history-item-metal">
-                  <span class="metal-icon gold-icon">Au</span>
-                  <span class="history-amount">{{ purchase.amount }} ជី</span>
-                </div>
-                <button @click="deletePurchase(index)" class="delete-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
+            <div class="history-table">
+              <div class="history-table-header">
+                <div class="th th-amount">Amount</div>
+                <div class="th th-paid">You Paid</div>
+                <div class="th th-today">Today's Value</div>
+                <div class="th th-profit">Profit/Loss</div>
+                <div class="th th-date">Date</div>
+                <div class="th th-action"></div>
               </div>
 
-              <div class="history-item-details">
-                <div class="history-explanation">
-                  <div v-if="getCurrentMetalPrice('gold') !== goldPrice" class="price-source-badge">
-                    📌 Using custom price: ${{ getCurrentMetalPrice('gold').toFixed(2) }}/oz
-                  </div>
-                  <div class="history-text">
-                    You paid <strong>{{ formatCurrencyDisplay(purchase.totalPaid) }}</strong>
-                    <span class="per-unit-text">
-                      {{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }} per ជី
-                    </span>
-                  </div>
-                  <div class="history-text">
-                    Today's value: <strong>{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase)) }}</strong>
-                    <span class="per-unit-text">
-                      {{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase) / purchase.amount) }} per ជី
-                    </span>
-                  </div>
-                  <div class="history-result" :class="getPurchaseProfitLossClass(purchase)">
-                    {{ getPurchaseProfitLoss(purchase) >= 0 ? '✅ You earned' : '❌ You lost' }}
-                    <strong>{{ formatCurrencyDisplay(Math.abs(getPurchaseProfitLoss(purchase))) }}</strong>
+              <div v-for="(purchase, index) in sortedPurchases" :key="index" class="history-table-row">
+                <div class="td td-amount">
+                  <span class="metal-icon gold-icon small">Au</span>
+                  <span class="amount-text">{{ purchase.amount }} ជី</span>
+                </div>
+                
+                <div class="td td-paid">
+                  <div class="main-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</div>
+                  <div class="sub-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/ជី</div>
+                </div>
+                
+                <div class="td td-today">
+                  <div class="main-value">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase)) }}</div>
+                  <div class="sub-value">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase) / purchase.amount) }}/ជី</div>
+                </div>
+                
+                <div class="td td-profit" :class="getPurchaseProfitLossClass(purchase)">
+                  <div class="profit-badge" :class="getPurchaseProfitLossClass(purchase)">
+                    <span class="profit-icon">{{ getPurchaseProfitLoss(purchase) >= 0 ? '✅' : '❌' }}</span>
+                    <span class="profit-amount">{{ formatCurrencyDisplay(Math.abs(getPurchaseProfitLoss(purchase))) }}</span>
                   </div>
                 </div>
-                <div class="purchase-date">📅 {{ formatDate(purchase.date) }}</div>
+                
+                <div class="td td-date">
+                  {{ formatDate(purchase.date) }}
+                </div>
+                
+                <div class="td td-action">
+                  <button @click="deletePurchase(index)" class="delete-btn-small">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -969,6 +977,8 @@ export default {
       try {
         const endpoint = `${this.apiBaseUrl}/${metalSymbol}/USD`;
         
+        console.log('🔄 Making API call to:', endpoint);
+        
         const response = await fetch(endpoint, {
           method: 'GET',
           headers: {
@@ -977,11 +987,21 @@ export default {
           }
         });
 
+        console.log('📡 API Response status:', response.status);
+
         if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('API error response:', errorText);
+          throw new Error(`API error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('📊 API data received:', data);
+        
+        // Validate the data
+        if (!data || typeof data.price !== 'number') {
+          throw new Error('Invalid data format from API');
+        }
         
         // Update price and quota
         if (this.selectedMetal === 'gold') {
@@ -1014,6 +1034,10 @@ export default {
         
       } catch (error) {
         console.error('❌ API Error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
         
         // Fallback strategy
         if (metalCache.data) {
@@ -1183,9 +1207,21 @@ export default {
 }
 
 .container {
-  max-width: 480px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 0 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 40px;
+  }
 }
 
 /* Header */
@@ -1324,6 +1360,35 @@ export default {
 /* Main */
 .main {
   padding: 32px 0;
+  min-height: calc(100vh - 80px);
+}
+
+/* Section Spacing */
+.section {
+  margin-bottom: 32px;
+}
+
+.section-large {
+  margin-bottom: 48px;
+}
+
+/* Layout Grid for larger screens */
+.layout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .layout-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  
+  .layout-grid .portfolio-summary,
+  .layout-grid .purchase-form {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Manual Section */
@@ -1595,18 +1660,35 @@ export default {
 .price-card {
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.price-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .app.dark .price-card {
   background: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app.dark .price-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .main-card {
   margin-bottom: 16px;
-  background: #fbbf24;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   color: white;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
+}
+
+.main-card:hover {
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.4);
 }
 
 .label {
@@ -1656,14 +1738,16 @@ export default {
 .portfolio-summary {
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   margin-bottom: 24px;
   border: 2px solid #10b981;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
 }
 
 .app.dark .portfolio-summary {
   background: #1a1a1a;
   border-color: #10b981;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
 }
 
 .summary-header {
@@ -1674,7 +1758,16 @@ export default {
 }
 
 .summary-title {
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-title {
+  font-size: 18px;
   font-weight: 700;
   margin: 0;
 }
@@ -1727,67 +1820,6 @@ export default {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-}
-
-.summary-explanation {
-  display: block;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  background: #fef3cd;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #856404;
-  font-weight: 500;
-  margin-bottom: 16px;
-  border: 1px solid #fbbf24;
-}
-
-.app.dark .custom-price-notice {
-  background: #2a2410;
-  color: #fbbf24;
-  border-color: #fbbf24;
-}
-
-.custom-price-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.custom-price-notice svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.clear-custom-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  background: #fbbf24;
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.clear-custom-btn:hover {
-  background: #f59e0b;
-  transform: scale(1.05);
-}
-
-.app.dark .clear-custom-btn {
-  background: #fbbf24;
-  color: #1a1a1a;
-}
-
-.app.dark .clear-custom-btn:hover {
-  background: #f59e0b;
 }
 
 .summary-explanation {
@@ -2232,12 +2264,16 @@ export default {
 .purchase-history {
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   margin-bottom: 24px;
+  width: 100%;
+  max-width: 100%;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .app.dark .purchase-history {
   background: #1a1a1a;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 .history-header {
@@ -2248,7 +2284,7 @@ export default {
 }
 
 .history-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   margin: 0;
 }
@@ -2284,53 +2320,158 @@ export default {
 }
 
 .history-list {
-  display: grid;
-  gap: 12px;
+  overflow-x: auto;
+  width: 100%;
 }
 
-.history-item {
-  background: #fafafa;
-  border-radius: 12px;
+.history-table {
+  width: 100%;
+  min-width: 100%;
+}
+
+.history-table-header {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr 140px 100px 60px;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.app.dark .history-table-header {
+  background: #2a2a2a;
+}
+
+.th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.app.dark .th {
+  color: #999;
+}
+
+.history-table-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr 140px 100px 60px;
+  gap: 16px;
   padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  align-items: center;
   transition: all 0.2s;
 }
 
-.app.dark .history-item {
+.app.dark .history-table-row {
   background: #0a0a0a;
 }
 
-.history-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.history-table-row:hover {
+  background: #f0f0f0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.history-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e5e5e5;
+.app.dark .history-table-row:hover {
+  background: #1a1a1a;
 }
 
-.app.dark .history-item-header {
-  border-bottom-color: #2a2a2a;
+.td {
+  font-size: 14px;
+  color: #1a1a1a;
 }
 
-.history-item-metal {
+.app.dark .td {
+  color: #e5e5e5;
+}
+
+.td-amount {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.history-amount {
+.metal-icon.small {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.amount-text {
   font-weight: 600;
+}
+
+.main-value {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.sub-value {
+  font-size: 11px;
+  color: #999;
+  font-weight: 500;
+}
+
+.app.dark .sub-value {
+  color: #666;
+}
+
+.profit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.profit-badge.profit {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.app.dark .profit-badge.profit {
+  background: #064e3b;
+  color: #10b981;
+}
+
+.profit-badge.loss {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.app.dark .profit-badge.loss {
+  background: #7f1d1d;
+  color: #ef4444;
+}
+
+.profit-icon {
   font-size: 14px;
 }
 
-.delete-btn {
-  width: 28px;
-  height: 28px;
+.profit-amount {
+  font-weight: 700;
+}
+
+.td-date {
+  font-size: 12px;
+  color: #666;
+}
+
+.app.dark .td-date {
+  color: #999;
+}
+
+.delete-btn-small {
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 6px;
   background: #f5f5f5;
@@ -2341,132 +2482,36 @@ export default {
   transition: all 0.2s;
 }
 
-.app.dark .delete-btn {
+.app.dark .delete-btn-small {
   background: #2a2a2a;
 }
 
-.delete-btn:hover {
+.delete-btn-small:hover {
   background: #fee;
   color: #ef4444;
 }
 
-.delete-btn svg {
-  width: 14px;
-  height: 14px;
+.delete-btn-small svg {
+  width: 16px;
+  height: 16px;
 }
 
-.history-item-details {
-  display: grid;
-  gap: 12px;
-}
-
-.history-explanation {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  background: white;
-  border-radius: 8px;
-}
-
-.app.dark .history-explanation {
-  background: #1a1a1a;
-}
-
-.price-source-badge {
-  background: #fef3cd;
-  color: #856404;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-  border: 1px solid #fbbf24;
-  margin-bottom: 4px;
-}
-
-.app.dark .price-source-badge {
-  background: #2a2410;
-  color: #fbbf24;
-}
-
-.history-text {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.6;
-}
-
-.app.dark .history-text {
-  color: #999;
-}
-
-.history-text strong {
-  color: #1a1a1a;
-  font-weight: 700;
-}
-
-.app.dark .history-text strong {
-  color: #e5e5e5;
-}
-
-.per-unit-text {
-  font-size: 12px;
-  color: #999;
-  display: block;
-  margin-top: 2px;
-  font-style: italic;
-}
-
-.app.dark .per-unit-text {
-  color: #666;
-}
-
-.history-result {
-  margin-top: 4px;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.history-result.profit {
-  background: #d1fae5;
-  color: #065f46;
-  border: 2px solid #10b981;
-}
-
-.app.dark .history-result.profit {
-  background: #064e3b;
-  color: #10b981;
-}
-
-.history-result.loss {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 2px solid #ef4444;
-}
-
-.app.dark .history-result.loss {
-  background: #7f1d1d;
-  color: #ef4444;
-}
-
-.history-result strong {
-  font-size: 18px;
-  margin-left: 4px;
-}
-
-.purchase-date {
-  font-size: 12px;
-  color: #999;
-  text-align: center;
-  padding-top: 8px;
-  border-top: 1px solid #e5e5e5;
-}
-
-.app.dark .purchase-date {
-  border-top-color: #2a2a2a;
-  color: #666;
+/* Responsive table for mobile */
+@media (max-width: 768px) {
+  .history-table-header {
+    grid-template-columns: 100px 120px 80px 50px;
+  }
+  
+  .history-table-row {
+    grid-template-columns: 100px 120px 80px 50px;
+  }
+  
+  .th-paid,
+  .th-today,
+  .td-paid,
+  .td-today {
+    display: none;
+  }
 }
 
 .detail-row {
@@ -2517,10 +2562,21 @@ export default {
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.calculator:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .app.dark .calculator {
   background: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app.dark .calculator:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .calc-input-group {
@@ -2737,7 +2793,7 @@ export default {
 /* Responsive */
 @media (min-width: 640px) {
   .container {
-    max-width: 600px;
+    max-width: 800px;
   }
 }
 
