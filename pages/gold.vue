@@ -162,29 +162,16 @@
             </button>
           </div>
           
-          <!-- Custom Today's Price for Profit/Loss -->
-          <div class="today-price-setter">
-            <div class="setter-label">
-              <span>💰 Today's ជី price:</span>
-              <button v-if="manualGoldPrice" @click="clearAllCustomPrices" class="clear-link">
-                Use live (${{ getChiPrice().toFixed(2) }})
-              </button>
-            </div>
-            <div class="price-input-wrapper">
-              <div class="input-with-currency">
-                <span class="currency-symbol">$</span>
-                <input 
-                  v-model.number="customChiPrice" 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  class="form-input-currency-medium"
-                  :placeholder="getChiPrice().toFixed(2)"
-                  @input="updateCustomChiPrice"
-                >
-              </div>
-              <span class="per-unit-label">per ជី</span>
-            </div>
+          <div v-if="manualGoldPrice" class="using-custom-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>
+              Using your custom price: ${{ manualGoldPrice.toFixed(2) }}/oz 
+              (= ${{ (manualGoldPrice * (CHI_TO_GRAM / TROY_OUNCE_TO_GRAM)).toFixed(2) }}/ជី)
+            </span>
           </div>
           
           <div class="summary-explanation">
@@ -480,7 +467,6 @@ export default {
       purchases: [],
       showPurchaseForm: false,
       historyExpanded: true,
-      customChiPrice: null,  // Custom ជី price for profit/loss calculation
       newPurchase: {
         metal: 'gold',  // Always gold
         amount: null,
@@ -607,21 +593,6 @@ export default {
       }
     },
 
-    updateCustomChiPrice() {
-      if (this.customChiPrice && this.customChiPrice > 0) {
-        // Convert ជី price to Troy Oz price
-        // ជី = 3.75g, Troy Oz = 31.1g
-        // Troy Oz price = ជី price × (31.1 / 3.75)
-        const troyOzPrice = this.customChiPrice * (this.TROY_OUNCE_TO_GRAM / this.CHI_TO_GRAM);
-        this.manualGoldPrice = troyOzPrice;
-        
-        if (process.client) {
-          localStorage.setItem('customChiPrice', this.customChiPrice);
-          localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
-        }
-      }
-    },
-
     clearManualPrice() {
       this.isManualMode = false;
       this.manualPrice = null;
@@ -656,14 +627,12 @@ export default {
     clearAllCustomPrices() {
       this.manualGoldPrice = null;
       this.manualSilverPrice = null;
-      this.customChiPrice = null;
       this.isManualMode = false;
       this.manualPrice = null;
       
       if (process.client) {
         localStorage.removeItem('manualGoldPrice');
         localStorage.removeItem('manualSilverPrice');
-        localStorage.removeItem('customChiPrice');
         localStorage.removeItem('manualPrice');
         localStorage.removeItem('isManualMode');
       }
@@ -1102,11 +1071,6 @@ export default {
         const savedManualSilverPrice = localStorage.getItem('manualSilverPrice');
         if (savedManualSilverPrice) {
           this.manualSilverPrice = parseFloat(savedManualSilverPrice);
-        }
-
-        const savedCustomChiPrice = localStorage.getItem('customChiPrice');
-        if (savedCustomChiPrice) {
-          this.customChiPrice = parseFloat(savedCustomChiPrice);
         }
 
         const savedQuota = localStorage.getItem('apiQuota');
@@ -1739,95 +1703,34 @@ export default {
   height: 16px;
 }
 
-.today-price-setter {
-  background: #fafafa;
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  border: 2px solid #10b981;
-}
-
-.app.dark .today-price-setter {
-  background: #0a0a0a;
-}
-
-.setter-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.app.dark .setter-label {
-  color: #999;
-}
-
-.clear-link {
-  background: none;
-  border: none;
-  color: #10b981;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-}
-
-.clear-link:hover {
-  color: #059669;
-}
-
-.price-input-wrapper {
+.using-custom-notice {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 12px;
+  background: #fef3cd;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #856404;
+  font-weight: 500;
+  margin-bottom: 16px;
+  border: 1px solid #fbbf24;
 }
 
-.price-input-wrapper .input-with-currency {
-  flex: 1;
-  margin-bottom: 0;
+.app.dark .using-custom-notice {
+  background: #2a2410;
+  color: #fbbf24;
+  border-color: #fbbf24;
 }
 
-.per-unit-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 600;
-  white-space: nowrap;
+.using-custom-notice svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.app.dark .per-unit-label {
-  color: #999;
-}
-
-.form-input-currency-medium {
-  width: 100%;
-  padding: 12px 12px 12px 36px;
-  border: 2px solid #e5e5e5;
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  background: white;
-  color: #1a1a1a;
-  transition: all 0.2s;
-}
-
-.app.dark .form-input-currency-medium {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.form-input-currency-medium:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-.custom-price-notice {
-  display: flex;
+.summary-explanation {
+  display: block;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
