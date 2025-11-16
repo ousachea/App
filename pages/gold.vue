@@ -150,6 +150,208 @@
           </div>
         </div>
 
+        <!-- Portfolio Summary (New) -->
+        <div v-if="purchases.length > 0" class="portfolio-summary">
+          <div class="summary-header">
+            <h3 class="summary-title">📊 Your Portfolio</h3>
+            <button @click="showPurchaseForm = true" class="add-purchase-btn-mini">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Custom Today's Price for Profit/Loss -->
+          <div class="today-price-setter">
+            <div class="setter-label">
+              <span>💰 Today's ជី price:</span>
+              <button v-if="manualGoldPrice" @click="clearAllCustomPrices" class="clear-link">
+                Use live (${{ getChiPrice().toFixed(2) }})
+              </button>
+            </div>
+            <div class="price-input-wrapper">
+              <div class="input-with-currency">
+                <span class="currency-symbol">$</span>
+                <input 
+                  v-model.number="customChiPrice" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  class="form-input-currency-medium"
+                  :placeholder="getChiPrice().toFixed(2)"
+                  @input="updateCustomChiPrice"
+                >
+              </div>
+              <span class="per-unit-label">per ជី</span>
+            </div>
+          </div>
+          
+          <div class="summary-explanation">
+            <div class="explanation-row">
+              <span class="explanation-label">💰 You paid total:</span>
+              <span class="explanation-value">{{ formatCurrencyDisplay(getTotalInvested()) }}</span>
+            </div>
+            <div class="explanation-row">
+              <span class="explanation-label">📈 Today's value:</span>
+              <span class="explanation-value">{{ formatCurrencyDisplay(getCurrentValue()) }}</span>
+            </div>
+            <div class="explanation-divider"></div>
+            <div class="explanation-row result" :class="getProfitLossClass()">
+              <span class="explanation-label">
+                {{ getProfitLoss() >= 0 ? '✅ You earned:' : '❌ You lost:' }}
+              </span>
+              <span class="explanation-value-big">
+                {{ formatCurrencyDisplay(Math.abs(getProfitLoss())) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Purchase Form (New) -->
+        <div v-if="showPurchaseForm" class="purchase-form">
+          <div class="form-header">
+            <h3 class="form-title">Add Gold Purchase</h3>
+            <button @click="closePurchaseForm" class="close-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">How many ជី (Chi) did you buy?</label>
+            <input 
+              v-model.number="newPurchase.amount" 
+              type="number" 
+              step="0.01"
+              min="0"
+              class="form-input-large"
+              placeholder="2"
+            >
+            <div class="input-hint">Enter the amount in ជី only</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">How much did you pay? (USD)</label>
+            <div class="input-with-currency">
+              <span class="currency-symbol">$</span>
+              <input 
+                v-model.number="newPurchase.totalPaid" 
+                type="number" 
+                step="0.01"
+                min="0"
+                class="form-input-currency-large"
+                placeholder="1020.00"
+              >
+            </div>
+            <div class="input-hint">Total amount you paid in USD</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">When did you buy it?</label>
+            <input 
+              v-model="newPurchase.date" 
+              type="date" 
+              class="form-input"
+              :max="getCurrentDate()"
+            >
+          </div>
+
+          <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="purchase-summary">
+            <div class="purchase-summary-item">
+              <span>You bought:</span>
+              <strong>{{ newPurchase.amount }} ជី gold</strong>
+            </div>
+            <div class="purchase-summary-item">
+              <span>Price per ជី:</span>
+              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid / newPurchase.amount) }}</strong>
+            </div>
+            <div class="purchase-summary-item">
+              <span>Total paid:</span>
+              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid) }}</strong>
+            </div>
+          </div>
+
+          <button @click="addPurchase" class="btn btn-primary" :disabled="!canAddPurchase()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Purchase
+          </button>
+        </div>
+
+        <!-- Purchase History (New) -->
+        <div v-if="purchases.length > 0" class="purchase-history">
+          <div class="history-header">
+            <h3 class="history-title">Purchase History</h3>
+            <button @click="toggleHistoryExpanded" class="toggle-btn">
+              <svg v-if="!historyExpanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="18 15 12 9 6 15"/>
+              </svg>
+            </button>
+          </div>
+
+          <div v-if="historyExpanded" class="history-list">
+            <div v-for="(purchase, index) in sortedPurchases" :key="index" class="history-item">
+              <div class="history-item-header">
+                <div class="history-item-metal">
+                  <span class="metal-icon gold-icon">Au</span>
+                  <span class="history-amount">{{ purchase.amount }} ជី</span>
+                </div>
+                <button @click="deletePurchase(index)" class="delete-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="history-item-details">
+                <div class="history-explanation">
+                  <div v-if="getCurrentMetalPrice('gold') !== goldPrice" class="price-source-badge">
+                    📌 Using custom price: ${{ getCurrentMetalPrice('gold').toFixed(2) }}/oz
+                  </div>
+                  <div class="history-text">
+                    You paid <strong>{{ formatCurrencyDisplay(purchase.totalPaid) }}</strong>
+                    <span class="per-unit-text">
+                      {{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }} per ជី
+                    </span>
+                  </div>
+                  <div class="history-text">
+                    Today's value: <strong>{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase)) }}</strong>
+                    <span class="per-unit-text">
+                      {{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase) / purchase.amount) }} per ជី
+                    </span>
+                  </div>
+                  <div class="history-result" :class="getPurchaseProfitLossClass(purchase)">
+                    {{ getPurchaseProfitLoss(purchase) >= 0 ? '✅ You earned' : '❌ You lost' }}
+                    <strong>{{ formatCurrencyDisplay(Math.abs(getPurchaseProfitLoss(purchase))) }}</strong>
+                  </div>
+                </div>
+                <div class="purchase-date">📅 {{ formatDate(purchase.date) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Purchase Button (when no form shown) -->
+        <div v-if="!showPurchaseForm" class="add-purchase-section">
+          <button @click="showPurchaseForm = true" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Purchase
+          </button>
+        </div>
+
         <!-- Calculator -->
         <div class="calculator">
           <div class="calc-input-group">
@@ -267,10 +469,25 @@ export default {
       // Manual Price
       isManualMode: false,
       manualPrice: null,
+      manualGoldPrice: null,  // Store custom gold price separately
+      manualSilverPrice: null, // Store custom silver price separately
       
       // Calculator
       calculatorAmount: 1,
       calculatorUnit: 'damlung',
+      
+      // Purchase Tracking (New)
+      purchases: [],
+      showPurchaseForm: false,
+      historyExpanded: true,
+      customChiPrice: null,  // Custom ជី price for profit/loss calculation
+      newPurchase: {
+        metal: 'gold',  // Always gold
+        amount: null,
+        unit: 'chi',    // Always chi
+        totalPaid: null,
+        date: new Date().toISOString().split('T')[0]
+      },
       
       // API Quota
       apiQuota: {
@@ -326,10 +543,15 @@ export default {
 
     isRefreshDisabled() {
       return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
+    },
+
+    sortedPurchases() {
+      return [...this.purchases].sort((a, b) => new Date(b.date) - new Date(a.date));
     }
   },
 
   methods: {
+    // Existing methods
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode;
       if (process.client) {
@@ -347,9 +569,19 @@ export default {
     enableManualMode() {
       this.isManualMode = true;
       this.manualPrice = this.currentPrice || (this.selectedMetal === 'gold' ? 4242 : 28);
+      
+      // Save the custom price for the specific metal
+      if (this.selectedMetal === 'gold') {
+        this.manualGoldPrice = this.manualPrice;
+      } else {
+        this.manualSilverPrice = this.manualPrice;
+      }
+      
       if (process.client) {
         localStorage.setItem('isManualMode', true);
         localStorage.setItem('manualPrice', this.manualPrice);
+        localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
+        localStorage.setItem('manualSilverPrice', this.manualSilverPrice);
         
         this.$nextTick(() => {
           if (this.$refs.manualInput) {
@@ -363,12 +595,50 @@ export default {
     updateManualPrice() {
       if (this.manualPrice && this.manualPrice > 0 && process.client) {
         localStorage.setItem('manualPrice', this.manualPrice);
+        
+        // Update the specific metal's custom price
+        if (this.selectedMetal === 'gold') {
+          this.manualGoldPrice = this.manualPrice;
+          localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
+        } else {
+          this.manualSilverPrice = this.manualPrice;
+          localStorage.setItem('manualSilverPrice', this.manualSilverPrice);
+        }
+      }
+    },
+
+    updateCustomChiPrice() {
+      if (this.customChiPrice && this.customChiPrice > 0) {
+        // Convert ជី price to Troy Oz price
+        // ជី = 3.75g, Troy Oz = 31.1g
+        // Troy Oz price = ជី price × (31.1 / 3.75)
+        const troyOzPrice = this.customChiPrice * (this.TROY_OUNCE_TO_GRAM / this.CHI_TO_GRAM);
+        this.manualGoldPrice = troyOzPrice;
+        
+        if (process.client) {
+          localStorage.setItem('customChiPrice', this.customChiPrice);
+          localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
+        }
       }
     },
 
     clearManualPrice() {
       this.isManualMode = false;
       this.manualPrice = null;
+      
+      // Clear the custom price for the current metal
+      if (this.selectedMetal === 'gold') {
+        this.manualGoldPrice = null;
+        if (process.client) {
+          localStorage.removeItem('manualGoldPrice');
+        }
+      } else {
+        this.manualSilverPrice = null;
+        if (process.client) {
+          localStorage.removeItem('manualSilverPrice');
+        }
+      }
+      
       if (process.client) {
         localStorage.removeItem('manualPrice');
         localStorage.removeItem('isManualMode');
@@ -380,6 +650,22 @@ export default {
       
       if (cacheAgeHours > 24) {
         this.fetchMetalPrice(false);
+      }
+    },
+
+    clearAllCustomPrices() {
+      this.manualGoldPrice = null;
+      this.manualSilverPrice = null;
+      this.customChiPrice = null;
+      this.isManualMode = false;
+      this.manualPrice = null;
+      
+      if (process.client) {
+        localStorage.removeItem('manualGoldPrice');
+        localStorage.removeItem('manualSilverPrice');
+        localStorage.removeItem('customChiPrice');
+        localStorage.removeItem('manualPrice');
+        localStorage.removeItem('isManualMode');
       }
     },
 
@@ -442,6 +728,198 @@ export default {
       if (this.isRefreshDisabled || this.refreshCooldown > 0) return;
       await this.fetchMetalPrice(true);
       this.startRefreshCooldown();
+    },
+
+    // New Purchase Tracking Methods
+    getCurrentDate() {
+      return new Date().toISOString().split('T')[0];
+    },
+
+    getUnitLabel(unit) {
+      const labels = {
+        'chi': 'ជី',
+        'damlung': 'ដំឡឹង',
+        'oz': 'Troy Oz',
+        'gram': 'Gram'
+      };
+      return labels[unit] || unit;
+    },
+
+    calculateEquivalentOz(amount, unit) {
+      const conversions = {
+        'oz': 1,
+        'damlung': this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM,
+        'chi': this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM,
+        'gram': 1 / this.TROY_OUNCE_TO_GRAM
+      };
+      return amount * (conversions[unit] || 1);
+    },
+
+    canAddPurchase() {
+      return this.newPurchase.amount > 0 && 
+             this.newPurchase.totalPaid > 0 && 
+             this.newPurchase.date;
+    },
+
+    addPurchase() {
+      if (!this.canAddPurchase()) return;
+
+      const purchase = {
+        id: Date.now(),
+        metal: this.newPurchase.metal,
+        amount: this.newPurchase.amount,
+        unit: this.newPurchase.unit,
+        totalPaid: this.newPurchase.totalPaid,
+        date: this.newPurchase.date,
+        ozEquivalent: this.calculateEquivalentOz(this.newPurchase.amount, this.newPurchase.unit)
+      };
+
+      this.purchases.push(purchase);
+      this.savePurchases();
+      this.closePurchaseForm();
+    },
+
+    deletePurchase(index) {
+      if (confirm('Are you sure you want to delete this purchase?')) {
+        this.purchases.splice(index, 1);
+        this.savePurchases();
+      }
+    },
+
+    closePurchaseForm() {
+      this.showPurchaseForm = false;
+      this.newPurchase = {
+        metal: 'gold',  // Always gold
+        amount: null,
+        unit: 'chi',    // Always chi
+        totalPaid: null,
+        date: new Date().toISOString().split('T')[0]
+      };
+    },
+
+    toggleHistoryExpanded() {
+      this.historyExpanded = !this.historyExpanded;
+      if (process.client) {
+        localStorage.setItem('historyExpanded', this.historyExpanded);
+      }
+    },
+
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    },
+
+    getCurrentMetalPrice(metal) {
+      // Check if there's a custom price set for this specific metal
+      if (metal === 'gold' && this.manualGoldPrice) {
+        return this.manualGoldPrice;
+      }
+      if (metal === 'silver' && this.manualSilverPrice) {
+        return this.manualSilverPrice;
+      }
+      // Otherwise use API price
+      return metal === 'gold' ? this.goldPrice : this.silverPrice;
+    },
+
+    getPurchaseCurrentValue(purchase) {
+      const currentPricePerOz = this.getCurrentMetalPrice(purchase.metal);
+      
+      // Convert the current Troy Oz price to the price per unit that was purchased
+      let pricePerUnit;
+      switch (purchase.unit) {
+        case 'oz':
+          pricePerUnit = currentPricePerOz;
+          break;
+        case 'damlung':
+          pricePerUnit = currentPricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+          break;
+        case 'chi':
+          pricePerUnit = currentPricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+          break;
+        case 'gram':
+          pricePerUnit = currentPricePerOz * (1 / this.TROY_OUNCE_TO_GRAM);
+          break;
+        default:
+          pricePerUnit = currentPricePerOz;
+      }
+      
+      // Return: amount × current price per unit
+      return purchase.amount * pricePerUnit;
+    },
+
+    getPurchaseProfitLoss(purchase) {
+      return this.getPurchaseCurrentValue(purchase) - purchase.totalPaid;
+    },
+
+    getPurchaseProfitLossPercentage(purchase) {
+      const profitLoss = this.getPurchaseProfitLoss(purchase);
+      const percentage = (profitLoss / purchase.totalPaid) * 100;
+      return percentage.toFixed(2);
+    },
+
+    getPurchaseProfitLossClass(purchase) {
+      const profitLoss = this.getPurchaseProfitLoss(purchase);
+      return profitLoss >= 0 ? 'profit' : 'loss';
+    },
+
+    getPurchaseProfitLossSign(purchase) {
+      const profitLoss = this.getPurchaseProfitLoss(purchase);
+      return profitLoss >= 0 ? '+' : '-';
+    },
+
+    getTotalInvested() {
+      return this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+    },
+
+    getCurrentValue() {
+      return this.purchases.reduce((sum, p) => sum + this.getPurchaseCurrentValue(p), 0);
+    },
+
+    getProfitLoss() {
+      return this.getCurrentValue() - this.getTotalInvested();
+    },
+
+    getProfitLossPercentage() {
+      const total = this.getTotalInvested();
+      if (total === 0) return '0.00';
+      const percentage = (this.getProfitLoss() / total) * 100;
+      return percentage.toFixed(2);
+    },
+
+    getProfitLossClass() {
+      return this.getProfitLoss() >= 0 ? 'profit' : 'loss';
+    },
+
+    getProfitLossSign() {
+      return this.getProfitLoss() >= 0 ? '+' : '-';
+    },
+
+    savePurchases() {
+      if (process.client) {
+        localStorage.setItem('purchases', JSON.stringify(this.purchases));
+      }
+    },
+
+    loadPurchases() {
+      if (!process.client) return;
+      
+      const saved = localStorage.getItem('purchases');
+      if (saved) {
+        try {
+          this.purchases = JSON.parse(saved);
+        } catch (e) {
+          console.error('Failed to load purchases');
+        }
+      }
+
+      const savedExpanded = localStorage.getItem('historyExpanded');
+      if (savedExpanded !== null) {
+        this.historyExpanded = JSON.parse(savedExpanded);
+      }
     },
 
     async fetchMetalPrice(userRequested = false) {
@@ -616,6 +1094,21 @@ export default {
           this.manualPrice = parseFloat(savedManualPrice);
         }
 
+        const savedManualGoldPrice = localStorage.getItem('manualGoldPrice');
+        if (savedManualGoldPrice) {
+          this.manualGoldPrice = parseFloat(savedManualGoldPrice);
+        }
+
+        const savedManualSilverPrice = localStorage.getItem('manualSilverPrice');
+        if (savedManualSilverPrice) {
+          this.manualSilverPrice = parseFloat(savedManualSilverPrice);
+        }
+
+        const savedCustomChiPrice = localStorage.getItem('customChiPrice');
+        if (savedCustomChiPrice) {
+          this.customChiPrice = parseFloat(savedCustomChiPrice);
+        }
+
         const savedQuota = localStorage.getItem('apiQuota');
         if (savedQuota) {
           this.apiQuota = { ...this.apiQuota, ...JSON.parse(savedQuota) };
@@ -640,6 +1133,9 @@ export default {
             this.silverPrice = this.cache.silver.data.price;
           }
         }
+
+        // Load purchases
+        this.loadPurchases();
 
         // Return true if we have valid cache for current metal
         const currentMetalCache = this.cache[this.selectedMetal];
@@ -671,6 +1167,9 @@ export default {
         this.manualPrice = null;
       }
 
+      // Update new purchase metal type
+      this.newPurchase.metal = newMetal;
+
       // Fetch price for new metal if not cached
       const metalCache = this.cache[newMetal];
       const cacheAgeHours = metalCache.timestamp ? 
@@ -698,6 +1197,9 @@ export default {
     if (!hasCache) {
       this.fetchMetalPrice(false);
     }
+
+    // Set initial purchase metal type
+    this.newPurchase.metal = this.selectedMetal;
   }
 }
 </script>
@@ -839,6 +1341,12 @@ export default {
   font-size: 12px;
   font-weight: 700;
   color: white;
+}
+
+.metal-icon.small {
+  width: 22px;
+  height: 22px;
+  font-size: 10px;
 }
 
 .gold-icon {
@@ -1178,6 +1686,926 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+/* Portfolio Summary (New) */
+.portfolio-summary {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 2px solid #10b981;
+}
+
+.app.dark .portfolio-summary {
+  background: #1a1a1a;
+  border-color: #10b981;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.summary-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.add-purchase-btn-mini {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: #10b981;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.add-purchase-btn-mini:hover {
+  background: #059669;
+  transform: scale(1.05);
+}
+
+.add-purchase-btn-mini svg {
+  width: 16px;
+  height: 16px;
+}
+
+.today-price-setter {
+  background: #fafafa;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 2px solid #10b981;
+}
+
+.app.dark .today-price-setter {
+  background: #0a0a0a;
+}
+
+.setter-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.app.dark .setter-label {
+  color: #999;
+}
+
+.clear-link {
+  background: none;
+  border: none;
+  color: #10b981;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.clear-link:hover {
+  color: #059669;
+}
+
+.price-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price-input-wrapper .input-with-currency {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.per-unit-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app.dark .per-unit-label {
+  color: #999;
+}
+
+.form-input-currency-medium {
+  width: 100%;
+  padding: 12px 12px 12px 36px;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  background: white;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.app.dark .form-input-currency-medium {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.form-input-currency-medium:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.custom-price-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fef3cd;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #856404;
+  font-weight: 500;
+  margin-bottom: 16px;
+  border: 1px solid #fbbf24;
+}
+
+.app.dark .custom-price-notice {
+  background: #2a2410;
+  color: #fbbf24;
+  border-color: #fbbf24;
+}
+
+.custom-price-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.custom-price-notice svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.clear-custom-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #fbbf24;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.clear-custom-btn:hover {
+  background: #f59e0b;
+  transform: scale(1.05);
+}
+
+.app.dark .clear-custom-btn {
+  background: #fbbf24;
+  color: #1a1a1a;
+}
+
+.app.dark .clear-custom-btn:hover {
+  background: #f59e0b;
+}
+
+.summary-explanation {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.app.dark .summary-explanation {
+  background: #0a0a0a;
+}
+
+.explanation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.explanation-row:last-child {
+  margin-bottom: 0;
+}
+
+.explanation-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.app.dark .explanation-label {
+  color: #999;
+}
+
+.explanation-value {
+  font-weight: 700;
+  color: #1a1a1a;
+  font-size: 16px;
+}
+
+.app.dark .explanation-value {
+  color: #e5e5e5;
+}
+
+.explanation-divider {
+  height: 2px;
+  background: #e5e5e5;
+  margin: 16px 0;
+}
+
+.app.dark .explanation-divider {
+  background: #2a2a2a;
+}
+
+.explanation-row.result {
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: 10px;
+  background: white;
+}
+
+.app.dark .explanation-row.result {
+  background: #1a1a1a;
+}
+
+.explanation-row.result.profit {
+  background: #d1fae5;
+  border: 2px solid #10b981;
+}
+
+.app.dark .explanation-row.result.profit {
+  background: #064e3b;
+}
+
+.explanation-row.result.loss {
+  background: #fee2e2;
+  border: 2px solid #ef4444;
+}
+
+.app.dark .explanation-row.result.loss {
+  background: #7f1d1d;
+}
+
+.explanation-row.result .explanation-label {
+  color: #1a1a1a;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.app.dark .explanation-row.result .explanation-label {
+  color: #e5e5e5;
+}
+
+.explanation-value-big {
+  font-weight: 900;
+  font-size: 24px;
+}
+
+.explanation-row.result.profit .explanation-value-big {
+  color: #10b981;
+}
+
+.explanation-row.result.loss .explanation-value-big {
+  color: #ef4444;
+}
+
+.summary-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-card {
+  background: #fafafa;
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app.dark .summary-card {
+  background: #0a0a0a;
+}
+
+.summary-card.profit-loss {
+  border: 2px solid #e5e5e5;
+}
+
+.app.dark .summary-card.profit-loss {
+  border-color: #2a2a2a;
+}
+
+.summary-card.profit-loss.profit {
+  background: #d1fae5;
+  border-color: #10b981;
+}
+
+.app.dark .summary-card.profit-loss.profit {
+  background: #064e3b;
+}
+
+.summary-card.profit-loss.loss {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+.app.dark .summary-card.profit-loss.loss {
+  background: #7f1d1d;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.app.dark .summary-label {
+  color: #999;
+}
+
+.summary-card.profit .summary-label,
+.summary-card.loss .summary-label {
+  color: #1a1a1a;
+}
+
+.app.dark .summary-card.profit .summary-label,
+.app.dark .summary-card.loss .summary-label {
+  color: #e5e5e5;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.app.dark .summary-value {
+  color: #e5e5e5;
+}
+
+.summary-card.profit .summary-value {
+  color: #10b981;
+}
+
+.summary-card.loss .summary-value {
+  color: #ef4444;
+}
+
+.percentage {
+  font-size: 14px;
+  margin-left: 4px;
+}
+
+/* Purchase Form (New) */
+.purchase-form {
+  background: white;
+  border: 2px solid #10b981;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  animation: expandIn 0.3s ease;
+}
+
+.app.dark .purchase-form {
+  background: #1a1a1a;
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.form-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.app.dark .form-label {
+  color: #999;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.app.dark .form-input,
+.app.dark .form-select {
+  background: #0a0a0a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+}
+
+.app.dark .form-input:focus,
+.app.dark .form-select:focus {
+  background: #1a1a1a;
+}
+
+.form-input-large {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 700;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.app.dark .form-input-large {
+  background: #0a0a0a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.form-input-large:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+}
+
+.app.dark .form-input-large:focus {
+  background: #1a1a1a;
+}
+
+.form-input-currency {
+  width: 100%;
+  padding: 12px 12px 12px 36px;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.app.dark .form-input-currency {
+  background: #0a0a0a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.form-input-currency:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+}
+
+.app.dark .form-input-currency:focus {
+  background: #1a1a1a;
+}
+
+.form-input-currency-large {
+  width: 100%;
+  padding: 16px 16px 16px 44px;
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 700;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.app.dark .form-input-currency-large {
+  background: #0a0a0a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.form-input-currency-large:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+}
+
+.app.dark .form-input-currency-large:focus {
+  background: #1a1a1a;
+}
+
+.input-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+.app.dark .input-hint {
+  color: #666;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.metal-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.metal-type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+  color: #1a1a1a;
+}
+
+.app.dark .metal-type-btn {
+  background: #0a0a0a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.metal-type-btn.active {
+  border-color: #10b981;
+  background: #d1fae5;
+  color: #1a1a1a;
+}
+
+.app.dark .metal-type-btn.active {
+  background: #064e3b;
+  color: #10b981;
+}
+
+.purchase-summary {
+  background: #f0fdf4;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border-left: 3px solid #10b981;
+}
+
+.app.dark .purchase-summary {
+  background: #064e3b;
+}
+
+.purchase-summary-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.app.dark .purchase-summary-item {
+  color: #999;
+}
+
+.purchase-summary-item:last-child {
+  margin-bottom: 0;
+}
+
+.purchase-summary-item strong {
+  color: #10b981;
+  font-weight: 700;
+}
+
+/* Purchase History (New) */
+.purchase-history {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.app.dark .purchase-history {
+  background: #1a1a1a;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.history-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.toggle-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: #f5f5f5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.app.dark .toggle-btn {
+  background: #2a2a2a;
+}
+
+.toggle-btn:hover {
+  background: #e5e5e5;
+}
+
+.app.dark .toggle-btn:hover {
+  background: #333;
+}
+
+.toggle-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.history-item {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s;
+}
+
+.app.dark .history-item {
+  background: #0a0a0a;
+}
+
+.history-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e5e5;
+}
+
+.app.dark .history-item-header {
+  border-bottom-color: #2a2a2a;
+}
+
+.history-item-metal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-amount {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.delete-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #f5f5f5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.app.dark .delete-btn {
+  background: #2a2a2a;
+}
+
+.delete-btn:hover {
+  background: #fee;
+  color: #ef4444;
+}
+
+.delete-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.history-item-details {
+  display: grid;
+  gap: 12px;
+}
+
+.history-explanation {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+}
+
+.app.dark .history-explanation {
+  background: #1a1a1a;
+}
+
+.price-source-badge {
+  background: #fef3cd;
+  color: #856404;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid #fbbf24;
+  margin-bottom: 4px;
+}
+
+.app.dark .price-source-badge {
+  background: #2a2410;
+  color: #fbbf24;
+}
+
+.history-text {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.app.dark .history-text {
+  color: #999;
+}
+
+.history-text strong {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.app.dark .history-text strong {
+  color: #e5e5e5;
+}
+
+.per-unit-text {
+  font-size: 12px;
+  color: #999;
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.app.dark .per-unit-text {
+  color: #666;
+}
+
+.history-result {
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.history-result.profit {
+  background: #d1fae5;
+  color: #065f46;
+  border: 2px solid #10b981;
+}
+
+.app.dark .history-result.profit {
+  background: #064e3b;
+  color: #10b981;
+}
+
+.history-result.loss {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 2px solid #ef4444;
+}
+
+.app.dark .history-result.loss {
+  background: #7f1d1d;
+  color: #ef4444;
+}
+
+.history-result strong {
+  font-size: 18px;
+  margin-left: 4px;
+}
+
+.purchase-date {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.app.dark .purchase-date {
+  border-top-color: #2a2a2a;
+  color: #666;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.detail-label {
+  color: #666;
+}
+
+.app.dark .detail-label {
+  color: #999;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.app.dark .detail-value {
+  color: #e5e5e5;
+}
+
+.profit-loss-row.profit .detail-value {
+  color: #10b981;
+}
+
+.profit-loss-row.loss .detail-value {
+  color: #ef4444;
+}
+
+.percentage-small {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+/* Add Purchase Section */
+.add-purchase-section {
+  margin-bottom: 24px;
 }
 
 /* Calculator */
