@@ -1,4 +1,4 @@
-<!-- pages/index.vue - OPTIMIZED VERSION -->
+<!-- pages/index.vue - FIXED CALCULATIONS VERSION -->
 
 <template>
   <div class="app" :class="{ 'dark': isDarkMode }">
@@ -102,15 +102,15 @@
             <div v-if="manualPrice > 0" class="quick-conversions">
               <div class="conversion-item">
                 <span class="conversion-label">ដំឡឹង</span>
-                <span class="conversion-value">{{ formatCurrencyDisplay(convertToUnit('damlung', manualPrice)) }}</span>
+                <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('damlung', manualPrice)) }}</span>
               </div>
               <div class="conversion-item">
                 <span class="conversion-label">ជី</span>
-                <span class="conversion-value">{{ formatCurrencyDisplay(convertToUnit('chi', manualPrice)) }}</span>
+                <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('chi', manualPrice)) }}</span>
               </div>
               <div class="conversion-item">
                 <span class="conversion-label">Gram</span>
-                <span class="conversion-value">{{ formatCurrencyDisplay(convertToUnit('gram', manualPrice)) }}</span>
+                <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('gram', manualPrice)) }}</span>
               </div>
             </div>
 
@@ -476,10 +476,10 @@ export default {
 
   data() {
     return {
-      // Constants
+      // Constants - CORRECTED
       TROY_OUNCE_TO_GRAM: 31.1035,
-      DAMLUNG_TO_GRAM: 37.5,
-      CHI_TO_GRAM: 3.75,
+      DAMLUNG_TO_GRAM: 37.5,      // 1 ដំឡឹង = 37.5g
+      CHI_TO_GRAM: 3.75,           // 1 ជី = 3.75g (1/10 of damlung)
       USD_TO_KHR: 4100,
 
       // API
@@ -542,13 +542,11 @@ export default {
         silver: 28
       },
 
-      // Performance optimization - timers and caches
+      // Performance optimization
       metalSwitchTimeout: null,
       manualPriceUpdateTimeout: null,
       currencyFormatCache: new Map(),
-      purchaseValuesCache: new Map(),
-      lastPriceForCalculation: null,
-      lastCurrencyForCalculation: null
+      purchaseValuesCache: new Map()
     };
   },
   
@@ -577,20 +575,20 @@ export default {
       return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
     },
 
-    // OPTIMIZED: Memoized sorted purchases - only resort when needed
+    // OPTIMIZED: Memoized sorted purchases
     memoizedSortedPurchases() {
       return [...this.purchases].sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       );
     },
 
-    // OPTIMIZED: Memoized price conversions
+    // FIXED: Memoized price conversions
     memoizedDamlungPrice() {
-      return this.formatCurrencyDisplay(this.convertToUnit('damlung', this.currentPrice));
+      return this.formatCurrencyDisplay(this.getPricePerUnit('damlung', this.currentPrice));
     },
 
     memoizedChiPrice() {
-      return this.formatCurrencyDisplay(this.convertToUnit('chi', this.currentPrice));
+      return this.formatCurrencyDisplay(this.getPricePerUnit('chi', this.currentPrice));
     },
 
     // OPTIMIZED: Memoized portfolio calculations
@@ -648,11 +646,34 @@ export default {
     // OPTIMIZED: Calculator result memoization
     memoizedCalculatorResult() {
       if (!this.calculatorAmount || !this.currentPrice) return 0;
-      return this.calculatorAmount * this.getPricePerUnit();
+      return this.calculatorAmount * this.getPricePerUnit(this.calculatorUnit, this.currentPrice);
     }
   },
 
   methods: {
+    // FIXED: Corrected price per unit calculation
+    // Returns the price of the specified unit based on troy oz price
+    getPricePerUnit(unit, pricePerOz) {
+      if (!pricePerOz) return 0;
+      
+      // Convert troy oz to the requested unit
+      switch (unit) {
+        case 'oz':
+          return pricePerOz;
+        case 'damlung':
+          // 1 troy oz = 31.1035g, 1 damlung = 37.5g
+          return pricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+        case 'chi':
+          // 1 troy oz = 31.1035g, 1 ជី = 3.75g
+          return pricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+        case 'gram':
+          // 1 troy oz = 31.1035g, 1 gram = 1g
+          return pricePerOz / this.TROY_OUNCE_TO_GRAM;
+        default:
+          return pricePerOz;
+      }
+    },
+
     // OPTIMIZED: Metal selection with debounce
     selectMetal(metal) {
       if (this.selectedMetal === metal) return;
@@ -699,7 +720,7 @@ export default {
 
     toggleCurrency() {
       this.currentCurrency = this.currentCurrency === 'USD' ? 'KHR' : 'USD';
-      this.currencyFormatCache.clear(); // Clear format cache on currency switch
+      this.currencyFormatCache.clear();
       if (process.client) {
         localStorage.setItem('currency', this.currentCurrency);
       }
@@ -795,7 +816,6 @@ export default {
       
       this.currencyFormatCache.set(cacheKey, formatted);
       
-      // Keep cache size manageable
       if (this.currencyFormatCache.size > 100) {
         const firstKey = this.currencyFormatCache.keys().next().value;
         this.currencyFormatCache.delete(firstKey);
@@ -804,28 +824,7 @@ export default {
       return formatted;
     },
 
-    convertToUnit(unit, price) {
-      if (!price) return 0;
-      const basePrice = this.isManualMode && this.manualPrice ? this.manualPrice : price;
-      const conversions = {
-        'damlung': this.DAMLUNG_TO_GRAM,
-        'chi': this.CHI_TO_GRAM,
-        'gram': 1
-      };
-      return basePrice * (conversions[unit] / this.TROY_OUNCE_TO_GRAM);
-    },
-
-    getPricePerUnit() {
-      switch (this.calculatorUnit) {
-        case 'oz': return this.currentPrice;
-        case 'damlung': return this.convertToUnit('damlung', this.currentPrice);
-        case 'chi': return this.convertToUnit('chi', this.currentPrice);
-        case 'gram': return this.convertToUnit('gram', this.currentPrice);
-        default: return this.currentPrice;
-      }
-    },
-
-    // OPTIMIZED: Cached purchase value calculation
+    // FIXED: Corrected purchase current value calculation
     getPurchaseCurrentValueCached(purchase) {
       const cacheKey = `${purchase.id}-${this.currentPrice}`;
       
@@ -833,32 +832,18 @@ export default {
         return this.purchaseValuesCache.get(cacheKey);
       }
 
+      // Get current price per troy oz for this metal
       const currentPricePerOz = purchase.metal === 'gold' ? 
         (this.manualGoldPrice || this.goldPrice) : 
         (this.manualSilverPrice || this.silverPrice);
       
-      let pricePerUnit;
-      switch (purchase.unit) {
-        case 'oz':
-          pricePerUnit = currentPricePerOz;
-          break;
-        case 'damlung':
-          pricePerUnit = currentPricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-          break;
-        case 'chi':
-          pricePerUnit = currentPricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-          break;
-        case 'gram':
-          pricePerUnit = currentPricePerOz * (1 / this.TROY_OUNCE_TO_GRAM);
-          break;
-        default:
-          pricePerUnit = currentPricePerOz;
-      }
+      // Purchases are stored in ជី, convert to troy oz then calculate value
+      // purchase.amount is in ជី, need to convert to troy oz first, then multiply by current price
+      const ozEquivalent = purchase.amount * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+      const value = ozEquivalent * currentPricePerOz;
       
-      const value = purchase.amount * pricePerUnit;
       this.purchaseValuesCache.set(cacheKey, value);
 
-      // Keep cache size manageable
       if (this.purchaseValuesCache.size > 200) {
         const firstKey = this.purchaseValuesCache.keys().next().value;
         this.purchaseValuesCache.delete(firstKey);
@@ -938,16 +923,6 @@ export default {
       return new Date().toISOString().split('T')[0];
     },
 
-    calculateEquivalentOz(amount, unit) {
-      const conversions = {
-        'oz': 1,
-        'damlung': this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM,
-        'chi': this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM,
-        'gram': 1 / this.TROY_OUNCE_TO_GRAM
-      };
-      return amount * (conversions[unit] || 1);
-    },
-
     canAddPurchase() {
       return this.newPurchase.amount > 0 && 
              this.newPurchase.totalPaid > 0 && 
@@ -961,14 +936,13 @@ export default {
         id: Date.now(),
         metal: this.newPurchase.metal,
         amount: this.newPurchase.amount,
-        unit: this.newPurchase.unit,
+        unit: 'chi',  // Always store in chi
         totalPaid: this.newPurchase.totalPaid,
-        date: this.newPurchase.date,
-        ozEquivalent: this.calculateEquivalentOz(this.newPurchase.amount, this.newPurchase.unit)
+        date: this.newPurchase.date
       };
 
       this.purchases.push(purchase);
-      this.purchaseValuesCache.clear(); // Clear cache on new purchase
+      this.purchaseValuesCache.clear();
       this.savePurchases();
       this.closePurchaseForm();
     },
@@ -1008,7 +982,6 @@ export default {
       });
     },
 
-    // OPTIMIZED: Batch localStorage writes
     batchSaveToLocalStorage(items) {
       if (!process.client) return;
       Object.entries(items).forEach(([key, value]) => {
@@ -1268,7 +1241,6 @@ export default {
   },
 
   beforeDestroy() {
-    // Cleanup timers
     if (this.metalSwitchTimeout) clearTimeout(this.metalSwitchTimeout);
     if (this.manualPriceUpdateTimeout) clearTimeout(this.manualPriceUpdateTimeout);
   }
@@ -1709,7 +1681,7 @@ export default {
 
 /* Price Section */
 .price-section {
-  margin-bottom: 0px;
+  margin-bottom: 32px;
 }
 
 .price-card {
@@ -2758,278 +2730,6 @@ export default {
 
 .app.dark .api-error-section {
   background: #2a2410;
-  border-color: #1a1a1a;
-  margin-bottom: 2px;
-}
-
-.app.dark .price-amount {
-  color: #e5e5e5;
-}
-
-.price-per-unit {
-  font-size: 10px;
-  color: #666;
-  font-weight: 500;
-}
-
-.app.dark .price-per-unit {
-  color: #999;
-}
-
-.price-arrow {
-  color: #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.price-arrow svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Card Result */
-.card-result {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-}
-
-.card-result::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  opacity: 0.1;
-  z-index: 0;
-}
-
-.card-result.profit {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  border: 2px solid #10b981;
-}
-
-.card-result.profit::before {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.app.dark .card-result.profit {
-  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
-}
-
-.card-result.loss {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 2px solid #ef4444;
-}
-
-.card-result.loss::before {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.app.dark .card-result.loss {
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
-}
-
-.result-icon-large {
-  font-size: 32px;
-  flex-shrink: 0;
-  z-index: 1;
-}
-
-.result-info {
-  flex: 1;
-  z-index: 1;
-}
-
-.card-result .result-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-
-.card-result.profit .result-label {
-  color: #065f46;
-}
-
-.app.dark .card-result.profit .result-label {
-  color: #6ee7b7;
-}
-
-.card-result.loss .result-label {
-  color: #991b1b;
-}
-
-.app.dark .card-result.loss .result-label {
-  color: #fca5a5;
-}
-
-.card-result .result-value {
-  font-size: 18px;
-  font-weight: 900;
-  margin-bottom: 2px;
-}
-
-.card-result.profit .result-value {
-  color: #10b981;
-}
-
-.app.dark .card-result.profit .result-value {
-  color: #10b981;
-}
-
-.card-result.loss .result-value {
-  color: #ef4444;
-}
-
-.app.dark .card-result.loss .result-value {
-  color: #ef4444;
-}
-
-.result-percentage {
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.8;
-}
-
-.card-result.profit .result-percentage {
-  color: #065f46;
-}
-
-.app.dark .card-result.profit .result-percentage {
-  color: #6ee7b7;
-}
-
-.card-result.loss .result-percentage {
-  color: #991b1b;
-}
-
-.app.dark .card-result.loss .result-percentage {
-  color: #fca5a5;
-}
-
-/* Actions */
-.actions {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.btn {
-  flex: 1;
-  padding: 14px;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #1a1a1a;
-  color: white;
-}
-
-.app.dark .btn-primary {
-  background: #fbbf24;
-  color: #1a1a1a;
-}
-
-.btn-secondary {
-  background: #f5f5f5;
-  color: #1a1a1a;
-}
-
-.app.dark .btn-secondary {
-  background: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn:not(:disabled):hover {
-  transform: translateY(-2px);
-}
-
-.icon {
-  width: 16px;
-  height: 16px;
-}
-
-.icon.spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Status */
-.status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 16px;
-}
-
-.app.dark .status {
-  color: #999;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.status-dot.loading {
-  background: #fbbf24;
-  animation: pulse 2s infinite;
-}
-
-.status-dot.success {
-  background: #22c55e;
-}
-
-.status-dot.error {
-  background: #ef4444;
-}
-
-.status-text {
-  flex-shrink: 0;
-}
-
-.quota-text {
-  color: #999;
-  font-size: 11px;
-}
-
-/* API Error Section */
-.api-error-section {
-  background: #fef3cd;
-  border: 2px solid #fbbf24;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-  text-align: center;
-}
-
-.app.dark .api-error-section {
-  background: #2a2410;
   border-color: #fbbf24;
 }
 
@@ -3067,7 +2767,6 @@ export default {
 .app.dark .tip-title {
   color: #e5e5e5;
 }
-
 .tip-list {
   margin: 0;
   padding-left: 20px;
@@ -3110,99 +2809,10 @@ export default {
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 /* Responsive */
-@media (max-width: 768px) {
+@media (min-width: 640px) {
   .container {
-    max-width: 100%;
-  }
-
-  .tabs-nav {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .tab-icon {
-    font-size: 18px;
-  }
-
-  .calc-input-group {
-    grid-template-columns: 1fr;
-  }
-
-  .price-row {
-    grid-template-columns: 1fr;
-  }
-
-  .card-prices {
-    grid-template-columns: 1fr;
-  }
-
-  .price-arrow {
-    transform: rotate(90deg);
-    margin: 8px 0;
-  }
-}
-
-@media (max-width: 640px) {
-  .title {
-    font-size: 16px;
-  }
-
-  .metal-selector {
-    grid-template-columns: 1fr;
-  }
-
-  .tabs-nav {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .tab-label {
-    font-size: 11px;
-  }
-
-  .price {
-    font-size: 24px;
-  }
-
-  .price.small {
-    font-size: 16px;
-  }
-
-  .form-input-large {
-    font-size: 18px;
-  }
-
-  .form-input-currency-large {
-    font-size: 18px;
-  }
-
-  .calculator-title {
-    font-size: 16px;
-  }
-
-  .conversion-table {
-    font-size: 12px;
-  }
-
-  .table-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  .table-cell {
-    font-size: 12px;
-  }
-
-  .purchase-card {
-    padding: 12px;
+    max-width: 600px;
   }
 }
 
