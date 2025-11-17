@@ -286,51 +286,75 @@
           </div>
 
           <div v-if="historyExpanded" class="history-list">
-            <div class="history-table">
-              <div class="history-table-header">
-                <div class="th th-amount">Amount</div>
-                <div class="th th-paid">You Paid</div>
-                <div class="th th-today">Today's Value</div>
-                <div class="th th-profit">Profit/Loss</div>
-                <div class="th th-date">Date</div>
-                <div class="th th-action"></div>
-              </div>
-
-              <div v-for="(purchase, index) in sortedPurchases" :key="index" class="history-table-row">
-                <div class="td td-amount">
-                  <span class="metal-icon gold-icon small">Au</span>
-                  <span class="amount-text">{{ purchase.amount }} ជី</span>
-                </div>
+            <div class="history-grid">
+              <div v-for="(purchase, index) in sortedPurchases" :key="index" class="purchase-card">
                 
-                <div class="td td-paid">
-                  <div class="main-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</div>
-                  <div class="sub-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/ជី</div>
-                </div>
-                
-                <div class="td td-today">
-                  <div class="main-value">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase)) }}</div>
-                  <div class="sub-value">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase) / purchase.amount) }}/ជី</div>
-                </div>
-                
-                <div class="td td-profit" :class="getPurchaseProfitLossClass(purchase)">
-                  <div class="profit-badge" :class="getPurchaseProfitLossClass(purchase)">
-                    <span class="profit-icon">{{ getPurchaseProfitLoss(purchase) >= 0 ? '✅' : '❌' }}</span>
-                    <span class="profit-amount">{{ formatCurrencyDisplay(Math.abs(getPurchaseProfitLoss(purchase))) }}</span>
+                <!-- Card Header -->
+                <div class="card-header">
+                  <div class="card-date">
+                    <span class="date-icon">📅</span>
+                    <span class="date-text">{{ formatDate(purchase.date) }}</span>
                   </div>
-                </div>
-                
-                <div class="td td-date">
-                  {{ formatDate(purchase.date) }}
-                </div>
-                
-                <div class="td td-action">
-                  <button @click="deletePurchase(index)" class="delete-btn-small">
+                  <button @click="deletePurchase(index)" class="card-delete-btn" title="Delete">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                     </svg>
                   </button>
                 </div>
+
+                <!-- Amount Badge -->
+                <div class="card-amount">
+                  <div class="metal-badge-large">
+                    <span class="metal-icon-large">Au</span>
+                    <span class="metal-label">Gold</span>
+                  </div>
+                  <div class="amount-value">
+                    <span class="amount-number">{{ purchase.amount }}</span>
+                    <span class="amount-unit">ជី</span>
+                  </div>
+                </div>
+
+                <!-- Price Comparison -->
+                <div class="card-prices">
+                  <div class="price-section purchase-section">
+                    <div class="price-label">Purchase Price</div>
+                    <div class="price-amount">{{ formatCurrencyDisplay(purchase.totalPaid) }}</div>
+                    <div class="price-per-unit">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }} per ជី</div>
+                  </div>
+
+                  <div class="price-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                      <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  </div>
+
+                  <div class="price-section current-section">
+                    <div class="price-label">Current Value</div>
+                    <div class="price-amount">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase)) }}</div>
+                    <div class="price-per-unit">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase) / purchase.amount) }} per ជី</div>
+                  </div>
+                </div>
+
+                <!-- Result Badge -->
+                <div class="card-result" :class="getPurchaseProfitLossClass(purchase)">
+                  <div class="result-icon-large">
+                    {{ getPurchaseProfitLoss(purchase) >= 0 ? '📈' : '📉' }}
+                  </div>
+                  <div class="result-info">
+                    <div class="result-label">
+                      {{ getPurchaseProfitLoss(purchase) >= 0 ? 'Profit' : 'Loss' }}
+                    </div>
+                    <div class="result-value">
+                      {{ formatCurrencyDisplay(Math.abs(getPurchaseProfitLoss(purchase))) }}
+                    </div>
+                    <div class="result-percentage">
+                      {{ getPurchaseProfitLoss(purchase) >= 0 ? '+' : '-' }}{{ getPurchaseProfitLossPercentage(purchase) }}%
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -408,6 +432,19 @@
           </span>
         </div>
 
+        <!-- Alternative API Button (if main API fails) -->
+        <div v-if="!loading && currentPrice === 0" class="api-error-section">
+          <div class="error-message">
+            ⚠️ Unable to fetch prices from main API
+          </div>
+          <button @click="tryAlternativeApi" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            Try Alternative API
+          </button>
+        </div>
+
         <!-- Tips for Free API Usage -->
         <div class="tip-box">
           <p class="tip-title">💡 Tips for Free API</p>
@@ -448,6 +485,9 @@ export default {
       // API
       apiKey: '03cc06614a49b9d29f1d4cdb2250467d',
       apiBaseUrl: 'https://www.goldapi.io/api',
+      
+      // Alternative free API (backup)
+      alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
       // State
       selectedMetal: 'gold',
@@ -705,6 +745,58 @@ export default {
       if (this.isRefreshDisabled || this.refreshCooldown > 0) return;
       await this.fetchMetalPrice(true);
       this.startRefreshCooldown();
+    },
+
+    async tryAlternativeApi() {
+      try {
+        console.log('🔄 Trying alternative API: metals.live');
+        const response = await fetch(this.alternativeApiUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Alternative API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('📊 Alternative API data:', data);
+        
+        // metals.live returns data in format: {gold: 2650.50, silver: 28.50}
+        if (data && typeof data.gold === 'number') {
+          this.goldPrice = data.gold;
+          this.silverPrice = data.silver || 28;
+          
+          const now = new Date();
+          this.lastUpdated = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          // Cache the data
+          this.cache.gold = {
+            data: { price: data.gold },
+            timestamp: now.toISOString(),
+            maxAgeHours: 24
+          };
+          
+          this.cache.silver = {
+            data: { price: data.silver || 28 },
+            timestamp: now.toISOString(),
+            maxAgeHours: 24
+          };
+          
+          if (process.client) {
+            localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
+            localStorage.setItem('silverPriceCache', JSON.stringify(this.cache.silver));
+          }
+          
+          console.log('✅ Alternative API successful');
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('❌ Alternative API failed:', error);
+        return false;
+      }
     },
 
     // New Purchase Tracking Methods
@@ -1038,6 +1130,15 @@ export default {
           message: error.message,
           stack: error.stack
         });
+        
+        // Try alternative API before falling back to cache
+        console.log('🔄 Main API failed, trying alternative...');
+        const alternativeSuccess = await this.tryAlternativeApi();
+        
+        if (alternativeSuccess) {
+          this.loading = false;
+          return;
+        }
         
         // Fallback strategy
         if (metalCache.data) {
@@ -2320,158 +2421,87 @@ export default {
 }
 
 .history-list {
-  overflow-x: auto;
+  overflow: visible;
   width: 100%;
 }
 
-.history-table {
+/* Card Grid Layout */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
   width: 100%;
-  min-width: 100%;
 }
 
-.history-table-header {
-  display: grid;
-  grid-template-columns: 120px 1fr 1fr 140px 100px 60px;
-  gap: 16px;
-  padding: 12px 16px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  margin-bottom: 8px;
+@media (max-width: 768px) {
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.app.dark .history-table-header {
-  background: #2a2a2a;
-}
-
-.th {
-  font-size: 12px;
-  font-weight: 700;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.app.dark .th {
-  color: #999;
-}
-
-.history-table-row {
-  display: grid;
-  grid-template-columns: 120px 1fr 1fr 140px 100px 60px;
-  gap: 16px;
+/* Purchase Card */
+.purchase-card {
+  background: white;
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
   padding: 16px;
-  background: #fafafa;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  align-items: center;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.app.dark .history-table-row {
-  background: #0a0a0a;
-}
-
-.history-table-row:hover {
-  background: #f0f0f0;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.app.dark .history-table-row:hover {
+.app.dark .purchase-card {
   background: #1a1a1a;
+  border-color: #2a2a2a;
 }
 
-.td {
-  font-size: 14px;
-  color: #1a1a1a;
+.purchase-card:hover {
+  border-color: #fbbf24;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.2);
 }
 
-.app.dark .td {
-  color: #e5e5e5;
+.app.dark .purchase-card:hover {
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
 }
 
-.td-amount {
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.app.dark .card-header {
+  border-bottom-color: #2a2a2a;
+}
+
+.card-date {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.metal-icon.small {
-  width: 24px;
-  height: 24px;
-  font-size: 10px;
-}
-
-.amount-text {
-  font-weight: 600;
-}
-
-.main-value {
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.sub-value {
-  font-size: 11px;
-  color: #999;
-  font-weight: 500;
-}
-
-.app.dark .sub-value {
-  color: #666;
-}
-
-.profit-badge {
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 13px;
-  white-space: nowrap;
 }
 
-.profit-badge.profit {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.app.dark .profit-badge.profit {
-  background: #064e3b;
-  color: #10b981;
-}
-
-.profit-badge.loss {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.app.dark .profit-badge.loss {
-  background: #7f1d1d;
-  color: #ef4444;
-}
-
-.profit-icon {
+.date-icon {
   font-size: 14px;
 }
 
-.profit-amount {
-  font-weight: 700;
-}
-
-.td-date {
+.date-text {
   font-size: 12px;
+  font-weight: 600;
   color: #666;
 }
 
-.app.dark .td-date {
+.app.dark .date-text {
   color: #999;
 }
 
-.delete-btn-small {
-  width: 32px;
-  height: 32px;
+.card-delete-btn {
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 6px;
   background: #f5f5f5;
@@ -2482,36 +2512,276 @@ export default {
   transition: all 0.2s;
 }
 
-.app.dark .delete-btn-small {
+.app.dark .card-delete-btn {
   background: #2a2a2a;
 }
 
-.delete-btn-small:hover {
+.card-delete-btn:hover {
   background: #fee;
   color: #ef4444;
+  transform: rotate(10deg) scale(1.1);
 }
 
-.delete-btn-small svg {
+.card-delete-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Card Amount */
+.card-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 8px;
+  border: 1px solid #fbbf24;
+}
+
+.app.dark .card-amount {
+  background: linear-gradient(135deg, #2a2410 0%, #1f1a0f 100%);
+}
+
+.metal-badge-large {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 6px;
+}
+
+.metal-icon-large {
+  font-size: 12px;
+  font-weight: 900;
+  color: white;
+}
+
+.metal-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+}
+
+.amount-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.amount-number {
+  font-size: 24px;
+  font-weight: 900;
+  color: #1a1a1a;
+}
+
+.app.dark .amount-number {
+  color: #fbbf24;
+}
+
+.amount-unit {
+  font-size: 16px;
+  font-weight: 700;
+  color: #666;
+}
+
+.app.dark .amount-unit {
+  color: #999;
+}
+
+/* Card Prices */
+.card-prices {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.app.dark .card-prices {
+  background: #0a0a0a;
+}
+
+.price-section {
+  text-align: center;
+}
+
+.price-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.app.dark .price-label {
+  color: #666;
+}
+
+.price-amount {
+  font-size: 14px;
+  font-weight: 900;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.app.dark .price-amount {
+  color: #e5e5e5;
+}
+
+.price-per-unit {
+  font-size: 10px;
+  color: #666;
+  font-weight: 500;
+}
+
+.app.dark .price-per-unit {
+  color: #999;
+}
+
+.price-arrow {
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.price-arrow svg {
   width: 16px;
   height: 16px;
 }
 
-/* Responsive table for mobile */
-@media (max-width: 768px) {
-  .history-table-header {
-    grid-template-columns: 100px 120px 80px 50px;
-  }
-  
-  .history-table-row {
-    grid-template-columns: 100px 120px 80px 50px;
-  }
-  
-  .th-paid,
-  .th-today,
-  .td-paid,
-  .td-today {
-    display: none;
-  }
+/* Card Result */
+.card-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-result::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+.card-result.profit {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+}
+
+.card-result.profit::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.app.dark .card-result.profit {
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+}
+
+.card-result.loss {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+}
+
+.card-result.loss::before {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.app.dark .card-result.loss {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+}
+
+.result-icon-large {
+  font-size: 32px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.result-info {
+  flex: 1;
+  z-index: 1;
+}
+
+.card-result .result-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.card-result.profit .result-label {
+  color: #065f46;
+}
+
+.app.dark .card-result.profit .result-label {
+  color: #6ee7b7;
+}
+
+.card-result.loss .result-label {
+  color: #991b1b;
+}
+
+.app.dark .card-result.loss .result-label {
+  color: #fca5a5;
+}
+
+.card-result .result-value {
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 2px;
+}
+
+.card-result.profit .result-value {
+  color: #10b981;
+}
+
+.app.dark .card-result.profit .result-value {
+  color: #10b981;
+}
+
+.card-result.loss .result-value {
+  color: #ef4444;
+}
+
+.app.dark .card-result.loss .result-value {
+  color: #ef4444;
+}
+
+.result-percentage {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.card-result.profit .result-percentage {
+  color: #065f46;
+}
+
+.app.dark .card-result.profit .result-percentage {
+  color: #6ee7b7;
+}
+
+.card-result.loss .result-percentage {
+  color: #991b1b;
+}
+
+.app.dark .card-result.loss .result-percentage {
+  color: #fca5a5;
 }
 
 .detail-row {
@@ -2690,6 +2960,7 @@ export default {
   gap: 12px;
   font-size: 13px;
   color: #666;
+  margin-bottom: 16px;
 }
 
 .app.dark .status {
@@ -2722,6 +2993,32 @@ export default {
 .quota-text {
   color: #999;
   font-size: 11px;
+}
+
+/* API Error Section */
+.api-error-section {
+  background: #fef3cd;
+  border: 2px solid #fbbf24;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.app.dark .api-error-section {
+  background: #2a2410;
+  border-color: #fbbf24;
+}
+
+.error-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: #856404;
+  margin-bottom: 16px;
+}
+
+.app.dark .error-message {
+  color: #fbbf24;
 }
 
 /* Tips Box */
@@ -2793,7 +3090,7 @@ export default {
 /* Responsive */
 @media (min-width: 640px) {
   .container {
-    max-width: 800px;
+    max-width: 600px;
   }
 }
 
