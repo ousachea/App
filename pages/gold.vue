@@ -1,4 +1,4 @@
-<!-- pages/index.vue -->
+<!-- pages/index.vue - OPTIMIZED VERSION -->
 
 <template>
   <div class="app" :class="{ 'dark': isDarkMode }">
@@ -36,7 +36,7 @@
         <!-- Metal Type Selector -->
         <div class="metal-selector">
           <button 
-            @click="selectedMetal = 'gold'" 
+            @click="selectMetal('gold')" 
             class="metal-btn" 
             :class="{ 'active': selectedMetal === 'gold' }"
           >
@@ -44,7 +44,7 @@
             <span>Gold</span>
           </button>
           <button 
-            @click="selectedMetal = 'silver'" 
+            @click="selectMetal('silver')" 
             class="metal-btn" 
             :class="{ 'active': selectedMetal === 'silver' }"
           >
@@ -94,7 +94,7 @@
                 min="0"
                 class="price-input"
                 :placeholder="selectedMetal === 'gold' ? '4242.00' : '28.00'"
-                @input="updateManualPrice"
+                @input="onManualPriceInput"
                 ref="manualInput"
               >
             </div>
@@ -130,7 +130,7 @@
           <div class="price-card main-card">
             <div class="label">ដំឡឹង</div>
             <div v-if="loading" class="skeleton"></div>
-            <div v-else class="price">{{ formatCurrencyDisplay(getDamlungPrice()) }}</div>
+            <div v-else class="price">{{ memoizedDamlungPrice }}</div>
             <div class="sublabel">37.5g</div>
           </div>
 
@@ -138,7 +138,7 @@
             <div class="price-card">
               <div class="label">ជី</div>
               <div v-if="loading" class="skeleton small"></div>
-              <div v-else class="price small">{{ formatCurrencyDisplay(getChiPrice()) }}</div>
+              <div v-else class="price small">{{ memoizedChiPrice }}</div>
               <div class="sublabel">3.75g</div>
             </div>
             <div class="price-card">
@@ -150,7 +150,7 @@
           </div>
         </div>
 
-        <!-- Portfolio Summary (New) -->
+        <!-- Portfolio Summary -->
         <div v-if="purchases.length > 0" class="portfolio-summary">
           <div class="summary-header">
             <h3 class="summary-title">📊 Your Portfolio</h3>
@@ -177,25 +177,25 @@
           <div class="summary-explanation">
             <div class="explanation-row">
               <span class="explanation-label">💰 You paid total:</span>
-              <span class="explanation-value">{{ formatCurrencyDisplay(getTotalInvested()) }}</span>
+              <span class="explanation-value">{{ formatCurrencyDisplay(memoizedTotalInvested) }}</span>
             </div>
             <div class="explanation-row">
               <span class="explanation-label">📈 Today's value:</span>
-              <span class="explanation-value">{{ formatCurrencyDisplay(getCurrentValue()) }}</span>
+              <span class="explanation-value">{{ formatCurrencyDisplay(memoizedCurrentValue) }}</span>
             </div>
             <div class="explanation-divider"></div>
-            <div class="explanation-row result" :class="getProfitLossClass()">
+            <div class="explanation-row result" :class="memoizedProfitLossClass">
               <span class="explanation-label">
-                {{ getProfitLoss() >= 0 ? '✅ You earned:' : '❌ You lost:' }}
+                {{ memoizedProfitLoss >= 0 ? '✅ You earned:' : '❌ You lost:' }}
               </span>
               <span class="explanation-value-big">
-                {{ formatCurrencyDisplay(Math.abs(getProfitLoss())) }}
+                {{ formatCurrencyDisplay(Math.abs(memoizedProfitLoss)) }}
               </span>
             </div>
           </div>
         </div>
 
-        <!-- Purchase Form (New) -->
+        <!-- Purchase Form -->
         <div v-if="showPurchaseForm" class="purchase-form">
           <div class="form-header">
             <h3 class="form-title">Add Gold Purchase</h3>
@@ -271,7 +271,7 @@
           </button>
         </div>
 
-        <!-- Purchase History (New) -->
+        <!-- Purchase History -->
         <div v-if="purchases.length > 0" class="purchase-history">
           <div class="history-header">
             <h3 class="history-title">Purchase History</h3>
@@ -287,7 +287,7 @@
 
           <div v-if="historyExpanded" class="history-list">
             <div class="history-grid">
-              <div v-for="(purchase, index) in sortedPurchases" :key="index" class="purchase-card">
+              <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="purchase-card">
                 
                 <!-- Card Header -->
                 <div class="card-header">
@@ -295,7 +295,7 @@
                     <span class="date-icon">📅</span>
                     <span class="date-text">{{ formatDate(purchase.date) }}</span>
                   </div>
-                  <button @click="deletePurchase(index)" class="card-delete-btn" title="Delete">
+                  <button @click="deletePurchase(purchase.id)" class="card-delete-btn" title="Delete">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="3 6 5 6 21 6"/>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -332,25 +332,25 @@
 
                   <div class="price-section current-section">
                     <div class="price-label">Current Value</div>
-                    <div class="price-amount">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase)) }}</div>
-                    <div class="price-per-unit">{{ formatCurrencyDisplay(getPurchaseCurrentValue(purchase) / purchase.amount) }} per ជី</div>
+                    <div class="price-amount">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id]) }}</div>
+                    <div class="price-per-unit">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id] / purchase.amount) }} per ជី</div>
                   </div>
                 </div>
 
                 <!-- Result Badge -->
-                <div class="card-result" :class="getPurchaseProfitLossClass(purchase)">
+                <div class="card-result" :class="memoizedPurchaseProfitClass[purchase.id]">
                   <div class="result-icon-large">
-                    {{ getPurchaseProfitLoss(purchase) >= 0 ? '📈' : '📉' }}
+                    {{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '📈' : '📉' }}
                   </div>
                   <div class="result-info">
                     <div class="result-label">
-                      {{ getPurchaseProfitLoss(purchase) >= 0 ? 'Profit' : 'Loss' }}
+                      {{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'Profit' : 'Loss' }}
                     </div>
                     <div class="result-value">
-                      {{ formatCurrencyDisplay(Math.abs(getPurchaseProfitLoss(purchase))) }}
+                      {{ formatCurrencyDisplay(Math.abs(memoizedPurchaseProfitValue[purchase.id])) }}
                     </div>
                     <div class="result-percentage">
-                      {{ getPurchaseProfitLoss(purchase) >= 0 ? '+' : '-' }}{{ getPurchaseProfitLossPercentage(purchase) }}%
+                      {{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '+' : '-' }}{{ memoizedPurchaseProfitPercent[purchase.id] }}%
                     </div>
                   </div>
                 </div>
@@ -360,7 +360,7 @@
           </div>
         </div>
 
-        <!-- Add Purchase Button (when no form shown) -->
+        <!-- Add Purchase Button -->
         <div v-if="!showPurchaseForm" class="add-purchase-section">
           <button @click="showPurchaseForm = true" class="btn btn-secondary">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -391,7 +391,7 @@
           </div>
           
           <div v-if="calculatorAmount > 0" class="calc-result">
-            {{ formatCurrencyDisplay(calculateTotalPrice()) }}
+            {{ formatCurrencyDisplay(memoizedCalculatorResult) }}
           </div>
         </div>
 
@@ -432,7 +432,7 @@
           </span>
         </div>
 
-        <!-- Alternative API Button (if main API fails) -->
+        <!-- Alternative API Button -->
         <div v-if="!loading && currentPrice === 0" class="api-error-section">
           <div class="error-message">
             ⚠️ Unable to fetch prices from main API
@@ -485,8 +485,6 @@ export default {
       // API
       apiKey: '03cc06614a49b9d29f1d4cdb2250467d',
       apiBaseUrl: 'https://www.goldapi.io/api',
-      
-      // Alternative free API (backup)
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
       // State
@@ -504,21 +502,21 @@ export default {
       // Manual Price
       isManualMode: false,
       manualPrice: null,
-      manualGoldPrice: null,  // Store custom gold price separately
-      manualSilverPrice: null, // Store custom silver price separately
+      manualGoldPrice: null,
+      manualSilverPrice: null,
       
       // Calculator
       calculatorAmount: 1,
       calculatorUnit: 'damlung',
       
-      // Purchase Tracking (New)
+      // Purchase Tracking
       purchases: [],
       showPurchaseForm: false,
       historyExpanded: true,
       newPurchase: {
-        metal: 'gold',  // Always gold
+        metal: 'gold',
         amount: null,
-        unit: 'chi',    // Always chi
+        unit: 'chi',
         totalPaid: null,
         date: new Date().toISOString().split('T')[0]
       },
@@ -532,25 +530,25 @@ export default {
         monthlyLimit: 100
       },
       
-      // Extended Cache - 24 hour cache
+      // Cache
       cache: {
-        gold: {
-          data: null,
-          timestamp: null,
-          maxAgeHours: 24
-        },
-        silver: {
-          data: null,
-          timestamp: null,
-          maxAgeHours: 24
-        }
+        gold: { data: null, timestamp: null, maxAgeHours: 24 },
+        silver: { data: null, timestamp: null, maxAgeHours: 24 }
       },
 
       // Fallback prices
       fallbackPrices: {
         gold: 2650,
         silver: 28
-      }
+      },
+
+      // Performance optimization - timers and caches
+      metalSwitchTimeout: null,
+      manualPriceUpdateTimeout: null,
+      currencyFormatCache: new Map(),
+      purchaseValuesCache: new Map(),
+      lastPriceForCalculation: null,
+      lastCurrencyForCalculation: null
     };
   },
   
@@ -579,13 +577,119 @@ export default {
       return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
     },
 
-    sortedPurchases() {
-      return [...this.purchases].sort((a, b) => new Date(b.date) - new Date(a.date));
+    // OPTIMIZED: Memoized sorted purchases - only resort when needed
+    memoizedSortedPurchases() {
+      return [...this.purchases].sort((a, b) => 
+        new Date(b.date) - new Date(a.date)
+      );
+    },
+
+    // OPTIMIZED: Memoized price conversions
+    memoizedDamlungPrice() {
+      return this.formatCurrencyDisplay(this.convertToUnit('damlung', this.currentPrice));
+    },
+
+    memoizedChiPrice() {
+      return this.formatCurrencyDisplay(this.convertToUnit('chi', this.currentPrice));
+    },
+
+    // OPTIMIZED: Memoized portfolio calculations
+    memoizedTotalInvested() {
+      return this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+    },
+
+    memoizedCurrentValue() {
+      return this.purchases.reduce((sum, p) => sum + this.getPurchaseCurrentValueCached(p), 0);
+    },
+
+    memoizedProfitLoss() {
+      return this.memoizedCurrentValue - this.memoizedTotalInvested;
+    },
+
+    memoizedProfitLossClass() {
+      return this.memoizedProfitLoss >= 0 ? 'profit' : 'loss';
+    },
+
+    // OPTIMIZED: Pre-calculated purchase values
+    memoizedPurchaseValues() {
+      const values = {};
+      for (let purchase of this.purchases) {
+        values[purchase.id] = this.getPurchaseCurrentValueCached(purchase);
+      }
+      return values;
+    },
+
+    memoizedPurchaseProfitValue() {
+      const profits = {};
+      for (let purchase of this.purchases) {
+        profits[purchase.id] = this.memoizedPurchaseValues[purchase.id] - purchase.totalPaid;
+      }
+      return profits;
+    },
+
+    memoizedPurchaseProfitPercent() {
+      const percents = {};
+      for (let purchase of this.purchases) {
+        const profitLoss = this.memoizedPurchaseProfitValue[purchase.id];
+        const percentage = (profitLoss / purchase.totalPaid) * 100;
+        percents[purchase.id] = percentage.toFixed(2);
+      }
+      return percents;
+    },
+
+    memoizedPurchaseProfitClass() {
+      const classes = {};
+      for (let purchase of this.purchases) {
+        classes[purchase.id] = this.memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'profit' : 'loss';
+      }
+      return classes;
+    },
+
+    // OPTIMIZED: Calculator result memoization
+    memoizedCalculatorResult() {
+      if (!this.calculatorAmount || !this.currentPrice) return 0;
+      return this.calculatorAmount * this.getPricePerUnit();
     }
   },
 
   methods: {
-    // Existing methods
+    // OPTIMIZED: Metal selection with debounce
+    selectMetal(metal) {
+      if (this.selectedMetal === metal) return;
+      
+      clearTimeout(this.metalSwitchTimeout);
+      this.metalSwitchTimeout = setTimeout(() => {
+        this.selectedMetal = metal;
+        
+        if (process.client) {
+          localStorage.setItem('selectedMetal', metal);
+        }
+
+        // Clear manual mode when switching
+        if (this.isManualMode) {
+          this.isManualMode = false;
+          this.manualPrice = null;
+        }
+
+        this.newPurchase.metal = metal;
+
+        // Check cache before fetching
+        const cached = this.getCachedPrice(metal);
+        if (!cached) {
+          this.fetchMetalPrice(false);
+        }
+      }, 100);
+    },
+
+    // OPTIMIZED: Centralized cache getter
+    getCachedPrice(metal) {
+      const metalCache = this.cache[metal];
+      const cacheAgeHours = metalCache.timestamp ? 
+        (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
+      
+      return metalCache.data && cacheAgeHours < 24;
+    },
+
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode;
       if (process.client) {
@@ -595,6 +699,7 @@ export default {
 
     toggleCurrency() {
       this.currentCurrency = this.currentCurrency === 'USD' ? 'KHR' : 'USD';
+      this.currencyFormatCache.clear(); // Clear format cache on currency switch
       if (process.client) {
         localStorage.setItem('currency', this.currentCurrency);
       }
@@ -604,7 +709,6 @@ export default {
       this.isManualMode = true;
       this.manualPrice = this.currentPrice || (this.selectedMetal === 'gold' ? 4242 : 28);
       
-      // Save the custom price for the specific metal
       if (this.selectedMetal === 'gold') {
         this.manualGoldPrice = this.manualPrice;
       } else {
@@ -614,8 +718,6 @@ export default {
       if (process.client) {
         localStorage.setItem('isManualMode', true);
         localStorage.setItem('manualPrice', this.manualPrice);
-        localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
-        localStorage.setItem('manualSilverPrice', this.manualSilverPrice);
         
         this.$nextTick(() => {
           if (this.$refs.manualInput) {
@@ -626,11 +728,16 @@ export default {
       }
     },
 
+    // OPTIMIZED: Debounced manual price input
+    onManualPriceInput() {
+      clearTimeout(this.manualPriceUpdateTimeout);
+      this.manualPriceUpdateTimeout = setTimeout(() => {
+        this.updateManualPrice();
+      }, 500);
+    },
+
     updateManualPrice() {
       if (this.manualPrice && this.manualPrice > 0 && process.client) {
-        localStorage.setItem('manualPrice', this.manualPrice);
-        
-        // Update the specific metal's custom price
         if (this.selectedMetal === 'gold') {
           this.manualGoldPrice = this.manualPrice;
           localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
@@ -645,56 +752,56 @@ export default {
       this.isManualMode = false;
       this.manualPrice = null;
       
-      // Clear the custom price for the current metal
       if (this.selectedMetal === 'gold') {
         this.manualGoldPrice = null;
-        if (process.client) {
-          localStorage.removeItem('manualGoldPrice');
-        }
+        if (process.client) localStorage.removeItem('manualGoldPrice');
       } else {
         this.manualSilverPrice = null;
-        if (process.client) {
-          localStorage.removeItem('manualSilverPrice');
-        }
+        if (process.client) localStorage.removeItem('manualSilverPrice');
       }
       
       if (process.client) {
         localStorage.removeItem('manualPrice');
         localStorage.removeItem('isManualMode');
       }
-      
-      const metalCache = this.cache[this.selectedMetal];
-      const cacheAgeHours = metalCache.timestamp ? 
-        (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
-      
-      if (cacheAgeHours > 24) {
+
+      // Check if cache is stale
+      const cached = this.getCachedPrice(this.selectedMetal);
+      if (!cached) {
         this.fetchMetalPrice(false);
       }
     },
 
-    clearAllCustomPrices() {
-      this.manualGoldPrice = null;
-      this.manualSilverPrice = null;
-      this.isManualMode = false;
-      this.manualPrice = null;
-      
-      if (process.client) {
-        localStorage.removeItem('manualGoldPrice');
-        localStorage.removeItem('manualSilverPrice');
-        localStorage.removeItem('manualPrice');
-        localStorage.removeItem('isManualMode');
-      }
-    },
-
+    // OPTIMIZED: Efficient currency formatting with caching
     formatCurrencyDisplay(value) {
       if (!value) return this.currentCurrency === 'USD' ? '$0.00' : '0 ៛';
       
+      const cacheKey = `${value.toFixed(2)}-${this.currentCurrency}`;
+      
+      if (this.currencyFormatCache.has(cacheKey)) {
+        return this.currencyFormatCache.get(cacheKey);
+      }
+
+      let formatted;
       if (this.currentCurrency === 'USD') {
-        return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        formatted = `$${value.toLocaleString(undefined, { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 2 
+        })}`;
       } else {
         const khrValue = value * this.USD_TO_KHR;
-        return `${Math.round(khrValue).toLocaleString()} ៛`;
+        formatted = `${Math.round(khrValue).toLocaleString()} ៛`;
       }
+      
+      this.currencyFormatCache.set(cacheKey, formatted);
+      
+      // Keep cache size manageable
+      if (this.currencyFormatCache.size > 100) {
+        const firstKey = this.currencyFormatCache.keys().next().value;
+        this.currencyFormatCache.delete(firstKey);
+      }
+
+      return formatted;
     },
 
     convertToUnit(unit, price) {
@@ -708,14 +815,6 @@ export default {
       return basePrice * (conversions[unit] / this.TROY_OUNCE_TO_GRAM);
     },
 
-    getDamlungPrice() {
-      return this.convertToUnit('damlung', this.currentPrice);
-    },
-
-    getChiPrice() {
-      return this.convertToUnit('chi', this.currentPrice);
-    },
-
     getPricePerUnit() {
       switch (this.calculatorUnit) {
         case 'oz': return this.currentPrice;
@@ -726,9 +825,46 @@ export default {
       }
     },
 
-    calculateTotalPrice() {
-      if (!this.calculatorAmount || !this.currentPrice) return 0;
-      return this.calculatorAmount * this.getPricePerUnit();
+    // OPTIMIZED: Cached purchase value calculation
+    getPurchaseCurrentValueCached(purchase) {
+      const cacheKey = `${purchase.id}-${this.currentPrice}`;
+      
+      if (this.purchaseValuesCache.has(cacheKey)) {
+        return this.purchaseValuesCache.get(cacheKey);
+      }
+
+      const currentPricePerOz = purchase.metal === 'gold' ? 
+        (this.manualGoldPrice || this.goldPrice) : 
+        (this.manualSilverPrice || this.silverPrice);
+      
+      let pricePerUnit;
+      switch (purchase.unit) {
+        case 'oz':
+          pricePerUnit = currentPricePerOz;
+          break;
+        case 'damlung':
+          pricePerUnit = currentPricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+          break;
+        case 'chi':
+          pricePerUnit = currentPricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
+          break;
+        case 'gram':
+          pricePerUnit = currentPricePerOz * (1 / this.TROY_OUNCE_TO_GRAM);
+          break;
+        default:
+          pricePerUnit = currentPricePerOz;
+      }
+      
+      const value = purchase.amount * pricePerUnit;
+      this.purchaseValuesCache.set(cacheKey, value);
+
+      // Keep cache size manageable
+      if (this.purchaseValuesCache.size > 200) {
+        const firstKey = this.purchaseValuesCache.keys().next().value;
+        this.purchaseValuesCache.delete(firstKey);
+      }
+
+      return value;
     },
 
     startRefreshCooldown() {
@@ -757,9 +893,7 @@ export default {
         }
         
         const data = await response.json();
-        console.log('📊 Alternative API data:', data);
         
-        // metals.live returns data in format: {gold: 2650.50, silver: 28.50}
         if (data && typeof data.gold === 'number') {
           this.goldPrice = data.gold;
           this.silverPrice = data.silver || 28;
@@ -770,7 +904,6 @@ export default {
             minute: '2-digit'
           });
           
-          // Cache the data
           this.cache.gold = {
             data: { price: data.gold },
             timestamp: now.toISOString(),
@@ -784,8 +917,10 @@ export default {
           };
           
           if (process.client) {
-            localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
-            localStorage.setItem('silverPriceCache', JSON.stringify(this.cache.silver));
+            this.batchSaveToLocalStorage({
+              goldPriceCache: this.cache.gold,
+              silverPriceCache: this.cache.silver
+            });
           }
           
           console.log('✅ Alternative API successful');
@@ -799,19 +934,8 @@ export default {
       }
     },
 
-    // New Purchase Tracking Methods
     getCurrentDate() {
       return new Date().toISOString().split('T')[0];
-    },
-
-    getUnitLabel(unit) {
-      const labels = {
-        'chi': 'ជី',
-        'damlung': 'ដំឡឹង',
-        'oz': 'Troy Oz',
-        'gram': 'Gram'
-      };
-      return labels[unit] || unit;
     },
 
     calculateEquivalentOz(amount, unit) {
@@ -844,13 +968,15 @@ export default {
       };
 
       this.purchases.push(purchase);
+      this.purchaseValuesCache.clear(); // Clear cache on new purchase
       this.savePurchases();
       this.closePurchaseForm();
     },
 
-    deletePurchase(index) {
+    deletePurchase(purchaseId) {
       if (confirm('Are you sure you want to delete this purchase?')) {
-        this.purchases.splice(index, 1);
+        this.purchases = this.purchases.filter(p => p.id !== purchaseId);
+        this.purchaseValuesCache.clear();
         this.savePurchases();
       }
     },
@@ -858,9 +984,9 @@ export default {
     closePurchaseForm() {
       this.showPurchaseForm = false;
       this.newPurchase = {
-        metal: 'gold',  // Always gold
+        metal: 'gold',
         amount: null,
-        unit: 'chi',    // Always chi
+        unit: 'chi',
         totalPaid: null,
         date: new Date().toISOString().split('T')[0]
       };
@@ -882,89 +1008,12 @@ export default {
       });
     },
 
-    getCurrentMetalPrice(metal) {
-      // Check if there's a custom price set for this specific metal
-      if (metal === 'gold' && this.manualGoldPrice) {
-        return this.manualGoldPrice;
-      }
-      if (metal === 'silver' && this.manualSilverPrice) {
-        return this.manualSilverPrice;
-      }
-      // Otherwise use API price
-      return metal === 'gold' ? this.goldPrice : this.silverPrice;
-    },
-
-    getPurchaseCurrentValue(purchase) {
-      const currentPricePerOz = this.getCurrentMetalPrice(purchase.metal);
-      
-      // Convert the current Troy Oz price to the price per unit that was purchased
-      let pricePerUnit;
-      switch (purchase.unit) {
-        case 'oz':
-          pricePerUnit = currentPricePerOz;
-          break;
-        case 'damlung':
-          pricePerUnit = currentPricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-          break;
-        case 'chi':
-          pricePerUnit = currentPricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-          break;
-        case 'gram':
-          pricePerUnit = currentPricePerOz * (1 / this.TROY_OUNCE_TO_GRAM);
-          break;
-        default:
-          pricePerUnit = currentPricePerOz;
-      }
-      
-      // Return: amount × current price per unit
-      return purchase.amount * pricePerUnit;
-    },
-
-    getPurchaseProfitLoss(purchase) {
-      return this.getPurchaseCurrentValue(purchase) - purchase.totalPaid;
-    },
-
-    getPurchaseProfitLossPercentage(purchase) {
-      const profitLoss = this.getPurchaseProfitLoss(purchase);
-      const percentage = (profitLoss / purchase.totalPaid) * 100;
-      return percentage.toFixed(2);
-    },
-
-    getPurchaseProfitLossClass(purchase) {
-      const profitLoss = this.getPurchaseProfitLoss(purchase);
-      return profitLoss >= 0 ? 'profit' : 'loss';
-    },
-
-    getPurchaseProfitLossSign(purchase) {
-      const profitLoss = this.getPurchaseProfitLoss(purchase);
-      return profitLoss >= 0 ? '+' : '-';
-    },
-
-    getTotalInvested() {
-      return this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-    },
-
-    getCurrentValue() {
-      return this.purchases.reduce((sum, p) => sum + this.getPurchaseCurrentValue(p), 0);
-    },
-
-    getProfitLoss() {
-      return this.getCurrentValue() - this.getTotalInvested();
-    },
-
-    getProfitLossPercentage() {
-      const total = this.getTotalInvested();
-      if (total === 0) return '0.00';
-      const percentage = (this.getProfitLoss() / total) * 100;
-      return percentage.toFixed(2);
-    },
-
-    getProfitLossClass() {
-      return this.getProfitLoss() >= 0 ? 'profit' : 'loss';
-    },
-
-    getProfitLossSign() {
-      return this.getProfitLoss() >= 0 ? '+' : '-';
+    // OPTIMIZED: Batch localStorage writes
+    batchSaveToLocalStorage(items) {
+      if (!process.client) return;
+      Object.entries(items).forEach(([key, value]) => {
+        localStorage.setItem(key, JSON.stringify(value));
+      });
     },
 
     savePurchases() {
@@ -996,7 +1045,7 @@ export default {
       const metalSymbol = this.selectedMetal === 'gold' ? 'XAU' : 'XAG';
       const metalCache = this.cache[this.selectedMetal];
       
-      // 1. Check cache first (24 hour cache)
+      // Check cache first
       const cacheAgeHours = metalCache.timestamp ? 
         (now - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
       
@@ -1013,14 +1062,14 @@ export default {
         return;
       }
 
-      // 2. Check daily quota
+      // Check daily quota
       const today = new Date().toDateString();
       if (this.apiQuota.lastCallDate !== today) {
         this.apiQuota.dailyCalls = 0;
         this.apiQuota.lastCallDate = today;
       }
 
-      // 3. Prevent unnecessary API calls
+      // Check limits
       if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit) {
         if (!userRequested) {
           if (metalCache.data) {
@@ -1048,28 +1097,10 @@ export default {
         }
       }
 
-      // 4. Check monthly quota (safety check)
-      if (this.apiQuota.totalCalls >= this.apiQuota.monthlyLimit - 5) {
-        if (!userRequested) {
-          const fallback = metalCache.data?.price || this.fallbackPrices[this.selectedMetal];
-          if (this.selectedMetal === 'gold') {
-            this.goldPrice = fallback;
-          } else {
-            this.silverPrice = fallback;
-          }
-          this.lastUpdated = 'Near monthly limit';
-          this.loading = false;
-          return;
-        }
-      }
-
-      // 5. Make API call
       this.loading = true;
       
       try {
         const endpoint = `${this.apiBaseUrl}/${metalSymbol}/USD`;
-        
-        console.log('🔄 Making API call to:', endpoint);
         
         const response = await fetch(endpoint, {
           method: 'GET',
@@ -1079,23 +1110,16 @@ export default {
           }
         });
 
-        console.log('📡 API Response status:', response.status);
-
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('API error response:', errorText);
-          throw new Error(`API error: ${response.status} - ${errorText}`);
+          throw new Error(`API error: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('📊 API data received:', data);
         
-        // Validate the data
         if (!data || typeof data.price !== 'number') {
           throw new Error('Invalid data format from API');
         }
         
-        // Update price and quota
         if (this.selectedMetal === 'gold') {
           this.goldPrice = data.price;
         } else {
@@ -1105,7 +1129,6 @@ export default {
         this.apiQuota.totalCalls++;
         this.apiQuota.lastCallDate = today;
         
-        // Cache the response for 24 hours
         this.cache[this.selectedMetal] = {
           data: data,
           timestamp: now.toISOString(),
@@ -1113,8 +1136,10 @@ export default {
         };
         
         if (process.client) {
-          localStorage.setItem('apiQuota', JSON.stringify(this.apiQuota));
-          localStorage.setItem(`${this.selectedMetal}PriceCache`, JSON.stringify(this.cache[this.selectedMetal]));
+          this.batchSaveToLocalStorage({
+            apiQuota: this.apiQuota,
+            [`${this.selectedMetal}PriceCache`]: this.cache[this.selectedMetal]
+          });
         }
         
         this.lastUpdated = now.toLocaleTimeString('en-US', {
@@ -1122,25 +1147,15 @@ export default {
           minute: '2-digit'
         });
         
-        console.log(`✅ API call successful for ${this.selectedMetal} (${this.apiQuota.dailyCalls}/10 today)`);
-        
       } catch (error) {
         console.error('❌ API Error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack
-        });
         
-        // Try alternative API before falling back to cache
-        console.log('🔄 Main API failed, trying alternative...');
         const alternativeSuccess = await this.tryAlternativeApi();
-        
         if (alternativeSuccess) {
           this.loading = false;
           return;
         }
         
-        // Fallback strategy
         if (metalCache.data) {
           if (this.selectedMetal === 'gold') {
             this.goldPrice = metalCache.data.price;
@@ -1148,7 +1163,6 @@ export default {
             this.silverPrice = metalCache.data.price;
           }
           this.lastUpdated = 'Using cached (API error)';
-          console.log('Using cached price from', metalCache.timestamp);
         } else {
           const fallback = this.fallbackPrices[this.selectedMetal];
           if (this.selectedMetal === 'gold') {
@@ -1157,7 +1171,6 @@ export default {
             this.silverPrice = fallback;
           }
           this.lastUpdated = 'Estimated (API error)';
-          console.log('Using fallback price:', fallback);
         }
       } finally {
         this.loading = false;
@@ -1203,7 +1216,6 @@ export default {
           this.apiQuota = { ...this.apiQuota, ...JSON.parse(savedQuota) };
         }
         
-        // Load gold cache
         const savedGoldCache = localStorage.getItem('goldPriceCache');
         if (savedGoldCache) {
           this.cache.gold = JSON.parse(savedGoldCache);
@@ -1213,7 +1225,6 @@ export default {
           }
         }
 
-        // Load silver cache
         const savedSilverCache = localStorage.getItem('silverPriceCache');
         if (savedSilverCache) {
           this.cache.silver = JSON.parse(savedSilverCache);
@@ -1223,10 +1234,8 @@ export default {
           }
         }
 
-        // Load purchases
         this.loadPurchases();
 
-        // Return true if we have valid cache for current metal
         const currentMetalCache = this.cache[this.selectedMetal];
         if (currentMetalCache.data) {
           const cacheAge = (new Date() - new Date(currentMetalCache.timestamp)) / (1000 * 60 * 60);
@@ -1244,38 +1253,6 @@ export default {
     }
   },
 
-  watch: {
-    selectedMetal(newMetal) {
-      if (process.client) {
-        localStorage.setItem('selectedMetal', newMetal);
-      }
-      
-      // Clear manual mode when switching metals
-      if (this.isManualMode) {
-        this.isManualMode = false;
-        this.manualPrice = null;
-      }
-
-      // Update new purchase metal type
-      this.newPurchase.metal = newMetal;
-
-      // Fetch price for new metal if not cached
-      const metalCache = this.cache[newMetal];
-      const cacheAgeHours = metalCache.timestamp ? 
-        (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
-      
-      if (!metalCache.data || cacheAgeHours >= 24) {
-        this.fetchMetalPrice(false);
-      } else {
-        this.loading = false;
-        const newPrice = newMetal === 'gold' ? this.goldPrice : this.silverPrice;
-        if (newPrice === 0) {
-          this.fetchMetalPrice(false);
-        }
-      }
-    }
-  },
-
   mounted() {
     const savedMetal = process.client ? localStorage.getItem('selectedMetal') : null;
     if (savedMetal) {
@@ -1287,8 +1264,13 @@ export default {
       this.fetchMetalPrice(false);
     }
 
-    // Set initial purchase metal type
     this.newPurchase.metal = this.selectedMetal;
+  },
+
+  beforeDestroy() {
+    // Cleanup timers
+    if (this.metalSwitchTimeout) clearTimeout(this.metalSwitchTimeout);
+    if (this.manualPriceUpdateTimeout) clearTimeout(this.manualPriceUpdateTimeout);
   }
 }
 </script>
@@ -1464,34 +1446,6 @@ export default {
   min-height: calc(100vh - 80px);
 }
 
-/* Section Spacing */
-.section {
-  margin-bottom: 32px;
-}
-
-.section-large {
-  margin-bottom: 48px;
-}
-
-/* Layout Grid for larger screens */
-.layout-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-}
-
-@media (min-width: 1024px) {
-  .layout-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-  }
-  
-  .layout-grid .portfolio-summary,
-  .layout-grid .purchase-form {
-    grid-column: 1 / -1;
-  }
-}
-
 /* Manual Section */
 .manual-section {
   margin-bottom: 24px;
@@ -1502,7 +1456,7 @@ export default {
   margin-bottom: 32px;
 }
 
-/* Manual Prompt (Collapsed State) */
+/* Manual Prompt */
 .manual-prompt {
   display: flex;
   align-items: center;
@@ -1585,7 +1539,7 @@ export default {
   height: 16px;
 }
 
-/* Manual Input (Expanded State) */
+/* Manual Input */
 .manual-input-expanded {
   background: white;
   border: 2px solid #fbbf24;
@@ -1755,7 +1709,7 @@ export default {
 
 /* Price Section */
 .price-section {
-  margin-bottom: 32px;
+  margin-bottom: 0px;
 }
 
 .price-card {
@@ -1835,7 +1789,7 @@ export default {
   gap: 16px;
 }
 
-/* Portfolio Summary (New) */
+/* Portfolio Summary */
 .portfolio-summary {
   background: white;
   border-radius: 16px;
@@ -2026,94 +1980,7 @@ export default {
   color: #ef4444;
 }
 
-.summary-cards {
-  display: grid;
-  gap: 12px;
-}
-
-.summary-card {
-  background: #fafafa;
-  padding: 16px;
-  border-radius: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.app.dark .summary-card {
-  background: #0a0a0a;
-}
-
-.summary-card.profit-loss {
-  border: 2px solid #e5e5e5;
-}
-
-.app.dark .summary-card.profit-loss {
-  border-color: #2a2a2a;
-}
-
-.summary-card.profit-loss.profit {
-  background: #d1fae5;
-  border-color: #10b981;
-}
-
-.app.dark .summary-card.profit-loss.profit {
-  background: #064e3b;
-}
-
-.summary-card.profit-loss.loss {
-  background: #fee2e2;
-  border-color: #ef4444;
-}
-
-.app.dark .summary-card.profit-loss.loss {
-  background: #7f1d1d;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-}
-
-.app.dark .summary-label {
-  color: #999;
-}
-
-.summary-card.profit .summary-label,
-.summary-card.loss .summary-label {
-  color: #1a1a1a;
-}
-
-.app.dark .summary-card.profit .summary-label,
-.app.dark .summary-card.loss .summary-label {
-  color: #e5e5e5;
-}
-
-.summary-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.app.dark .summary-value {
-  color: #e5e5e5;
-}
-
-.summary-card.profit .summary-value {
-  color: #10b981;
-}
-
-.summary-card.loss .summary-value {
-  color: #ef4444;
-}
-
-.percentage {
-  font-size: 14px;
-  margin-left: 4px;
-}
-
-/* Purchase Form (New) */
+/* Purchase Form */
 .purchase-form {
   background: white;
   border: 2px solid #10b981;
@@ -2216,34 +2083,6 @@ export default {
   background: #1a1a1a;
 }
 
-.form-input-currency {
-  width: 100%;
-  padding: 12px 12px 12px 36px;
-  border: 2px solid #e5e5e5;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.2s;
-}
-
-.app.dark .form-input-currency {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.form-input-currency:focus {
-  outline: none;
-  border-color: #10b981;
-  background: white;
-}
-
-.app.dark .form-input-currency:focus {
-  background: #1a1a1a;
-}
-
 .form-input-currency-large {
   width: 100%;
   padding: 16px 16px 16px 44px;
@@ -2283,51 +2122,6 @@ export default {
   color: #666;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.metal-type-selector {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.metal-type-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  background: #fafafa;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  transition: all 0.2s;
-  color: #1a1a1a;
-}
-
-.app.dark .metal-type-btn {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.metal-type-btn.active {
-  border-color: #10b981;
-  background: #d1fae5;
-  color: #1a1a1a;
-}
-
-.app.dark .metal-type-btn.active {
-  background: #064e3b;
-  color: #10b981;
-}
-
 .purchase-summary {
   background: #f0fdf4;
   padding: 12px;
@@ -2361,7 +2155,7 @@ export default {
   font-weight: 700;
 }
 
-/* Purchase History (New) */
+/* Purchase History */
 .purchase-history {
   background: white;
   border-radius: 16px;
@@ -2382,12 +2176,6 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-}
-
-.history-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
 }
 
 .toggle-btn {
@@ -2784,43 +2572,6 @@ export default {
   color: #fca5a5;
 }
 
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.detail-label {
-  color: #666;
-}
-
-.app.dark .detail-label {
-  color: #999;
-}
-
-.detail-value {
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.app.dark .detail-value {
-  color: #e5e5e5;
-}
-
-.profit-loss-row.profit .detail-value {
-  color: #10b981;
-}
-
-.profit-loss-row.loss .detail-value {
-  color: #ef4444;
-}
-
-.percentage-small {
-  font-size: 11px;
-  opacity: 0.8;
-  margin-left: 2px;
-}
-
 /* Add Purchase Section */
 .add-purchase-section {
   margin-bottom: 24px;
@@ -2890,6 +2641,278 @@ export default {
 
 .app.dark .calc-result {
   background: #0a0a0a;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #1a1a1a;
+  color: white;
+}
+
+.app.dark .btn-primary {
+  background: #fbbf24;
+  color: #1a1a1a;
+}
+
+.btn-secondary {
+  background: #f5f5f5;
+  color: #1a1a1a;
+}
+
+.app.dark .btn-secondary {
+  background: #2a2a2a;
+  color: #e5e5e5;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+}
+
+.icon.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Status */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.app.dark .status {
+  color: #999;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot.loading {
+  background: #fbbf24;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.success {
+  background: #22c55e;
+}
+
+.status-dot.error {
+  background: #ef4444;
+}
+
+.status-text {
+  flex-shrink: 0;
+}
+
+.quota-text {
+  color: #999;
+  font-size: 11px;
+}
+
+/* API Error Section */
+.api-error-section {
+  background: #fef3cd;
+  border: 2px solid #fbbf24;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.app.dark .api-error-section {
+  background: #2a2410;
+  border-color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.app.dark .price-amount {
+  color: #e5e5e5;
+}
+
+.price-per-unit {
+  font-size: 10px;
+  color: #666;
+  font-weight: 500;
+}
+
+.app.dark .price-per-unit {
+  color: #999;
+}
+
+.price-arrow {
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.price-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Card Result */
+.card-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-result::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+.card-result.profit {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+}
+
+.card-result.profit::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.app.dark .card-result.profit {
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+}
+
+.card-result.loss {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+}
+
+.card-result.loss::before {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.app.dark .card-result.loss {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+}
+
+.result-icon-large {
+  font-size: 32px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.result-info {
+  flex: 1;
+  z-index: 1;
+}
+
+.card-result .result-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.card-result.profit .result-label {
+  color: #065f46;
+}
+
+.app.dark .card-result.profit .result-label {
+  color: #6ee7b7;
+}
+
+.card-result.loss .result-label {
+  color: #991b1b;
+}
+
+.app.dark .card-result.loss .result-label {
+  color: #fca5a5;
+}
+
+.card-result .result-value {
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 2px;
+}
+
+.card-result.profit .result-value {
+  color: #10b981;
+}
+
+.app.dark .card-result.profit .result-value {
+  color: #10b981;
+}
+
+.card-result.loss .result-value {
+  color: #ef4444;
+}
+
+.app.dark .card-result.loss .result-value {
+  color: #ef4444;
+}
+
+.result-percentage {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.card-result.profit .result-percentage {
+  color: #065f46;
+}
+
+.app.dark .card-result.profit .result-percentage {
+  color: #6ee7b7;
+}
+
+.card-result.loss .result-percentage {
+  color: #991b1b;
+}
+
+.app.dark .card-result.loss .result-percentage {
+  color: #fca5a5;
 }
 
 /* Actions */
@@ -3087,10 +3110,99 @@ export default {
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Responsive */
-@media (min-width: 640px) {
+@media (max-width: 768px) {
   .container {
-    max-width: 600px;
+    max-width: 100%;
+  }
+
+  .tabs-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tab-icon {
+    font-size: 18px;
+  }
+
+  .calc-input-group {
+    grid-template-columns: 1fr;
+  }
+
+  .price-row {
+    grid-template-columns: 1fr;
+  }
+
+  .card-prices {
+    grid-template-columns: 1fr;
+  }
+
+  .price-arrow {
+    transform: rotate(90deg);
+    margin: 8px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 16px;
+  }
+
+  .metal-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .tabs-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tab-label {
+    font-size: 11px;
+  }
+
+  .price {
+    font-size: 24px;
+  }
+
+  .price.small {
+    font-size: 16px;
+  }
+
+  .form-input-large {
+    font-size: 18px;
+  }
+
+  .form-input-currency-large {
+    font-size: 18px;
+  }
+
+  .calculator-title {
+    font-size: 16px;
+  }
+
+  .conversion-table {
+    font-size: 12px;
+  }
+
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .table-cell {
+    font-size: 12px;
+  }
+
+  .purchase-card {
+    padding: 12px;
   }
 }
 
