@@ -1681,7 +1681,7 @@ export default {
 
 /* Price Section */
 .price-section {
-  margin-bottom: 32px;
+  margin-bottom: 0px;
 }
 
 .price-card {
@@ -1766,7 +1766,7 @@ export default {
   background: white;
   border-radius: 16px;
   padding: 28px;
-  margin-bottom: 24px;
+  margin: 24px 0;
   border: 2px solid #10b981;
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
 }
@@ -2546,7 +2546,7 @@ export default {
 
 /* Add Purchase Section */
 .add-purchase-section {
-  margin-bottom: 24px;
+  margin-bottom: 0px;
 }
 
 /* Calculator */
