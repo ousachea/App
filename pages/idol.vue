@@ -1,6 +1,3 @@
-Works fixed · VUE
-Copy
-
 <!-- pages/works.vue -->
 <template>
   <div :class="['works-container', { 'dark-mode': darkMode }]">
@@ -25,49 +22,23 @@ Copy
       <div class="controls-wrapper">
         <div class="search-wrapper">
           <span class="search-icon">🔍</span>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search by code or name..."
-            class="search-input"
-          />
+          <input v-model="searchQuery" type="text" placeholder="Search by code or name..." class="search-input" />
         </div>
 
         <div class="button-group">
-          <button
-            @click="handleExport"
-            :disabled="selectedCodes.length === 0"
-            class="btn btn-primary"
-          >
+          <button @click="handleExport" :disabled="selectedCodes.length === 0" class="btn btn-primary">
             📥 JSON
           </button>
-          <button
-            @click="handleExportCSV"
-            :disabled="selectedCodes.length === 0"
-            class="btn btn-primary"
-          >
+          <button @click="handleExportCSV" :disabled="selectedCodes.length === 0" class="btn btn-primary">
             📊 CSV
           </button>
-          <button
-            @click="handleImportClick"
-            class="btn btn-success"
-          >
+          <button @click="handleImportClick" class="btn btn-success">
             📤 Import
           </button>
-          <button
-            v-if="selectedCodes.length > 0"
-            @click="clearAll"
-            class="btn btn-danger"
-          >
+          <button v-if="selectedCodes.length > 0" @click="clearAll" class="btn btn-danger">
             🗑️ Clear
           </button>
-          <input
-            ref="fileInput"
-            type="file"
-            accept=".json,.csv"
-            @change="handleImport"
-            class="hidden-input"
-          />
+          <input ref="fileInput" type="file" accept=".json,.csv" @change="handleImport" class="hidden-input" />
         </div>
       </div>
 
@@ -75,16 +46,9 @@ Copy
       <div v-if="selectedCodes.length > 0" class="selected-tags-wrapper">
         <p class="tags-label">Selected: {{ selectedCodes.length }} items</p>
         <div class="code-tags">
-          <span
-            v-for="code in selectedCodes"
-            :key="code"
-            class="code-tag"
-          >
+          <span v-for="code in selectedCodes" :key="code" class="code-tag">
             {{ code }}
-            <button
-              @click="removeCode(code)"
-              class="tag-remove"
-            >
+            <button @click="removeCode(code)" class="tag-remove">
               ✕
             </button>
           </span>
@@ -98,21 +62,14 @@ Copy
           <span class="progress-percent">{{ selectedCodes.length }} / {{ totalCount }}</span>
         </div>
         <div class="progress-bar">
-          <div
-            class="progress-fill"
-            :style="{ width: progressPercentage + '%' }"
-          />
+          <div class="progress-fill" :style="{ width: progressPercentage + '%' }" />
         </div>
         <span class="progress-percentage">{{ progressPercentage }}%</span>
       </div>
 
       <!-- Artists List -->
       <div class="artists-list">
-        <div
-          v-for="artist in filteredArtists"
-          :key="artist.name"
-          class="artist-card"
-        >
+        <div v-for="artist in filteredArtists" :key="artist.name" class="artist-card">
           <div class="artist-header-info">
             <h2 class="artist-name">{{ artist.name }}</h2>
             <p class="artist-period">{{ artist.period }}</p>
@@ -123,43 +80,27 @@ Copy
           <div v-if="artist.mainWorks && artist.mainWorks.length > 0" class="works-section">
             <h3 class="section-title">📌 Main Works</h3>
             <div class="works-grid">
-              <div
-                v-for="work in artist.mainWorks"
-                :key="work.code"
-                :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
-              >
+              <div v-for="work in artist.mainWorks" :key="work.code"
+                :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]">
                 <template v-if="work.imageUrl">
-                  <div
-                    class="work-image-large"
-                    @click.stop="toggleCode(work.code)"
-                  >
+                  <div class="work-image-large" @click.stop="toggleCode(work.code)">
                     <img :src="work.imageUrl" :alt="work.code" class="work-img" onerror="this.style.display='none'">
                   </div>
                 </template>
                 <template v-else>
-                  <div
-                    class="work-image-large work-image-placeholder"
-                    @click.stop="toggleCode(work.code)"
-                  >
+                  <div class="work-image-large work-image-placeholder" @click.stop="toggleCode(work.code)">
                     <span>📷</span>
                   </div>
                 </template>
                 <div class="work-card-overlay">
-                  <button
-                    @click.stop="openEditModal(work, artist.name)"
-                    class="edit-btn"
-                    title="Edit item"
-                  >
+                  <button @click.stop="openEditModal(work, artist.name)" class="edit-btn" title="Edit item">
                     ✏️
                   </button>
                 </div>
                 <div class="work-card-content">
                   <div class="work-checkbox">
-                    <input
-                      type="checkbox"
-                      :checked="selectedCodes.includes(work.code)"
-                      @change="toggleCode(work.code)"
-                    />
+                    <input type="checkbox" :checked="selectedCodes.includes(work.code)"
+                      @change="toggleCode(work.code)" />
                   </div>
                   <div class="work-info">
                     <p class="work-code">{{ work.code }}</p>
@@ -174,43 +115,27 @@ Copy
           <div v-if="artist.compilations && artist.compilations.length > 0" class="works-section">
             <h3 class="section-title">📂 Compilations</h3>
             <div class="works-grid">
-              <div
-                v-for="work in artist.compilations"
-                :key="work.code"
-                :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]"
-              >
+              <div v-for="work in artist.compilations" :key="work.code"
+                :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]">
                 <template v-if="work.imageUrl">
-                  <div
-                    class="work-image-large"
-                    @click.stop="toggleCode(work.code)"
-                  >
+                  <div class="work-image-large" @click.stop="toggleCode(work.code)">
                     <img :src="work.imageUrl" :alt="work.code" class="work-img" onerror="this.style.display='none'">
                   </div>
                 </template>
                 <template v-else>
-                  <div
-                    class="work-image-large work-image-placeholder"
-                    @click.stop="toggleCode(work.code)"
-                  >
+                  <div class="work-image-large work-image-placeholder" @click.stop="toggleCode(work.code)">
                     <span>📷</span>
                   </div>
                 </template>
                 <div class="work-card-overlay">
-                  <button
-                    @click.stop="openEditModal(work, artist.name)"
-                    class="edit-btn"
-                    title="Edit item"
-                  >
+                  <button @click.stop="openEditModal(work, artist.name)" class="edit-btn" title="Edit item">
                     ✏️
                   </button>
                 </div>
                 <div class="work-card-content">
                   <div class="work-checkbox">
-                    <input
-                      type="checkbox"
-                      :checked="selectedCodes.includes(work.code)"
-                      @change="toggleCode(work.code)"
-                    />
+                    <input type="checkbox" :checked="selectedCodes.includes(work.code)"
+                      @change="toggleCode(work.code)" />
                   </div>
                   <div class="work-info">
                     <p class="work-code">{{ work.code }}</p>
@@ -277,23 +202,14 @@ Copy
 
             <div class="form-group">
               <label>Code</label>
-              <input
-                v-model="newItem.code"
-                type="text"
-                placeholder="e.g., SSIS-001"
-                class="form-input"
-                @keyup.enter="addNewItem"
-              />
+              <input v-model="newItem.code" type="text" placeholder="e.g., SSIS-001" class="form-input"
+                @keyup.enter="addNewItem" />
             </div>
 
             <div class="form-group">
               <label>Image URL</label>
-              <input
-                v-model="newItem.imageUrl"
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                class="form-input"
-              />
+              <input v-model="newItem.imageUrl" type="url" placeholder="https://example.com/image.jpg"
+                class="form-input" />
               <div v-if="newItem.imageUrl" class="image-preview">
                 <img :src="newItem.imageUrl" alt="Preview" @error="imageError = true">
                 <span v-if="imageError" class="image-error">❌ Image failed to load</span>
@@ -304,19 +220,11 @@ Copy
               <label>Type</label>
               <div class="radio-group">
                 <label class="radio-label">
-                  <input
-                    v-model="newItem.type"
-                    type="radio"
-                    value="mainWorks"
-                  />
+                  <input v-model="newItem.type" type="radio" value="mainWorks" />
                   📌 Main Works
                 </label>
                 <label class="radio-label">
-                  <input
-                    v-model="newItem.type"
-                    type="radio"
-                    value="compilations"
-                  />
+                  <input v-model="newItem.type" type="radio" value="compilations" />
                   📂 Compilations
                 </label>
               </div>
@@ -341,22 +249,13 @@ Copy
           <div class="modal-body">
             <div class="form-group">
               <label>Code</label>
-              <input
-                v-model="editItem.code"
-                type="text"
-                class="form-input"
-                disabled
-              />
+              <input v-model="editItem.code" type="text" class="form-input" disabled />
             </div>
 
             <div class="form-group">
               <label>Image URL</label>
-              <input
-                v-model="editItem.imageUrl"
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                class="form-input"
-              />
+              <input v-model="editItem.imageUrl" type="url" placeholder="https://example.com/image.jpg"
+                class="form-input" />
               <div v-if="editItem.imageUrl" class="image-preview">
                 <img :src="editItem.imageUrl" alt="Preview" @error="editImageError = true">
                 <span v-if="editImageError" class="image-error">❌ Image failed to load</span>
@@ -404,27 +303,51 @@ export default {
         type: 'success'
       },
       artists: [
-      {
+        {
+          name: 'Minato Haru',
+          period: '2019–2022 (25–28)',
+          mainWorks: [
+            { code: 'SONE-978', name: '', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00978/sone00978pl.jpg' },
+            { code: 'SONE-914', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00914/sone00914pl.jpg' },
+            { code: 'SONE-865', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00865/sone00865pl.jpg' },
+            { code: 'MIRD-259', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/mird00259/mird00259pl.jpg' },
+            { code: 'OFES-013', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofes00013/ofes00013pl.jpg' },
+            { code: 'SONE-776', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00776/sone00776pl.jpg' },
+            { code: 'SONE-508', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00508/sone00508pl.jpg' },
+            { code: 'FWAY-060', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/fway00060/fway00060pl.jpg' },
+            { code: 'SONE-503', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00503/sone00503pl.jpg' },
+            { code: 'SONE-155', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00155/sone00155pl.jpg' },
+            { code: 'SONE-188', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00188/sone00188pl.jpg' },
+            { code: 'SONE-063', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00063/sone00063pl.jpg' },
+            { code: 'SONE-021', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/sone00021/sone00021pl.jpg' },
+            { code: 'SSIS-978', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00978/ssis00978pl.jpg' },
+            { code: 'FWAY-002', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/fway00002/fway00002pl.jpg' },
+            { code: 'SSIS-945', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00945/ssis00945pl.jpg' },
+            { code: 'SSIS-890', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00890/ssis00890pl.jpg' },
+            { code: 'SSIS-889', name: 'Minato Haru', imageUrl: 'https://pics.dmm.co.jp/digital/video/ssis00889/ssis00889pl.jpg' },
+
+          ],
+        },
+        {
           name: 'Moa Maeda',
           period: '2019–2022 (25–28)',
           mainWorks: [
-          
-  { code: 'ADN-334', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/adn00334/adn00334pl.jpg' },
-  { code: 'MIMK-091', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/mimk00091/mimk00091pl.jpg' },
-  { code: 'JUFE-300', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/jufe00300/jufe00300pl.jpg' },
-  { code: 'WAAA-065', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/waaa00065/waaa00065pl.jpg' },
-  { code: 'HND-991', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/hnd00991/hnd00991pl.jpg' },
-  { code: 'PPPD-926', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/pppd00926/pppd00926pl.jpg' },
-{ code: 'MSFH-034', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00034/msfh00034pl.jpg' },
-{ code: 'MSFH-030', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00030/msfh00030pl.jpg' },
-{ code: 'MSFH-024', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00024/msfh00024pl.jpg' },
-{ code: 'MSFH-018', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00018/msfh00018pl.jpg' },
-{ code: 'MSFH-014', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00014/msfh00014pl.jpg' },
-{ code: 'MSFH-010', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00010/msfh00010pl.jpg' },
+            { code: 'ADN-334', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/adn00334/adn00334pl.jpg' },
+            { code: 'MIMK-091', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/mimk00091/mimk00091pl.jpg' },
+            { code: 'JUFE-300', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/jufe00300/jufe00300pl.jpg' },
+            { code: 'WAAA-065', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/waaa00065/waaa00065pl.jpg' },
+            { code: 'HND-991', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/hnd00991/hnd00991pl.jpg' },
+            { code: 'PPPD-926', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/pppd00926/pppd00926pl.jpg' },
+            { code: 'MSFH-034', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00034/msfh00034pl.jpg' },
+            { code: 'MSFH-030', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00030/msfh00030pl.jpg' },
+            { code: 'MSFH-024', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00024/msfh00024pl.jpg' },
+            { code: 'MSFH-018', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00018/msfh00018pl.jpg' },
+            { code: 'MSFH-014', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00014/msfh00014pl.jpg' },
+            { code: 'MSFH-010', name: 'Moa Maeda', imageUrl: 'https://pics.dmm.co.jp/digital/video/msfh00010/msfh00010pl.jpg' },
+
           ],
-          
         },
-      {
+        {
           name: 'Mitsuki Momota (百田光稀)',
           period: '2019–2022 (25–28)',
           mainWorks: [
@@ -458,11 +381,11 @@ export default {
             { code: 'MIDA-385', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00385/mida00385pl.jpg' },
             { code: 'NAAC-032', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/h_706naac00032b/h_706naac00032bpl.jpg' },
             { code: 'MIDV-698', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/midv00698/midv00698pl.jpg' },
-         
+
           ],
           compilations: [
             { code: 'OFJE-279', name: 'Anzai Rara (安斎らら)', imageUrl: 'https://pics.dmm.co.jp/digital/video/ofje00279/ofje00279pl.jpg' },
-    
+
           ]
         },
         {
@@ -651,9 +574,9 @@ export default {
           const parsed = JSON.parse(artistsStored)
           if (Array.isArray(parsed) && parsed.length > 0) {
             // Validate structure
-            const isValid = parsed.every(artist => 
-              artist.name && 
-              Array.isArray(artist.mainWorks) && 
+            const isValid = parsed.every(artist =>
+              artist.name &&
+              Array.isArray(artist.mainWorks) &&
               Array.isArray(artist.compilations)
             )
             if (isValid) {
@@ -722,19 +645,19 @@ export default {
     },
     handleExportCSV() {
       const timestamp = new Date().toISOString().split('T')[0]
-      
+
       let csv = 'Code,Name,Artist,Type,Image URL\n'
-      
+
       this.selectedCodes.forEach(code => {
         for (const artist of this.artists) {
           let found = false
-          
+
           const mainWork = artist.mainWorks?.find(w => w.code === code)
           if (mainWork) {
             csv += `${mainWork.code},"${mainWork.name}","${artist.name}","Main Works","${mainWork.imageUrl || ''}"\n`
             found = true
           }
-          
+
           if (!found) {
             const compilation = artist.compilations?.find(w => w.code === code)
             if (compilation) {
@@ -742,7 +665,7 @@ export default {
               found = true
             }
           }
-          
+
           if (found) break
         }
       })
@@ -769,7 +692,7 @@ export default {
       reader.onload = (event) => {
         try {
           const content = event.target.result
-          
+
           // Check if it's JSON
           if (file.name.endsWith('.json')) {
             const data = JSON.parse(content)
@@ -779,7 +702,7 @@ export default {
             } else {
               this.showToast('Invalid JSON format', 'error')
             }
-          } 
+          }
           // Check if it's CSV
           else if (file.name.endsWith('.csv')) {
             const lines = content.split('\n')
@@ -787,13 +710,13 @@ export default {
               this.showToast('Invalid CSV format', 'error')
               return
             }
-            
+
             const codes = []
             // Skip header row (line 0)
             for (let i = 1; i < lines.length; i++) {
               const line = lines[i].trim()
               if (!line) continue
-              
+
               // Parse CSV line, handling quoted fields
               const matches = line.match(/"([^"]*)"|([^,]+)/g)
               if (matches && matches.length > 0) {
@@ -801,25 +724,25 @@ export default {
                 codes.push(code)
               }
             }
-            
+
             if (codes.length === 0) {
               this.showToast('No valid codes found in CSV', 'error')
               return
             }
-            
+
             // Validate codes exist in current data
-            const validCodes = codes.filter(code => 
+            const validCodes = codes.filter(code =>
               this.artists.some(artist =>
                 artist.mainWorks?.some(w => w.code === code) ||
                 artist.compilations?.some(w => w.code === code)
               )
             )
-            
+
             if (validCodes.length === 0) {
               this.showToast('No matching codes found in your collection', 'error')
               return
             }
-            
+
             this.selectedCodes = validCodes
             this.showToast(`Imported ${validCodes.length} items from CSV`, 'success')
           } else {
@@ -884,7 +807,7 @@ export default {
 
       let work = artist.mainWorks?.find(w => w.code === this.editItem.code)
       let isMainWork = true
-      
+
       if (!work) {
         work = artist.compilations?.find(w => w.code === this.editItem.code)
         isMainWork = false
@@ -892,13 +815,13 @@ export default {
 
       if (work) {
         work.imageUrl = this.editItem.imageUrl || null
-        
+
         if (isMainWork) {
           artist.mainWorks = [...artist.mainWorks]
         } else {
           artist.compilations = [...artist.compilations]
         }
-        
+
         this.artists = [...this.artists]
         this.closeEditModal()
         this.showToast(`✅ Updated ${this.editItem.code}`, 'success')
@@ -956,7 +879,8 @@ export default {
 }
 </script>
 
-<style scoped>* {
+<style scoped>
+* {
   box-sizing: border-box;
 }
 
@@ -1238,6 +1162,7 @@ body {
     opacity: 0;
     transform: translateX(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -1604,6 +1529,7 @@ body {
     opacity: 0;
     transform: translateX(100px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -1641,6 +1567,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1669,6 +1596,7 @@ body {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
