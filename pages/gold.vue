@@ -1,4 +1,4 @@
-<!-- pages/index.vue - IMPROVED LAYOUT WITH EDIT FEATURE -->
+<!-- pages/index.vue - OPTIMIZED CALCULATIONS -->
 
 <template>
   <div class="app">
@@ -39,7 +39,7 @@
           <div class="stat-card">
             <div class="stat-label">Gram</div>
             <div v-if="loading" class="skeleton-stat"></div>
-            <div v-else class="stat-value">{{ formatCurrencyDisplay(getPricePerUnit('gram', currentPrice)) }}</div>
+            <div v-else class="stat-value">{{ memoizedGramPrice }}</div>
             <div class="stat-sublabel">1g</div>
           </div>
         </section>
@@ -82,15 +82,15 @@
             <div v-if="manualPrice > 0" class="conversions-grid">
               <div class="conversion">
                 <span class="conversion-label">ដំឡឹង</span>
-                <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('damlung', manualPrice)) }}</span>
+                <span class="conversion-value">{{ cachedDamlungFromManual }}</span>
               </div>
               <div class="conversion">
                 <span class="conversion-label">ជី</span>
-                <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('chi', manualPrice)) }}</span>
+                <span class="conversion-value">{{ cachedChiFromManual }}</span>
               </div>
               <div class="conversion">
                 <span class="conversion-label">Gram</span>
-                <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('gram', manualPrice)) }}</span>
+                <span class="conversion-value">{{ cachedGramFromManual }}</span>
               </div>
             </div>
           </div>
@@ -107,18 +107,18 @@
           <div class="portfolio-cards">
             <div class="portfolio-card invested">
               <div class="portfolio-label">💰 Total Invested</div>
-              <div class="portfolio-value">{{ formatCurrencyDisplay(memoizedTotalInvested) }}</div>
+              <div class="portfolio-value">{{ memoizedTotalInvested }}</div>
             </div>
 
             <div class="portfolio-card current">
               <div class="portfolio-label">📈 Current Value</div>
-              <div class="portfolio-value">{{ formatCurrencyDisplay(memoizedCurrentValue) }}</div>
+              <div class="portfolio-value">{{ memoizedCurrentValue }}</div>
             </div>
 
             <div class="portfolio-card" :class="memoizedProfitLossClass">
               <div class="portfolio-label">{{ memoizedProfitLoss >= 0 ? '✅ Profit' : '❌ Loss' }}</div>
-              <div class="portfolio-value-large">{{ formatCurrencyDisplay(Math.abs(memoizedProfitLoss)) }}</div>
-              <div class="portfolio-change">{{ memoizedProfitLoss >= 0 ? '+' : '-' }}{{ ((Math.abs(memoizedProfitLoss) / memoizedTotalInvested) * 100).toFixed(2) }}%</div>
+              <div class="portfolio-value-large">{{ memoizedProfitLossDisplay }}</div>
+              <div class="portfolio-change">{{ memoizedProfitChangePercent }}</div>
             </div>
           </div>
         </section>
@@ -191,23 +191,23 @@
                 <div class="card-prices-compare">
                   <div>
                     <div class="price-label">Bought at</div>
-                    <div class="price-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/ជី</div>
+                    <div class="price-value">{{ getPricePerChiCached(purchase) }}</div>
                   </div>
                   <div class="arrow">→</div>
                   <div>
                     <div class="price-label">Worth today</div>
-                    <div class="price-value">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id] / purchase.amount) }}/ជី</div>
+                    <div class="price-value">{{ getWorthTodayPerChiCached(purchase) }}</div>
                   </div>
                 </div>
 
                 <!-- Result -->
-                <div class="card-result" :class="memoizedPurchaseProfitClass[purchase.id]">
-                  <span class="result-emoji">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '📈' : '📉' }}</span>
+                <div class="card-result" :class="getProfitClassCached(purchase.id)">
+                  <span class="result-emoji">{{ getProfitValueCached(purchase.id) >= 0 ? '📈' : '📉' }}</span>
                   <div class="result-info">
-                    <span class="result-label">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'Profit' : 'Loss' }}</span>
-                    <span class="result-value">{{ formatCurrencyDisplay(Math.abs(memoizedPurchaseProfitValue[purchase.id])) }}</span>
+                    <span class="result-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Profit' : 'Loss' }}</span>
+                    <span class="result-value">{{ getProfitDisplayCached(purchase.id) }}</span>
                   </div>
-                  <span class="result-percent">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '+' : '-' }}{{ memoizedPurchaseProfitPercent[purchase.id] }}%</span>
+                  <span class="result-percent">{{ getProfitPercentCached(purchase.id) }}</span>
                 </div>
               </div>
             </div>
@@ -344,7 +344,7 @@
           
           <div v-if="calculatorAmount > 0" class="calc-result">
             <div class="calc-label">Estimated Value</div>
-            <div class="calc-value">{{ formatCurrencyDisplay(memoizedCalculatorResult) }}</div>
+            <div class="calc-value">{{ memoizedCalculatorResult }}</div>
           </div>
         </section>
 
@@ -385,9 +385,13 @@ export default {
 
   data() {
     return {
+      // Constants (pre-calculated for speed)
       TROY_OUNCE_TO_GRAM: 31.1035,
       DAMLUNG_TO_GRAM: 37.5,
       CHI_TO_GRAM: 3.75,
+      CHI_TO_OZ: 3.75 / 31.1035, // Pre-calculated: 0.120543
+      GRAM_TO_OZ: 1 / 31.1035,   // Pre-calculated: 0.032151
+      DAMLUNG_TO_OZ: 37.5 / 31.1035, // Pre-calculated: 1.204819
 
       apiKey: '03cc06614a49b9d29f1d4cdb2250467d',
       apiBaseUrl: 'https://www.goldapi.io/api',
@@ -434,9 +438,17 @@ export default {
         gold: 4000
       },
 
+      // Optimized caching
       manualPriceUpdateTimeout: null,
-      currencyFormatCache: new Map(),
-      purchaseValuesCache: new Map()
+      lastCalculatedPrice: null,
+      portfolioCache: {
+        totalInvested: null,
+        currentValue: null,
+        profitLoss: null,
+        timestamp: null
+      },
+      purchaseDetailCache: new Map(),
+      formattingCache: new Map()
     };
   },
   
@@ -471,94 +483,203 @@ export default {
       );
     },
 
+    // Fast price calculations with pre-calculated multipliers
     memoizedDamlungPrice() {
-      return this.formatCurrencyDisplay(this.getPricePerUnit('damlung', this.currentPrice));
+      return this.formatCurrencyDisplay(this.currentPrice * this.DAMLUNG_TO_OZ);
     },
 
     memoizedChiPrice() {
-      return this.formatCurrencyDisplay(this.getPricePerUnit('chi', this.currentPrice));
+      return this.formatCurrencyDisplay(this.currentPrice * this.CHI_TO_OZ);
     },
 
+    memoizedGramPrice() {
+      return this.formatCurrencyDisplay(this.currentPrice * this.GRAM_TO_OZ);
+    },
+
+    // Manual mode conversions
+    cachedDamlungFromManual() {
+      if (!this.manualPrice) return '$0.00';
+      return this.formatCurrencyDisplay(this.manualPrice * this.DAMLUNG_TO_OZ);
+    },
+
+    cachedChiFromManual() {
+      if (!this.manualPrice) return '$0.00';
+      return this.formatCurrencyDisplay(this.manualPrice * this.CHI_TO_OZ);
+    },
+
+    cachedGramFromManual() {
+      if (!this.manualPrice) return '$0.00';
+      return this.formatCurrencyDisplay(this.manualPrice * this.GRAM_TO_OZ);
+    },
+
+    // Portfolio calculations (only recalculate when prices or purchases change)
     memoizedTotalInvested() {
-      return this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      if (this.portfolioCache.totalInvested !== null && 
+          this.lastCalculatedPrice === this.currentPrice) {
+        return this.portfolioCache.totalInvested;
+      }
+
+      const total = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      const formatted = this.formatCurrencyDisplay(total);
+      
+      this.portfolioCache.totalInvested = formatted;
+      this.lastCalculatedPrice = this.currentPrice;
+      return formatted;
     },
 
     memoizedCurrentValue() {
-      return this.purchases.reduce((sum, p) => sum + this.getPurchaseCurrentValueCached(p), 0);
+      if (this.portfolioCache.currentValue !== null && 
+          this.lastCalculatedPrice === this.currentPrice) {
+        return this.portfolioCache.currentValue;
+      }
+
+      let sum = 0;
+      for (let i = 0; i < this.purchases.length; i++) {
+        const p = this.purchases[i];
+        sum += p.amount * this.CHI_TO_OZ * this.currentPrice;
+      }
+      
+      const formatted = this.formatCurrencyDisplay(sum);
+      this.portfolioCache.currentValue = formatted;
+      return formatted;
     },
 
     memoizedProfitLoss() {
-      return this.memoizedCurrentValue - this.memoizedTotalInvested;
+      if (this.portfolioCache.profitLoss !== null && 
+          this.lastCalculatedPrice === this.currentPrice) {
+        return this.portfolioCache.profitLoss;
+      }
+
+      let currentSum = 0;
+      for (let i = 0; i < this.purchases.length; i++) {
+        const p = this.purchases[i];
+        currentSum += p.amount * this.CHI_TO_OZ * this.currentPrice;
+      }
+      
+      const investedSum = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      const profit = currentSum - investedSum;
+      
+      this.portfolioCache.profitLoss = profit;
+      return profit;
     },
 
     memoizedProfitLossClass() {
       return this.memoizedProfitLoss >= 0 ? 'profit' : 'loss';
     },
 
-    memoizedPurchaseValues() {
-      const values = {};
-      for (let purchase of this.purchases) {
-        values[purchase.id] = this.getPurchaseCurrentValueCached(purchase);
-      }
-      return values;
+    memoizedProfitLossDisplay() {
+      const value = Math.abs(this.memoizedProfitLoss);
+      return this.formatCurrencyDisplay(value);
     },
 
-    memoizedPurchaseProfitValue() {
-      const profits = {};
-      for (let purchase of this.purchases) {
-        profits[purchase.id] = this.memoizedPurchaseValues[purchase.id] - purchase.totalPaid;
-      }
-      return profits;
-    },
-
-    memoizedPurchaseProfitPercent() {
-      const percents = {};
-      for (let purchase of this.purchases) {
-        const profitLoss = this.memoizedPurchaseProfitValue[purchase.id];
-        const percentage = (profitLoss / purchase.totalPaid) * 100;
-        percents[purchase.id] = percentage.toFixed(2);
-      }
-      return percents;
-    },
-
-    memoizedPurchaseProfitClass() {
-      const classes = {};
-      for (let purchase of this.purchases) {
-        classes[purchase.id] = this.memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'profit' : 'loss';
-      }
-      return classes;
+    memoizedProfitChangePercent() {
+      const investedSum = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      if (investedSum === 0) return '0.00%';
+      const percent = (Math.abs(this.memoizedProfitLoss) / investedSum) * 100;
+      const sign = this.memoizedProfitLoss >= 0 ? '+' : '-';
+      return `${sign}${percent.toFixed(2)}%`;
     },
 
     memoizedCalculatorResult() {
-      if (!this.calculatorAmount || !this.currentPrice) return 0;
-      return this.calculatorAmount * this.getPricePerUnit(this.calculatorUnit, this.currentPrice);
+      if (!this.calculatorAmount || !this.currentPrice) return '$0.00';
+      
+      let ozAmount;
+      switch (this.calculatorUnit) {
+        case 'chi':
+          ozAmount = this.calculatorAmount * this.CHI_TO_OZ;
+          break;
+        case 'gram':
+          ozAmount = this.calculatorAmount * this.GRAM_TO_OZ;
+          break;
+        case 'damlung':
+          ozAmount = this.calculatorAmount * this.DAMLUNG_TO_OZ;
+          break;
+        default: // 'oz'
+          ozAmount = this.calculatorAmount;
+      }
+      
+      return this.formatCurrencyDisplay(ozAmount * this.currentPrice);
     }
   },
 
   methods: {
-    getPricePerUnit(unit, pricePerOz) {
-      if (!pricePerOz) return 0;
+    // Fast currency formatting with caching
+    formatCurrencyDisplay(value) {
+      if (!value) return '$0.00';
       
-      switch (unit) {
-        case 'oz':
-          return pricePerOz;
-        case 'damlung':
-          return pricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-        case 'chi':
-          return pricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-        case 'gram':
-          return pricePerOz / this.TROY_OUNCE_TO_GRAM;
-        default:
-          return pricePerOz;
+      const rounded = Math.round(value * 100) / 100;
+      const cacheKey = rounded.toFixed(2);
+      
+      if (this.formattingCache.has(cacheKey)) {
+        return this.formattingCache.get(cacheKey);
       }
+
+      const formatted = `$${rounded.toLocaleString(undefined, { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+      })}`;
+      
+      this.formattingCache.set(cacheKey, formatted);
+
+      // Limit cache size
+      if (this.formattingCache.size > 200) {
+        const firstKey = this.formattingCache.keys().next().value;
+        this.formattingCache.delete(firstKey);
+      }
+
+      return formatted;
     },
 
-    getCachedPrice() {
-      const metalCache = this.cache.gold;
-      const cacheAgeHours = metalCache.timestamp ? 
-        (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
+    // Cached purchase detail calculations
+    getPricePerChiCached(purchase) {
+      const key = `ppchi-${purchase.id}`;
+      if (this.purchaseDetailCache.has(key)) {
+        return this.purchaseDetailCache.get(key);
+      }
+      const result = this.formatCurrencyDisplay(purchase.totalPaid / purchase.amount);
+      this.purchaseDetailCache.set(key, result);
+      return result;
+    },
+
+    getWorthTodayPerChiCached(purchase) {
+      const key = `worth-${purchase.id}-${this.currentPrice}`;
+      if (this.purchaseDetailCache.has(key)) {
+        return this.purchaseDetailCache.get(key);
+      }
+      const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
+      const currentValue = ozEquivalent * this.currentPrice;
+      const pricePerChi = currentValue / purchase.amount;
+      const result = this.formatCurrencyDisplay(pricePerChi);
+      this.purchaseDetailCache.set(key, result);
+      return result;
+    },
+
+    getProfitValueCached(purchaseId) {
+      const purchase = this.purchases.find(p => p.id === purchaseId);
+      if (!purchase) return 0;
       
-      return metalCache.data && cacheAgeHours < 24;
+      const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
+      const currentValue = ozEquivalent * this.currentPrice;
+      return currentValue - purchase.totalPaid;
+    },
+
+    getProfitDisplayCached(purchaseId) {
+      const profit = this.getProfitValueCached(purchaseId);
+      return this.formatCurrencyDisplay(Math.abs(profit));
+    },
+
+    getProfitPercentCached(purchaseId) {
+      const purchase = this.purchases.find(p => p.id === purchaseId);
+      if (!purchase) return '0.00%';
+      
+      const profit = this.getProfitValueCached(purchaseId);
+      const percentage = (profit / purchase.totalPaid) * 100;
+      const sign = profit >= 0 ? '+' : '-';
+      return `${sign}${Math.abs(percentage).toFixed(2)}%`;
+    },
+
+    getProfitClassCached(purchaseId) {
+      return this.getProfitValueCached(purchaseId) >= 0 ? 'profit' : 'loss';
     },
 
     startEdit(purchase) {
@@ -577,7 +698,7 @@ export default {
           ...this.purchases[purchaseIndex],
           ...this.editingPurchase
         };
-        this.purchaseValuesCache.clear();
+        this.clearCaches();
         this.savePurchases();
         this.editingId = null;
         this.editingPurchase = null;
@@ -618,6 +739,7 @@ export default {
       if (this.manualPrice && this.manualPrice > 0 && process.client) {
         this.manualGoldPrice = this.manualPrice;
         localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
+        this.clearCaches();
       }
     },
 
@@ -632,55 +754,31 @@ export default {
         localStorage.removeItem('manualGoldPrice');
       }
 
+      this.clearCaches();
+
       const cached = this.getCachedPrice();
       if (!cached) {
         this.fetchMetalPrice(false);
       }
     },
 
-    formatCurrencyDisplay(value) {
-      if (!value) return '$0.00';
-      
-      const cacheKey = `${value.toFixed(2)}`;
-      
-      if (this.currencyFormatCache.has(cacheKey)) {
-        return this.currencyFormatCache.get(cacheKey);
-      }
-
-      const formatted = `$${value.toLocaleString(undefined, { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-      })}`;
-      
-      this.currencyFormatCache.set(cacheKey, formatted);
-      
-      if (this.currencyFormatCache.size > 100) {
-        const firstKey = this.currencyFormatCache.keys().next().value;
-        this.currencyFormatCache.delete(firstKey);
-      }
-
-      return formatted;
+    clearCaches() {
+      this.portfolioCache = {
+        totalInvested: null,
+        currentValue: null,
+        profitLoss: null,
+        timestamp: null
+      };
+      this.purchaseDetailCache.clear();
+      this.lastCalculatedPrice = null;
     },
 
-    getPurchaseCurrentValueCached(purchase) {
-      const cacheKey = `${purchase.id}-${this.currentPrice}`;
+    getCachedPrice() {
+      const metalCache = this.cache.gold;
+      const cacheAgeHours = metalCache.timestamp ? 
+        (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
       
-      if (this.purchaseValuesCache.has(cacheKey)) {
-        return this.purchaseValuesCache.get(cacheKey);
-      }
-
-      const currentPricePerOz = this.manualGoldPrice || this.goldPrice;
-      const ozEquivalent = purchase.amount * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
-      const value = ozEquivalent * currentPricePerOz;
-      
-      this.purchaseValuesCache.set(cacheKey, value);
-
-      if (this.purchaseValuesCache.size > 200) {
-        const firstKey = this.purchaseValuesCache.keys().next().value;
-        this.purchaseValuesCache.delete(firstKey);
-      }
-
-      return value;
+      return metalCache.data && cacheAgeHours < 24;
     },
 
     startRefreshCooldown() {
@@ -720,6 +818,8 @@ export default {
           if (process.client) {
             localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
           }
+          
+          this.clearCaches();
           return true;
         }
         return false;
@@ -748,7 +848,7 @@ export default {
       };
 
       this.purchases.push(purchase);
-      this.purchaseValuesCache.clear();
+      this.clearCaches();
       this.savePurchases();
       this.closePurchaseForm();
     },
@@ -756,7 +856,7 @@ export default {
     deletePurchase(purchaseId) {
       if (confirm('Delete this purchase?')) {
         this.purchases = this.purchases.filter(p => p.id !== purchaseId);
-        this.purchaseValuesCache.clear();
+        this.clearCaches();
         this.savePurchases();
       }
     },
@@ -882,6 +982,7 @@ export default {
         }
         
         this.lastUpdated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        this.clearCaches();
         
       } catch (error) {
         console.error('API Error:', error);
