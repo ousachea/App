@@ -1,83 +1,64 @@
-<!-- pages/index.vue - FIXED CALCULATIONS VERSION -->
+<!-- pages/index.vue - IMPROVED LAYOUT VERSION -->
+<!-- Key improvements: Larger typography, better spacing, dashboard layout, touch-friendly UI -->
 
 <template>
-  <div class="app" :class="{ 'dark': isDarkMode }">
-    <!-- Minimal Header -->
+  <div class="app">
+    <!-- Header -->
     <header class="header">
       <div class="container">
-        <h1 class="title">តម្លៃមាស & ប្រាក់</h1>
-        <div class="controls">
-          <button @click="toggleDarkMode" class="control-btn" :title="isDarkMode ? 'Light' : 'Dark'">
-            <svg v-if="isDarkMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          </button>
-          <button @click="toggleCurrency" class="control-btn currency">
-            {{ currentCurrency }}
-          </button>
-        </div>
+        <h1 class="title">តម្លៃមាស</h1>
       </div>
     </header>
 
     <main class="main">
       <div class="container">
         
-        <!-- Metal Type Selector -->
-        <div class="metal-selector">
-          <button 
-            @click="selectMetal('gold')" 
-            class="metal-btn" 
-            :class="{ 'active': selectedMetal === 'gold' }"
-          >
-            <span class="metal-icon gold-icon">Au</span>
-            <span>Gold</span>
-          </button>
-          <button 
-            @click="selectMetal('silver')" 
-            class="metal-btn" 
-            :class="{ 'active': selectedMetal === 'silver' }"
-          >
-            <span class="metal-icon silver-icon">Ag</span>
-            <span>Silver</span>
-          </button>
-        </div>
+        <!-- HERO: Large Price Display -->
+        <section class="hero-price">
+          <div class="price-label">ដំឡឹង</div>
+          <div v-if="loading" class="skeleton-hero"></div>
+          <div v-else class="price-hero">{{ memoizedDamlungPrice }}</div>
+          <div class="price-sublabel">37.5g • Current Market Price</div>
+        </section>
 
-        <!-- Manual Price Input -->
-        <div class="manual-section" :class="{ 'expanded': isManualMode }">
-          <div v-if="!isManualMode" class="manual-prompt">
-            <div class="prompt-content">
-              <svg class="prompt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              <div>
-                <div class="prompt-title">Set Custom Price</div>
-                <div class="prompt-desc">Enter your own price to calculate</div>
-              </div>
-            </div>
-            <button @click="enableManualMode" class="prompt-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
+        <!-- Quick Stats Grid -->
+        <section class="quick-stats">
+          <div class="stat-card">
+            <div class="stat-label">ជី</div>
+            <div v-if="loading" class="skeleton-stat"></div>
+            <div v-else class="stat-value">{{ memoizedChiPrice }}</div>
+            <div class="stat-sublabel">3.75g</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-label">Troy Oz</div>
+            <div v-if="loading" class="skeleton-stat"></div>
+            <div v-else class="stat-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
+            <div class="stat-sublabel">31.1g</div>
           </div>
 
-          <div v-else class="manual-input-expanded">
-            <div class="input-header">
-              <label class="input-label">Troy Oz Price (USD)</label>
-              <button @click="clearManualPrice" class="close-btn">
+          <div class="stat-card">
+            <div class="stat-label">Gram</div>
+            <div v-if="loading" class="skeleton-stat"></div>
+            <div v-else class="stat-value">{{ formatCurrencyDisplay(getPricePerUnit('gram', currentPrice)) }}</div>
+            <div class="stat-sublabel">1g</div>
+          </div>
+        </section>
+
+        <!-- Custom Price Input -->
+        <section class="custom-price-section">
+          <div v-if="!isManualMode" class="custom-price-prompt" @click="enableManualMode">
+            <svg class="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <span>Set Custom Price</span>
+          </div>
+
+          <div v-else class="custom-price-editor">
+            <div class="editor-header">
+              <span class="editor-label">Custom Price (USD)</span>
+              <button @click="clearManualPrice" class="btn-close">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"/>
                   <line x1="6" y1="6" x2="18" y2="18"/>
@@ -85,197 +66,69 @@
               </button>
             </div>
             
-            <div class="input-with-currency">
+            <div class="editor-input">
               <span class="currency-symbol">$</span>
               <input 
                 v-model.number="manualPrice" 
                 type="number" 
                 step="0.01"
                 min="0"
-                class="price-input"
-                :placeholder="selectedMetal === 'gold' ? '4242.00' : '28.00'"
+                class="price-input-large"
+                placeholder="4242.00"
                 @input="onManualPriceInput"
                 ref="manualInput"
               >
             </div>
 
-            <div v-if="manualPrice > 0" class="quick-conversions">
-              <div class="conversion-item">
+            <div v-if="manualPrice > 0" class="conversions-grid">
+              <div class="conversion">
                 <span class="conversion-label">ដំឡឹង</span>
                 <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('damlung', manualPrice)) }}</span>
               </div>
-              <div class="conversion-item">
+              <div class="conversion">
                 <span class="conversion-label">ជី</span>
                 <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('chi', manualPrice)) }}</span>
               </div>
-              <div class="conversion-item">
+              <div class="conversion">
                 <span class="conversion-label">Gram</span>
                 <span class="conversion-value">{{ formatCurrencyDisplay(getPricePerUnit('gram', manualPrice)) }}</span>
               </div>
             </div>
-
-            <div class="manual-badge-notice">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="16" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12.01" y2="8"/>
-              </svg>
-              Using custom price (no API calls)
-            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Price Display -->
-        <div class="price-section">
-          <div class="price-card main-card">
-            <div class="label">ដំឡឹង</div>
-            <div v-if="loading" class="skeleton"></div>
-            <div v-else class="price">{{ memoizedDamlungPrice }}</div>
-            <div class="sublabel">37.5g</div>
-          </div>
-
-          <div class="price-row">
-            <div class="price-card">
-              <div class="label">ជី</div>
-              <div v-if="loading" class="skeleton small"></div>
-              <div v-else class="price small">{{ memoizedChiPrice }}</div>
-              <div class="sublabel">3.75g</div>
-            </div>
-            <div class="price-card">
-              <div class="label">Troy Oz</div>
-              <div v-if="loading" class="skeleton small"></div>
-              <div v-else class="price small">{{ formatCurrencyDisplay(currentPrice) }}</div>
-              <div class="sublabel">31.1g</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Portfolio Summary -->
-        <div v-if="purchases.length > 0" class="portfolio-summary">
-          <div class="summary-header">
-            <h3 class="summary-title">📊 Your Portfolio</h3>
-            <button @click="showPurchaseForm = true" class="add-purchase-btn-mini">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
+        <!-- Portfolio Summary - Prominent -->
+        <section v-if="purchases.length > 0" class="portfolio-section">
+          <h2 class="section-title">📊 Your Gold Portfolio</h2>
+          
+          <div v-if="manualGoldPrice" class="custom-price-badge">
+            Using custom price: <strong>${{ manualGoldPrice.toFixed(2) }}/oz</strong>
           </div>
           
-          <div v-if="manualGoldPrice" class="using-custom-notice">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="16" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            <span>
-              Using your custom price: ${{ manualGoldPrice.toFixed(2) }}/oz 
-              (= ${{ (manualGoldPrice * (CHI_TO_GRAM / TROY_OUNCE_TO_GRAM)).toFixed(2) }}/ជី)
-            </span>
-          </div>
-          
-          <div class="summary-explanation">
-            <div class="explanation-row">
-              <span class="explanation-label">💰 You paid total:</span>
-              <span class="explanation-value">{{ formatCurrencyDisplay(memoizedTotalInvested) }}</span>
+          <div class="portfolio-cards">
+            <div class="portfolio-card invested">
+              <div class="portfolio-label">💰 Total Invested</div>
+              <div class="portfolio-value">{{ formatCurrencyDisplay(memoizedTotalInvested) }}</div>
             </div>
-            <div class="explanation-row">
-              <span class="explanation-label">📈 Today's value:</span>
-              <span class="explanation-value">{{ formatCurrencyDisplay(memoizedCurrentValue) }}</span>
-            </div>
-            <div class="explanation-divider"></div>
-            <div class="explanation-row result" :class="memoizedProfitLossClass">
-              <span class="explanation-label">
-                {{ memoizedProfitLoss >= 0 ? '✅ You earned:' : '❌ You lost:' }}
-              </span>
-              <span class="explanation-value-big">
-                {{ formatCurrencyDisplay(Math.abs(memoizedProfitLoss)) }}
-              </span>
-            </div>
-          </div>
-        </div>
 
-        <!-- Purchase Form -->
-        <div v-if="showPurchaseForm" class="purchase-form">
-          <div class="form-header">
-            <h3 class="form-title">Add Gold Purchase</h3>
-            <button @click="closePurchaseForm" class="close-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">How many ជី (Chi) did you buy?</label>
-            <input 
-              v-model.number="newPurchase.amount" 
-              type="number" 
-              step="0.01"
-              min="0"
-              class="form-input-large"
-              placeholder="2"
-            >
-            <div class="input-hint">Enter the amount in ជី only</div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">How much did you pay? (USD)</label>
-            <div class="input-with-currency">
-              <span class="currency-symbol">$</span>
-              <input 
-                v-model.number="newPurchase.totalPaid" 
-                type="number" 
-                step="0.01"
-                min="0"
-                class="form-input-currency-large"
-                placeholder="1020.00"
-              >
+            <div class="portfolio-card current">
+              <div class="portfolio-label">📈 Current Value</div>
+              <div class="portfolio-value">{{ formatCurrencyDisplay(memoizedCurrentValue) }}</div>
             </div>
-            <div class="input-hint">Total amount you paid in USD</div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label">When did you buy it?</label>
-            <input 
-              v-model="newPurchase.date" 
-              type="date" 
-              class="form-input"
-              :max="getCurrentDate()"
-            >
-          </div>
-
-          <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="purchase-summary">
-            <div class="purchase-summary-item">
-              <span>You bought:</span>
-              <strong>{{ newPurchase.amount }} ជី gold</strong>
-            </div>
-            <div class="purchase-summary-item">
-              <span>Price per ជី:</span>
-              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid / newPurchase.amount) }}</strong>
-            </div>
-            <div class="purchase-summary-item">
-              <span>Total paid:</span>
-              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid) }}</strong>
+            <div class="portfolio-card" :class="memoizedProfitLossClass">
+              <div class="portfolio-label">{{ memoizedProfitLoss >= 0 ? '✅ Profit' : '❌ Loss' }}</div>
+              <div class="portfolio-value-large">{{ formatCurrencyDisplay(Math.abs(memoizedProfitLoss)) }}</div>
+              <div class="portfolio-change">{{ memoizedProfitLoss >= 0 ? '+' : '-' }}{{ ((Math.abs(memoizedProfitLoss) / memoizedTotalInvested) * 100).toFixed(2) }}%</div>
             </div>
           </div>
-
-          <button @click="addPurchase" class="btn btn-primary" :disabled="!canAddPurchase()">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Save Purchase
-          </button>
-        </div>
+        </section>
 
         <!-- Purchase History -->
-        <div v-if="purchases.length > 0" class="purchase-history">
+        <section v-if="purchases.length > 0" class="history-section">
           <div class="history-header">
-            <h3 class="history-title">Purchase History</h3>
-            <button @click="toggleHistoryExpanded" class="toggle-btn">
+            <h2 class="section-title">Purchase History</h2>
+            <button @click="toggleHistoryExpanded" class="btn-toggle">
               <svg v-if="!historyExpanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 12 15 18 9"/>
               </svg>
@@ -285,102 +138,171 @@
             </button>
           </div>
 
-          <div v-if="historyExpanded" class="history-list">
-            <div class="history-grid">
-              <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="purchase-card">
-                
-                <!-- Card Header -->
-                <div class="card-header">
-                  <div class="card-date">
-                    <span class="date-icon">📅</span>
-                    <span class="date-text">{{ formatDate(purchase.date) }}</span>
-                  </div>
-                  <button @click="deletePurchase(purchase.id)" class="card-delete-btn" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="3 6 5 6 21 6"/>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                  </button>
+          <div v-if="historyExpanded" class="history-grid">
+            <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="history-card">
+              
+              <!-- Card Header -->
+              <div class="card-header">
+                <span class="card-date">📅 {{ formatDate(purchase.date) }}</span>
+                <button @click="deletePurchase(purchase.id)" class="btn-delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Amount -->
+              <div class="card-amount">
+                <span class="amount-label">Gold Purchased</span>
+                <span class="amount-value">{{ purchase.amount }} <strong>ជី</strong></span>
+              </div>
+
+              <!-- Prices -->
+              <div class="card-prices-compare">
+                <div>
+                  <div class="price-label">Bought at</div>
+                  <div class="price-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/ជី</div>
                 </div>
-
-                <!-- Amount Badge -->
-                <div class="card-amount">
-                  <div class="metal-badge-large">
-                    <span class="metal-icon-large">Au</span>
-                    <span class="metal-label">Gold</span>
-                  </div>
-                  <div class="amount-value">
-                    <span class="amount-number">{{ purchase.amount }}</span>
-                    <span class="amount-unit">ជី</span>
-                  </div>
+                <div class="arrow">→</div>
+                <div>
+                  <div class="price-label">Worth today</div>
+                  <div class="price-value">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id] / purchase.amount) }}/ជី</div>
                 </div>
+              </div>
 
-                <!-- Price Comparison -->
-                <div class="card-prices">
-                  <div class="price-section purchase-section">
-                    <div class="price-label">Purchase Price</div>
-                    <div class="price-amount">{{ formatCurrencyDisplay(purchase.totalPaid) }}</div>
-                    <div class="price-per-unit">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }} per ជី</div>
-                  </div>
-
-                  <div class="price-arrow">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="5" y1="12" x2="19" y2="12"/>
-                      <polyline points="12 5 19 12 12 19"/>
-                    </svg>
-                  </div>
-
-                  <div class="price-section current-section">
-                    <div class="price-label">Current Value</div>
-                    <div class="price-amount">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id]) }}</div>
-                    <div class="price-per-unit">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id] / purchase.amount) }} per ជី</div>
-                  </div>
+              <!-- Result -->
+              <div class="card-result" :class="memoizedPurchaseProfitClass[purchase.id]">
+                <span class="result-emoji">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '📈' : '📉' }}</span>
+                <div class="result-info">
+                  <span class="result-label">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'Profit' : 'Loss' }}</span>
+                  <span class="result-value">{{ formatCurrencyDisplay(Math.abs(memoizedPurchaseProfitValue[purchase.id])) }}</span>
                 </div>
-
-                <!-- Result Badge -->
-                <div class="card-result" :class="memoizedPurchaseProfitClass[purchase.id]">
-                  <div class="result-icon-large">
-                    {{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '📈' : '📉' }}
-                  </div>
-                  <div class="result-info">
-                    <div class="result-label">
-                      {{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'Profit' : 'Loss' }}
-                    </div>
-                    <div class="result-value">
-                      {{ formatCurrencyDisplay(Math.abs(memoizedPurchaseProfitValue[purchase.id])) }}
-                    </div>
-                    <div class="result-percentage">
-                      {{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '+' : '-' }}{{ memoizedPurchaseProfitPercent[purchase.id] }}%
-                    </div>
-                  </div>
-                </div>
-
+                <span class="result-percent">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '+' : '-' }}{{ memoizedPurchaseProfitPercent[purchase.id] }}%</span>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Add Purchase Button -->
-        <div v-if="!showPurchaseForm" class="add-purchase-section">
-          <button @click="showPurchaseForm = true" class="btn btn-secondary">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <!-- Add Purchase Form -->
+        <section v-if="showPurchaseForm" class="add-purchase-form">
+          <h2 class="form-title">Add Gold Purchase</h2>
+          <button @click="closePurchaseForm" class="btn-close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+
+          <div class="form-group">
+            <label class="form-label">Amount (ជី)</label>
+            <input 
+              v-model.number="newPurchase.amount" 
+              type="number" 
+              step="0.01"
+              min="0"
+              class="form-input"
+              placeholder="e.g., 2"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Price Paid (USD)</label>
+            <div class="form-input-currency">
+              <span class="currency-prefix">$</span>
+              <input 
+                v-model.number="newPurchase.totalPaid" 
+                type="number" 
+                step="0.01"
+                min="0"
+                placeholder="e.g., 1020.00"
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Purchase Date</label>
+            <input 
+              v-model="newPurchase.date" 
+              type="date" 
+              class="form-input"
+              :max="getCurrentDate()"
+            >
+          </div>
+
+          <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="form-preview">
+            <div class="preview-row">
+              <span>Amount:</span>
+              <strong>{{ newPurchase.amount }} ជី</strong>
+            </div>
+            <div class="preview-row">
+              <span>Price per ជី:</span>
+              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid / newPurchase.amount) }}</strong>
+            </div>
+            <div class="preview-row total">
+              <span>Total:</span>
+              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid) }}</strong>
+            </div>
+          </div>
+
+          <button @click="addPurchase" class="btn-primary" :disabled="!canAddPurchase()">
+            Save Purchase
+          </button>
+          <button @click="closePurchaseForm" class="btn-secondary">
+            Cancel
+          </button>
+        </section>
+
+        <!-- Action Buttons -->
+        <section class="action-section">
+          <button 
+            @click="handleRefresh" 
+            :disabled="loading || isRefreshDisabled" 
+            class="btn-primary btn-large"
+          >
+            <svg class="icon" :class="{ 'spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            </svg>
+            {{ refreshButtonText }}
+          </button>
+          
+          <button 
+            v-if="purchases.length === 0 && !showPurchaseForm" 
+            @click="showPurchaseForm = true" 
+            class="btn-secondary btn-large"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add First Purchase
+          </button>
+
+          <button 
+            v-if="purchases.length > 0 && !showPurchaseForm" 
+            @click="showPurchaseForm = true" 
+            class="btn-secondary btn-large"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
             Add Purchase
           </button>
-        </div>
+        </section>
 
         <!-- Calculator -->
-        <div class="calculator">
-          <div class="calc-input-group">
+        <section class="calculator-section">
+          <h3 class="section-title-small">💰 Quick Calculator</h3>
+          <div class="calc-controls">
             <input 
               v-model.number="calculatorAmount" 
               type="number" 
               min="0" 
               step="0.1"
               class="calc-input"
-              placeholder="Amount"
+              placeholder="Enter amount"
             >
             <select v-model="calculatorUnit" class="calc-select">
               <option value="damlung">ដំឡឹង</option>
@@ -391,70 +313,27 @@
           </div>
           
           <div v-if="calculatorAmount > 0" class="calc-result">
-            {{ formatCurrencyDisplay(memoizedCalculatorResult) }}
+            <div class="calc-label">Estimated Value</div>
+            <div class="calc-value">{{ formatCurrencyDisplay(memoizedCalculatorResult) }}</div>
           </div>
-        </div>
+        </section>
 
-        <!-- Action Buttons -->
-        <div class="actions">
-          <button 
-            @click="handleRefresh" 
-            :disabled="loading || isRefreshDisabled" 
-            class="btn btn-primary"
-          >
-            <svg class="icon" :class="{ 'spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-            </svg>
-            {{ refreshButtonText }}
-          </button>
-          
-          <button 
-            v-if="!isManualMode" 
-            @click="enableManualMode" 
-            class="btn btn-secondary"
-          >
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            Custom Price
-          </button>
-        </div>
-
-        <!-- Status -->
-        <div class="status">
-          <span class="status-dot" :class="statusClass"></span>
-          <span class="status-text">{{ lastUpdated }}</span>
-          <span class="quota-text">
-            {{ apiQuota.dailyCalls }}/{{ apiQuota.dailyLimit }} today • 
-            {{ apiQuota.totalCalls }}/{{ apiQuota.monthlyLimit }} month
-          </span>
-        </div>
-
-        <!-- Alternative API Button -->
-        <div v-if="!loading && currentPrice === 0" class="api-error-section">
-          <div class="error-message">
-            ⚠️ Unable to fetch prices from main API
+        <!-- Status Footer -->
+        <section class="status-footer">
+          <div class="status-info">
+            <span class="status-dot" :class="statusClass"></span>
+            <span class="status-text">{{ lastUpdated }}</span>
           </div>
-          <button @click="tryAlternativeApi" class="btn btn-secondary">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-            Try Alternative API
-          </button>
-        </div>
+          <div class="quota-info">
+            API: {{ apiQuota.dailyCalls }}/{{ apiQuota.dailyLimit }} today • {{ apiQuota.totalCalls }}/{{ apiQuota.monthlyLimit }} month
+          </div>
+        </section>
 
-        <!-- Tips for Free API Usage -->
-        <div class="tip-box">
-          <p class="tip-title">💡 Tips for Free API</p>
-          <ul class="tip-list">
-            <li>Price cached for 24 hours</li>
-            <li>Use "Manual Price" to avoid API calls</li>
-            <li>3 refreshes per day maximum</li>
-            <li>Price updates once daily is recommended</li>
-          </ul>
-        </div>
+        <!-- API Error -->
+        <section v-if="!loading && currentPrice === 0" class="error-section">
+          <div class="error-message">⚠️ Unable to fetch prices</div>
+          <button @click="tryAlternativeApi" class="btn-secondary">Try Alternative API</button>
+        </section>
 
       </div>
     </main>
@@ -463,65 +342,48 @@
 
 <script>
 export default {
-  name: 'GoldSilverTracker',
+  name: 'GoldTracker',
   
   head() {
     return {
-      title: 'តម្លៃមាស & ប្រាក់ - Gold & Silver Tracker',
+      title: 'តម្លៃមាស - Gold Tracker',
       meta: [
-        { hid: 'description', name: 'description', content: 'Gold and Silver price tracker for Cambodia' }
+        { hid: 'description', name: 'description', content: 'Gold price tracker for Cambodia' }
       ]
     }
   },
 
   data() {
     return {
-      // Constants - CORRECTED
       TROY_OUNCE_TO_GRAM: 31.1035,
-      DAMLUNG_TO_GRAM: 37.5,      // 1 ដំឡឹង = 37.5g
-      CHI_TO_GRAM: 3.75,           // 1 ជី = 3.75g (1/10 of damlung)
-      USD_TO_KHR: 4100,
+      DAMLUNG_TO_GRAM: 37.5,
+      CHI_TO_GRAM: 3.75,
 
-      // API
       apiKey: '03cc06614a49b9d29f1d4cdb2250467d',
       apiBaseUrl: 'https://www.goldapi.io/api',
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
-      // State
-      selectedMetal: 'gold',
       goldPrice: 0,
-      silverPrice: 0,
       loading: true,
       lastUpdated: 'Loading...',
-      
-      // UI
-      isDarkMode: false,
-      currentCurrency: 'USD',
       refreshCooldown: 0,
       
-      // Manual Price
       isManualMode: false,
       manualPrice: null,
       manualGoldPrice: null,
-      manualSilverPrice: null,
       
-      // Calculator
       calculatorAmount: 1,
       calculatorUnit: 'damlung',
       
-      // Purchase Tracking
       purchases: [],
       showPurchaseForm: false,
       historyExpanded: true,
       newPurchase: {
-        metal: 'gold',
         amount: null,
-        unit: 'chi',
         totalPaid: null,
         date: new Date().toISOString().split('T')[0]
       },
       
-      // API Quota
       apiQuota: {
         dailyCalls: 0,
         totalCalls: 0,
@@ -530,20 +392,14 @@ export default {
         monthlyLimit: 100
       },
       
-      // Cache
       cache: {
-        gold: { data: null, timestamp: null, maxAgeHours: 24 },
-        silver: { data: null, timestamp: null, maxAgeHours: 24 }
+        gold: { data: null, timestamp: null, maxAgeHours: 24 }
       },
 
-      // Fallback prices
       fallbackPrices: {
-        gold: 2650,
-        silver: 28
+        gold: 2650
       },
 
-      // Performance optimization
-      metalSwitchTimeout: null,
       manualPriceUpdateTimeout: null,
       currencyFormatCache: new Map(),
       purchaseValuesCache: new Map()
@@ -555,7 +411,7 @@ export default {
       if (this.isManualMode && this.manualPrice) {
         return this.manualPrice;
       }
-      return this.selectedMetal === 'gold' ? this.goldPrice : this.silverPrice;
+      return this.goldPrice;
     },
 
     statusClass() {
@@ -568,21 +424,19 @@ export default {
       if (this.loading) return 'Loading...';
       if (this.refreshCooldown > 0) return `Wait ${this.refreshCooldown}s`;
       if (this.isRefreshDisabled) return 'Limit Reached';
-      return 'Refresh';
+      return 'Refresh Prices';
     },
 
     isRefreshDisabled() {
       return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
     },
 
-    // OPTIMIZED: Memoized sorted purchases
     memoizedSortedPurchases() {
       return [...this.purchases].sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       );
     },
 
-    // FIXED: Memoized price conversions
     memoizedDamlungPrice() {
       return this.formatCurrencyDisplay(this.getPricePerUnit('damlung', this.currentPrice));
     },
@@ -591,7 +445,6 @@ export default {
       return this.formatCurrencyDisplay(this.getPricePerUnit('chi', this.currentPrice));
     },
 
-    // OPTIMIZED: Memoized portfolio calculations
     memoizedTotalInvested() {
       return this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
     },
@@ -608,7 +461,6 @@ export default {
       return this.memoizedProfitLoss >= 0 ? 'profit' : 'loss';
     },
 
-    // OPTIMIZED: Pre-calculated purchase values
     memoizedPurchaseValues() {
       const values = {};
       for (let purchase of this.purchases) {
@@ -643,7 +495,6 @@ export default {
       return classes;
     },
 
-    // OPTIMIZED: Calculator result memoization
     memoizedCalculatorResult() {
       if (!this.calculatorAmount || !this.currentPrice) return 0;
       return this.calculatorAmount * this.getPricePerUnit(this.calculatorUnit, this.currentPrice);
@@ -651,90 +502,35 @@ export default {
   },
 
   methods: {
-    // FIXED: Corrected price per unit calculation
-    // Returns the price of the specified unit based on troy oz price
     getPricePerUnit(unit, pricePerOz) {
       if (!pricePerOz) return 0;
       
-      // Convert troy oz to the requested unit
       switch (unit) {
         case 'oz':
           return pricePerOz;
         case 'damlung':
-          // 1 troy oz = 31.1035g, 1 damlung = 37.5g
           return pricePerOz * (this.DAMLUNG_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
         case 'chi':
-          // 1 troy oz = 31.1035g, 1 ជី = 3.75g
           return pricePerOz * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
         case 'gram':
-          // 1 troy oz = 31.1035g, 1 gram = 1g
           return pricePerOz / this.TROY_OUNCE_TO_GRAM;
         default:
           return pricePerOz;
       }
     },
 
-    // OPTIMIZED: Metal selection with debounce
-    selectMetal(metal) {
-      if (this.selectedMetal === metal) return;
-      
-      clearTimeout(this.metalSwitchTimeout);
-      this.metalSwitchTimeout = setTimeout(() => {
-        this.selectedMetal = metal;
-        
-        if (process.client) {
-          localStorage.setItem('selectedMetal', metal);
-        }
-
-        // Clear manual mode when switching
-        if (this.isManualMode) {
-          this.isManualMode = false;
-          this.manualPrice = null;
-        }
-
-        this.newPurchase.metal = metal;
-
-        // Check cache before fetching
-        const cached = this.getCachedPrice(metal);
-        if (!cached) {
-          this.fetchMetalPrice(false);
-        }
-      }, 100);
-    },
-
-    // OPTIMIZED: Centralized cache getter
-    getCachedPrice(metal) {
-      const metalCache = this.cache[metal];
+    getCachedPrice() {
+      const metalCache = this.cache.gold;
       const cacheAgeHours = metalCache.timestamp ? 
         (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
       
       return metalCache.data && cacheAgeHours < 24;
     },
 
-    toggleDarkMode() {
-      this.isDarkMode = !this.isDarkMode;
-      if (process.client) {
-        localStorage.setItem('darkMode', this.isDarkMode);
-      }
-    },
-
-    toggleCurrency() {
-      this.currentCurrency = this.currentCurrency === 'USD' ? 'KHR' : 'USD';
-      this.currencyFormatCache.clear();
-      if (process.client) {
-        localStorage.setItem('currency', this.currentCurrency);
-      }
-    },
-
     enableManualMode() {
       this.isManualMode = true;
-      this.manualPrice = this.currentPrice || (this.selectedMetal === 'gold' ? 4242 : 28);
-      
-      if (this.selectedMetal === 'gold') {
-        this.manualGoldPrice = this.manualPrice;
-      } else {
-        this.manualSilverPrice = this.manualPrice;
-      }
+      this.manualPrice = this.currentPrice || 4242;
+      this.manualGoldPrice = this.manualPrice;
       
       if (process.client) {
         localStorage.setItem('isManualMode', true);
@@ -749,7 +545,6 @@ export default {
       }
     },
 
-    // OPTIMIZED: Debounced manual price input
     onManualPriceInput() {
       clearTimeout(this.manualPriceUpdateTimeout);
       this.manualPriceUpdateTimeout = setTimeout(() => {
@@ -759,60 +554,41 @@ export default {
 
     updateManualPrice() {
       if (this.manualPrice && this.manualPrice > 0 && process.client) {
-        if (this.selectedMetal === 'gold') {
-          this.manualGoldPrice = this.manualPrice;
-          localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
-        } else {
-          this.manualSilverPrice = this.manualPrice;
-          localStorage.setItem('manualSilverPrice', this.manualSilverPrice);
-        }
+        this.manualGoldPrice = this.manualPrice;
+        localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
       }
     },
 
     clearManualPrice() {
       this.isManualMode = false;
       this.manualPrice = null;
-      
-      if (this.selectedMetal === 'gold') {
-        this.manualGoldPrice = null;
-        if (process.client) localStorage.removeItem('manualGoldPrice');
-      } else {
-        this.manualSilverPrice = null;
-        if (process.client) localStorage.removeItem('manualSilverPrice');
-      }
+      this.manualGoldPrice = null;
       
       if (process.client) {
         localStorage.removeItem('manualPrice');
         localStorage.removeItem('isManualMode');
+        localStorage.removeItem('manualGoldPrice');
       }
 
-      // Check if cache is stale
-      const cached = this.getCachedPrice(this.selectedMetal);
+      const cached = this.getCachedPrice();
       if (!cached) {
         this.fetchMetalPrice(false);
       }
     },
 
-    // OPTIMIZED: Efficient currency formatting with caching
     formatCurrencyDisplay(value) {
-      if (!value) return this.currentCurrency === 'USD' ? '$0.00' : '0 ៛';
+      if (!value) return '$0.00';
       
-      const cacheKey = `${value.toFixed(2)}-${this.currentCurrency}`;
+      const cacheKey = `${value.toFixed(2)}`;
       
       if (this.currencyFormatCache.has(cacheKey)) {
         return this.currencyFormatCache.get(cacheKey);
       }
 
-      let formatted;
-      if (this.currentCurrency === 'USD') {
-        formatted = `$${value.toLocaleString(undefined, { 
-          minimumFractionDigits: 2, 
-          maximumFractionDigits: 2 
-        })}`;
-      } else {
-        const khrValue = value * this.USD_TO_KHR;
-        formatted = `${Math.round(khrValue).toLocaleString()} ៛`;
-      }
+      const formatted = `$${value.toLocaleString(undefined, { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+      })}`;
       
       this.currencyFormatCache.set(cacheKey, formatted);
       
@@ -824,7 +600,6 @@ export default {
       return formatted;
     },
 
-    // FIXED: Corrected purchase current value calculation
     getPurchaseCurrentValueCached(purchase) {
       const cacheKey = `${purchase.id}-${this.currentPrice}`;
       
@@ -832,13 +607,7 @@ export default {
         return this.purchaseValuesCache.get(cacheKey);
       }
 
-      // Get current price per troy oz for this metal
-      const currentPricePerOz = purchase.metal === 'gold' ? 
-        (this.manualGoldPrice || this.goldPrice) : 
-        (this.manualSilverPrice || this.silverPrice);
-      
-      // Purchases are stored in ជី, convert to troy oz then calculate value
-      // purchase.amount is in ជី, need to convert to troy oz first, then multiply by current price
+      const currentPricePerOz = this.manualGoldPrice || this.goldPrice;
       const ozEquivalent = purchase.amount * (this.CHI_TO_GRAM / this.TROY_OUNCE_TO_GRAM);
       const value = ozEquivalent * currentPricePerOz;
       
@@ -870,24 +639,15 @@ export default {
 
     async tryAlternativeApi() {
       try {
-        console.log('🔄 Trying alternative API: metals.live');
         const response = await fetch(this.alternativeApiUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Alternative API error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
         
         const data = await response.json();
         
         if (data && typeof data.gold === 'number') {
           this.goldPrice = data.gold;
-          this.silverPrice = data.silver || 28;
-          
           const now = new Date();
-          this.lastUpdated = now.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          });
+          this.lastUpdated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
           
           this.cache.gold = {
             data: { price: data.gold },
@@ -895,26 +655,14 @@ export default {
             maxAgeHours: 24
           };
           
-          this.cache.silver = {
-            data: { price: data.silver || 28 },
-            timestamp: now.toISOString(),
-            maxAgeHours: 24
-          };
-          
           if (process.client) {
-            this.batchSaveToLocalStorage({
-              goldPriceCache: this.cache.gold,
-              silverPriceCache: this.cache.silver
-            });
+            localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
           }
-          
-          console.log('✅ Alternative API successful');
           return true;
         }
-        
         return false;
       } catch (error) {
-        console.error('❌ Alternative API failed:', error);
+        console.error('Alternative API failed:', error);
         return false;
       }
     },
@@ -924,9 +672,7 @@ export default {
     },
 
     canAddPurchase() {
-      return this.newPurchase.amount > 0 && 
-             this.newPurchase.totalPaid > 0 && 
-             this.newPurchase.date;
+      return this.newPurchase.amount > 0 && this.newPurchase.totalPaid > 0 && this.newPurchase.date;
     },
 
     addPurchase() {
@@ -934,9 +680,7 @@ export default {
 
       const purchase = {
         id: Date.now(),
-        metal: this.newPurchase.metal,
         amount: this.newPurchase.amount,
-        unit: 'chi',  // Always store in chi
         totalPaid: this.newPurchase.totalPaid,
         date: this.newPurchase.date
       };
@@ -948,7 +692,7 @@ export default {
     },
 
     deletePurchase(purchaseId) {
-      if (confirm('Are you sure you want to delete this purchase?')) {
+      if (confirm('Delete this purchase?')) {
         this.purchases = this.purchases.filter(p => p.id !== purchaseId);
         this.purchaseValuesCache.clear();
         this.savePurchases();
@@ -958,9 +702,7 @@ export default {
     closePurchaseForm() {
       this.showPurchaseForm = false;
       this.newPurchase = {
-        metal: 'gold',
         amount: null,
-        unit: 'chi',
         totalPaid: null,
         date: new Date().toISOString().split('T')[0]
       };
@@ -975,18 +717,7 @@ export default {
 
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    },
-
-    batchSaveToLocalStorage(items) {
-      if (!process.client) return;
-      Object.entries(items).forEach(([key, value]) => {
-        localStorage.setItem(key, JSON.stringify(value));
-      });
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     },
 
     savePurchases() {
@@ -1015,19 +746,13 @@ export default {
 
     async fetchMetalPrice(userRequested = false) {
       const now = new Date();
-      const metalSymbol = this.selectedMetal === 'gold' ? 'XAU' : 'XAG';
-      const metalCache = this.cache[this.selectedMetal];
+      const metalCache = this.cache.gold;
       
-      // Check cache first
       const cacheAgeHours = metalCache.timestamp ? 
         (now - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
       
       if (metalCache.data && cacheAgeHours < metalCache.maxAgeHours) {
-        if (this.selectedMetal === 'gold') {
-          this.goldPrice = metalCache.data.price;
-        } else {
-          this.silverPrice = metalCache.data.price;
-        }
+        this.goldPrice = metalCache.data.price;
         const hours = Math.floor(cacheAgeHours);
         const minutes = Math.floor((cacheAgeHours - hours) * 60);
         this.lastUpdated = hours > 0 ? `${hours}h ago` : `${minutes}m ago`;
@@ -1035,36 +760,25 @@ export default {
         return;
       }
 
-      // Check daily quota
       const today = new Date().toDateString();
       if (this.apiQuota.lastCallDate !== today) {
         this.apiQuota.dailyCalls = 0;
         this.apiQuota.lastCallDate = today;
       }
 
-      // Check limits
       if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit) {
         if (!userRequested) {
           if (metalCache.data) {
-            if (this.selectedMetal === 'gold') {
-              this.goldPrice = metalCache.data.price;
-            } else {
-              this.silverPrice = metalCache.data.price;
-            }
+            this.goldPrice = metalCache.data.price;
             this.lastUpdated = 'Using cached (limit reached)';
           } else {
-            const fallback = this.fallbackPrices[this.selectedMetal];
-            if (this.selectedMetal === 'gold') {
-              this.goldPrice = fallback;
-            } else {
-              this.silverPrice = fallback;
-            }
+            this.goldPrice = this.fallbackPrices.gold;
             this.lastUpdated = 'Estimated (limit reached)';
           }
           this.loading = false;
           return;
         } else {
-          this.lastUpdated = 'Daily limit reached (3/3)';
+          this.lastUpdated = 'Daily limit reached';
           this.loading = false;
           return;
         }
@@ -1073,8 +787,7 @@ export default {
       this.loading = true;
       
       try {
-        const endpoint = `${this.apiBaseUrl}/${metalSymbol}/USD`;
-        
+        const endpoint = `${this.apiBaseUrl}/XAU/USD`;
         const response = await fetch(endpoint, {
           method: 'GET',
           headers: {
@@ -1083,45 +796,33 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
 
         const data = await response.json();
         
         if (!data || typeof data.price !== 'number') {
-          throw new Error('Invalid data format from API');
+          throw new Error('Invalid data format');
         }
         
-        if (this.selectedMetal === 'gold') {
-          this.goldPrice = data.price;
-        } else {
-          this.silverPrice = data.price;
-        }
+        this.goldPrice = data.price;
         this.apiQuota.dailyCalls++;
         this.apiQuota.totalCalls++;
-        this.apiQuota.lastCallDate = today;
         
-        this.cache[this.selectedMetal] = {
+        this.cache.gold = {
           data: data,
           timestamp: now.toISOString(),
           maxAgeHours: 24
         };
         
         if (process.client) {
-          this.batchSaveToLocalStorage({
-            apiQuota: this.apiQuota,
-            [`${this.selectedMetal}PriceCache`]: this.cache[this.selectedMetal]
-          });
+          localStorage.setItem('apiQuota', JSON.stringify(this.apiQuota));
+          localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
         }
         
-        this.lastUpdated = now.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        this.lastUpdated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         
       } catch (error) {
-        console.error('❌ API Error:', error);
+        console.error('API Error:', error);
         
         const alternativeSuccess = await this.tryAlternativeApi();
         if (alternativeSuccess) {
@@ -1130,19 +831,10 @@ export default {
         }
         
         if (metalCache.data) {
-          if (this.selectedMetal === 'gold') {
-            this.goldPrice = metalCache.data.price;
-          } else {
-            this.silverPrice = metalCache.data.price;
-          }
+          this.goldPrice = metalCache.data.price;
           this.lastUpdated = 'Using cached (API error)';
         } else {
-          const fallback = this.fallbackPrices[this.selectedMetal];
-          if (this.selectedMetal === 'gold') {
-            this.goldPrice = fallback;
-          } else {
-            this.silverPrice = fallback;
-          }
+          this.goldPrice = this.fallbackPrices.gold;
           this.lastUpdated = 'Estimated (API error)';
         }
       } finally {
@@ -1154,16 +846,6 @@ export default {
       if (!process.client) return false;
 
       try {
-        const savedDarkMode = localStorage.getItem('darkMode');
-        if (savedDarkMode !== null) {
-          this.isDarkMode = JSON.parse(savedDarkMode);
-        }
-
-        const savedCurrency = localStorage.getItem('currency');
-        if (savedCurrency) {
-          this.currentCurrency = savedCurrency;
-        }
-
         const savedManualMode = localStorage.getItem('isManualMode');
         if (savedManualMode !== null) {
           this.isManualMode = JSON.parse(savedManualMode);
@@ -1177,11 +859,6 @@ export default {
         const savedManualGoldPrice = localStorage.getItem('manualGoldPrice');
         if (savedManualGoldPrice) {
           this.manualGoldPrice = parseFloat(savedManualGoldPrice);
-        }
-
-        const savedManualSilverPrice = localStorage.getItem('manualSilverPrice');
-        if (savedManualSilverPrice) {
-          this.manualSilverPrice = parseFloat(savedManualSilverPrice);
         }
 
         const savedQuota = localStorage.getItem('apiQuota');
@@ -1198,20 +875,10 @@ export default {
           }
         }
 
-        const savedSilverCache = localStorage.getItem('silverPriceCache');
-        if (savedSilverCache) {
-          this.cache.silver = JSON.parse(savedSilverCache);
-          const cacheAge = (new Date() - new Date(this.cache.silver.timestamp)) / (1000 * 60 * 60);
-          if (cacheAge < 24) {
-            this.silverPrice = this.cache.silver.data.price;
-          }
-        }
-
         this.loadPurchases();
 
-        const currentMetalCache = this.cache[this.selectedMetal];
-        if (currentMetalCache.data) {
-          const cacheAge = (new Date() - new Date(currentMetalCache.timestamp)) / (1000 * 60 * 60);
+        if (this.cache.gold.data) {
+          const cacheAge = (new Date() - new Date(this.cache.gold.timestamp)) / (1000 * 60 * 60);
           if (cacheAge < 24) {
             this.lastUpdated = `${Math.floor(cacheAge)}h ago`;
             this.loading = false;
@@ -1227,325 +894,232 @@ export default {
   },
 
   mounted() {
-    const savedMetal = process.client ? localStorage.getItem('selectedMetal') : null;
-    if (savedMetal) {
-      this.selectedMetal = savedMetal;
-    }
-
     const hasCache = this.loadSavedData();
     if (!hasCache) {
       this.fetchMetalPrice(false);
     }
-
-    this.newPurchase.metal = this.selectedMetal;
   },
 
   beforeDestroy() {
-    if (this.metalSwitchTimeout) clearTimeout(this.metalSwitchTimeout);
     if (this.manualPriceUpdateTimeout) clearTimeout(this.manualPriceUpdateTimeout);
   }
 }
 </script>
 
 <style scoped>
-/* Base */
-.app {
-  min-height: 100vh;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.3s ease;
+* {
+  box-sizing: border-box;
 }
 
-.app.dark {
-  background: #0a0a0a;
-  color: #e5e5e5;
+.app {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  color: #1a1a1a;
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 16px;
 }
 
 @media (min-width: 768px) {
   .container {
-    padding: 0 32px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .container {
-    padding: 0 40px;
+    padding: 0 24px;
   }
 }
 
 /* Header */
 .header {
   background: white;
-  border-bottom: 1px solid #e5e5e5;
-  padding: 20px 0;
-  position: sticky;
-  top: 0;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 24px 0;
+  sticky: top;
   z-index: 10;
-}
-
-.app.dark .header {
-  background: #1a1a1a;
-  border-bottom-color: #2a2a2a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .header .container {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.controls {
-  display: flex;
-  gap: 8px;
-}
-
-.control-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: #f5f5f5;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.app.dark .control-btn {
-  background: #2a2a2a;
-}
-
-.control-btn:hover {
-  background: #e5e5e5;
-}
-
-.app.dark .control-btn:hover {
-  background: #333;
-}
-
-.control-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.control-btn.currency {
-  font-size: 11px;
-  font-weight: 600;
-}
-
-/* Metal Selector */
-.metal-selector {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.metal-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  background: white;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.app.dark .metal-btn {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.metal-btn.active {
-  border-color: #fbbf24;
-  background: #fffbeb;
-}
-
-.app.dark .metal-btn.active {
-  background: #1f1a0f;
-  border-color: #fbbf24;
-  color: #fbbf24;
-}
-
-.metal-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
+  font-size: 28px;
   font-weight: 700;
-  color: white;
-}
-
-.metal-icon.small {
-  width: 22px;
-  height: 22px;
-  font-size: 10px;
-}
-
-.gold-icon {
-  background: #fbbf24;
-}
-
-.silver-icon {
-  background: #9ca3af;
+  margin: 0;
+  color: #1a1a1a;
 }
 
 /* Main */
 .main {
   padding: 32px 0;
-  min-height: calc(100vh - 80px);
 }
 
-/* Manual Section */
-.manual-section {
-  margin-bottom: 24px;
-  transition: all 0.3s ease;
+/* Hero Price */
+.hero-price {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 20px;
+  padding: 40px 32px;
+  text-align: center;
+  color: white;
+  margin-bottom: 32px;
+  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-.manual-section.expanded {
+.hero-price::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.price-label {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.price-hero {
+  font-size: 56px;
+  font-weight: 900;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+  letter-spacing: -1px;
+}
+
+.price-sublabel {
+  font-size: 14px;
+  opacity: 0.85;
+  position: relative;
+  z-index: 1;
+}
+
+.skeleton-hero {
+  height: 60px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  margin: 12px auto;
+  max-width: 250px;
+  animation: pulse 2s infinite;
+}
+
+/* Quick Stats */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
   margin-bottom: 32px;
 }
 
-/* Manual Prompt */
-.manual-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
+.stat-card {
   background: white;
-  border: 2px dashed #e5e5e5;
-  border-radius: 12px;
-  transition: all 0.2s;
+  border-radius: 16px;
+  padding: 24px 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
 }
 
-.app.dark .manual-prompt {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
+.stat-label {
+  font-size: 12px;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
 }
 
-.manual-prompt:hover {
-  border-color: #fbbf24;
-  background: #fefcf5;
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-bottom: 4px;
 }
 
-.app.dark .manual-prompt:hover {
-  background: #1f1a0f;
+.stat-sublabel {
+  font-size: 11px;
+  color: #aaa;
 }
 
-.prompt-content {
+.skeleton-stat {
+  height: 28px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  animation: pulse 2s infinite;
+  margin: 8px 0;
+}
+
+/* Custom Price Section */
+.custom-price-section {
+  margin-bottom: 32px;
+}
+
+.custom-price-prompt {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 16px;
+  background: white;
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  color: #1a1a1a;
 }
 
-.prompt-icon {
-  width: 24px;
-  height: 24px;
+.custom-price-prompt:hover {
+  border-color: #fbbf24;
+  background: #fffbeb;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.1);
+}
+
+.icon-edit {
+  width: 20px;
+  height: 20px;
   color: #fbbf24;
   flex-shrink: 0;
 }
 
-.prompt-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 2px;
-}
-
-.app.dark .prompt-title {
-  color: #e5e5e5;
-}
-
-.prompt-desc {
-  font-size: 12px;
-  color: #666;
-}
-
-.app.dark .prompt-desc {
-  color: #999;
-}
-
-.prompt-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: #fbbf24;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.prompt-btn:hover {
-  background: #f59e0b;
-  transform: scale(1.05);
-}
-
-.prompt-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Manual Input */
-.manual-input-expanded {
+.custom-price-editor {
   background: white;
   border: 2px solid #fbbf24;
   border-radius: 16px;
   padding: 20px;
-  animation: expandIn 0.3s ease;
 }
 
-.app.dark .manual-input-expanded {
-  background: #1a1a1a;
-}
-
-.input-header {
+.editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
-.input-label {
+.editor-label {
   font-size: 13px;
   font-weight: 600;
   color: #666;
 }
 
-.app.dark .input-label {
-  color: #999;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
+.btn-close {
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #f5f5f5;
   cursor: pointer;
   display: flex;
@@ -1554,21 +1128,17 @@ export default {
   transition: all 0.2s;
 }
 
-.app.dark .close-btn {
-  background: #2a2a2a;
-}
-
-.close-btn:hover {
+.btn-close:hover {
   background: #fee;
   color: #ef4444;
 }
 
-.close-btn svg {
-  width: 14px;
-  height: 14px;
+.btn-close svg {
+  width: 16px;
+  height: 16px;
 }
 
-.input-with-currency {
+.editor-input {
   position: relative;
   margin-bottom: 16px;
 }
@@ -1584,575 +1154,182 @@ export default {
   pointer-events: none;
 }
 
-.price-input {
+.price-input-large {
   width: 100%;
   padding: 16px 16px 16px 40px;
   border: 2px solid #e5e5e5;
   border-radius: 12px;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   background: #fafafa;
   color: #1a1a1a;
   transition: all 0.2s;
+  text-align: center;
 }
 
-.app.dark .price-input {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.price-input:focus {
+.price-input-large:focus {
   outline: none;
   border-color: #fbbf24;
   background: white;
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
 }
 
-.app.dark .price-input:focus {
-  background: #1a1a1a;
-}
-
-.price-input::placeholder {
-  color: #ccc;
-}
-
-/* Quick Conversions */
-.quick-conversions {
+.conversions-grid {
   display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   padding: 12px;
   background: #fafafa;
   border-radius: 8px;
 }
 
-.app.dark .quick-conversions {
-  background: #0a0a0a;
-}
-
-.conversion-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
+.conversion {
+  text-align: center;
 }
 
 .conversion-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-}
-
-.app.dark .conversion-label {
-  color: #999;
+  display: block;
+  font-size: 11px;
+  color: #888;
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .conversion-value {
+  display: block;
   font-size: 14px;
   font-weight: 700;
   color: #fbbf24;
 }
 
-/* Manual Badge Notice */
-.manual-badge-notice {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  background: #fef3cd;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #856404;
-  font-weight: 500;
-}
-
-.app.dark .manual-badge-notice {
-  background: #2a2410;
-  color: #fbbf24;
-}
-
-.manual-badge-notice svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-/* Price Section */
-.price-section {
-  margin-bottom: 0px;
-}
-
-.price-card {
+/* Portfolio Section */
+.portfolio-section {
   background: white;
   border-radius: 16px;
   padding: 28px;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.price-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-.app.dark .price-card {
-  background: #1a1a1a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.app.dark .price-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.main-card {
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: white;
-  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
-}
-
-.main-card:hover {
-  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.4);
-}
-
-.label {
-  font-size: 14px;
-  font-weight: 500;
-  opacity: 0.8;
-  margin-bottom: 8px;
-}
-
-.price {
-  font-size: 32px;
+.section-title {
+  font-size: 22px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin: 0 0 20px 0;
+  color: #1a1a1a;
 }
 
-.price.small {
-  font-size: 20px;
+.section-title-small {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  color: #1a1a1a;
 }
 
-.sublabel {
-  font-size: 12px;
-  opacity: 0.6;
-}
-
-.skeleton {
-  height: 38px;
-  background: rgba(255, 255, 255, 0.2);
+.custom-price-badge {
+  display: inline-block;
+  padding: 8px 12px;
+  background: #fef3cd;
+  border: 1px solid #fbbf24;
   border-radius: 8px;
-  animation: pulse 1.5s infinite;
+  font-size: 12px;
+  color: #856404;
+  margin-bottom: 16px;
 }
 
-.skeleton.small {
-  height: 24px;
-}
-
-.app.dark .price-card .skeleton {
-  background: #2a2a2a;
-}
-
-.price-row {
+.portfolio-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
 }
 
-/* Portfolio Summary */
-.portfolio-summary {
-  background: white;
-  border-radius: 16px;
-  padding: 28px;
-  margin: 24px 0;
-  border: 2px solid #10b981;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
-}
-
-.app.dark .portfolio-summary {
-  background: #1a1a1a;
-  border-color: #10b981;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
-}
-
-.summary-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.summary-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.history-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.add-purchase-btn-mini {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: #10b981;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.add-purchase-btn-mini:hover {
-  background: #059669;
-  transform: scale(1.05);
-}
-
-.add-purchase-btn-mini svg {
-  width: 16px;
-  height: 16px;
-}
-
-.using-custom-notice {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: #fef3cd;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #856404;
-  font-weight: 500;
-  margin-bottom: 16px;
-  border: 1px solid #fbbf24;
-}
-
-.app.dark .using-custom-notice {
-  background: #2a2410;
-  color: #fbbf24;
-  border-color: #fbbf24;
-}
-
-.using-custom-notice svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.summary-explanation {
-  background: #fafafa;
-  padding: 20px;
+.portfolio-card {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border: 2px solid #e5e5e5;
   border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s;
 }
 
-.app.dark .summary-explanation {
-  background: #0a0a0a;
+.portfolio-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
-.explanation-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 15px;
+.portfolio-card.invested {
+  border-color: #d1fae5;
+  background: #f0fdf4;
 }
 
-.explanation-row:last-child {
-  margin-bottom: 0;
+.portfolio-card.current {
+  border-color: #bfdbfe;
+  background: #f0f9ff;
 }
 
-.explanation-label {
+.portfolio-card.profit {
+  border-color: #d1fae5;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dbeafe 100%);
+}
+
+.portfolio-card.loss {
+  border-color: #fee2e2;
+  background: linear-gradient(135deg, #fef2f2 0%, #fef2f2 100%);
+}
+
+.portfolio-label {
+  font-size: 12px;
   color: #666;
-  font-weight: 500;
-}
-
-.app.dark .explanation-label {
-  color: #999;
-}
-
-.explanation-value {
-  font-weight: 700;
-  color: #1a1a1a;
-  font-size: 16px;
-}
-
-.app.dark .explanation-value {
-  color: #e5e5e5;
-}
-
-.explanation-divider {
-  height: 2px;
-  background: #e5e5e5;
-  margin: 16px 0;
-}
-
-.app.dark .explanation-divider {
-  background: #2a2a2a;
-}
-
-.explanation-row.result {
-  margin-top: 8px;
-  padding: 16px;
-  border-radius: 10px;
-  background: white;
-}
-
-.app.dark .explanation-row.result {
-  background: #1a1a1a;
-}
-
-.explanation-row.result.profit {
-  background: #d1fae5;
-  border: 2px solid #10b981;
-}
-
-.app.dark .explanation-row.result.profit {
-  background: #064e3b;
-}
-
-.explanation-row.result.loss {
-  background: #fee2e2;
-  border: 2px solid #ef4444;
-}
-
-.app.dark .explanation-row.result.loss {
-  background: #7f1d1d;
-}
-
-.explanation-row.result .explanation-label {
-  color: #1a1a1a;
   font-weight: 600;
-  font-size: 16px;
-}
-
-.app.dark .explanation-row.result .explanation-label {
-  color: #e5e5e5;
-}
-
-.explanation-value-big {
-  font-weight: 900;
-  font-size: 24px;
-}
-
-.explanation-row.result.profit .explanation-value-big {
-  color: #10b981;
-}
-
-.explanation-row.result.loss .explanation-value-big {
-  color: #ef4444;
-}
-
-/* Purchase Form */
-.purchase-form {
-  background: white;
-  border: 2px solid #10b981;
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
-  animation: expandIn 0.3s ease;
-}
-
-.app.dark .purchase-form {
-  background: #1a1a1a;
-}
-
-.form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.form-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   margin-bottom: 8px;
 }
 
-.app.dark .form-label {
-  color: #999;
-}
-
-.form-input,
-.form-select {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e5e5e5;
-  border-radius: 10px;
-  font-size: 14px;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.2s;
-}
-
-.app.dark .form-input,
-.app.dark .form-select {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.form-input:focus,
-.form-select:focus {
-  outline: none;
-  border-color: #10b981;
-  background: white;
-}
-
-.app.dark .form-input:focus,
-.app.dark .form-select:focus {
-  background: #1a1a1a;
-}
-
-.form-input-large {
-  width: 100%;
-  padding: 16px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
+.portfolio-value {
   font-size: 24px;
-  font-weight: 700;
-  background: #fafafa;
+  font-weight: 800;
   color: #1a1a1a;
-  transition: all 0.2s;
-  text-align: center;
 }
 
-.app.dark .form-input-large {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
+.portfolio-value-large {
+  font-size: 28px;
+  font-weight: 900;
 }
 
-.form-input-large:focus {
-  outline: none;
-  border-color: #10b981;
-  background: white;
-}
-
-.app.dark .form-input-large:focus {
-  background: #1a1a1a;
-}
-
-.form-input-currency-large {
-  width: 100%;
-  padding: 16px 16px 16px 44px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  font-size: 24px;
-  font-weight: 700;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.2s;
-}
-
-.app.dark .form-input-currency-large {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.form-input-currency-large:focus {
-  outline: none;
-  border-color: #10b981;
-  background: white;
-}
-
-.app.dark .form-input-currency-large:focus {
-  background: #1a1a1a;
-}
-
-.input-hint {
-  font-size: 12px;
-  color: #999;
-  margin-top: 6px;
-  font-style: italic;
-}
-
-.app.dark .input-hint {
-  color: #666;
-}
-
-.purchase-summary {
-  background: #f0fdf4;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border-left: 3px solid #10b981;
-}
-
-.app.dark .purchase-summary {
-  background: #064e3b;
-}
-
-.purchase-summary-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 4px;
-}
-
-.app.dark .purchase-summary-item {
-  color: #999;
-}
-
-.purchase-summary-item:last-child {
-  margin-bottom: 0;
-}
-
-.purchase-summary-item strong {
+.portfolio-card.profit .portfolio-value-large {
   color: #10b981;
-  font-weight: 700;
 }
 
-/* Purchase History */
-.purchase-history {
+.portfolio-card.loss .portfolio-value-large {
+  color: #ef4444;
+}
+
+.portfolio-change {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+/* History Section */
+.history-section {
   background: white;
   border-radius: 16px;
   padding: 28px;
-  margin-bottom: 24px;
-  width: 100%;
-  max-width: 100%;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-}
-
-.app.dark .purchase-history {
-  background: #1a1a1a;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
-.toggle-btn {
-  width: 32px;
-  height: 32px;
+.btn-toggle {
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 8px;
   background: #f5f5f5;
@@ -2163,34 +1340,19 @@ export default {
   transition: all 0.2s;
 }
 
-.app.dark .toggle-btn {
-  background: #2a2a2a;
-}
-
-.toggle-btn:hover {
+.btn-toggle:hover {
   background: #e5e5e5;
 }
 
-.app.dark .toggle-btn:hover {
-  background: #333;
+.btn-toggle svg {
+  width: 20px;
+  height: 20px;
 }
 
-.toggle-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.history-list {
-  overflow: visible;
-  width: 100%;
-}
-
-/* Card Grid Layout */
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
-  width: 100%;
 }
 
 @media (max-width: 768px) {
@@ -2199,318 +1361,162 @@ export default {
   }
 }
 
-/* Purchase Card */
-.purchase-card {
-  background: white;
-  border: 2px solid #f0f0f0;
+.history-card {
+  background: #f9fafb;
+  border: 2px solid #e5e5e5;
   border-radius: 12px;
   padding: 16px;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  transition: all 0.3s;
 }
 
-.app.dark .purchase-card {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-}
-
-.purchase-card:hover {
+.history-card:hover {
   border-color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.2);
 }
 
-.app.dark .purchase-card:hover {
-  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
-}
-
-/* Card Header */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.app.dark .card-header {
-  border-bottom-color: #2a2a2a;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .card-date {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.date-icon {
-  font-size: 14px;
-}
-
-.date-text {
   font-size: 12px;
   font-weight: 600;
   color: #666;
 }
 
-.app.dark .date-text {
-  color: #999;
-}
-
-.card-delete-btn {
+.btn-delete {
   width: 28px;
   height: 28px;
   border: none;
   border-radius: 6px;
-  background: #f5f5f5;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  color: #aaa;
 }
 
-.app.dark .card-delete-btn {
-  background: #2a2a2a;
-}
-
-.card-delete-btn:hover {
+.btn-delete:hover {
   background: #fee;
   color: #ef4444;
-  transform: rotate(10deg) scale(1.1);
 }
 
-.card-delete-btn svg {
-  width: 14px;
-  height: 14px;
+.btn-delete svg {
+  width: 16px;
+  height: 16px;
 }
 
-/* Card Amount */
 .card-amount {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 12px;
-  padding: 10px;
+  padding: 12px;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   border-radius: 8px;
   border: 1px solid #fbbf24;
 }
 
-.app.dark .card-amount {
-  background: linear-gradient(135deg, #2a2410 0%, #1f1a0f 100%);
-}
-
-.metal-badge-large {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-radius: 6px;
-}
-
-.metal-icon-large {
-  font-size: 12px;
-  font-weight: 900;
-  color: white;
-}
-
-.metal-label {
+.amount-label {
   font-size: 11px;
-  font-weight: 700;
-  color: white;
+  color: #856404;
+  font-weight: 600;
   text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
 .amount-value {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.amount-number {
-  font-size: 24px;
-  font-weight: 900;
+  font-size: 20px;
+  font-weight: 800;
   color: #1a1a1a;
 }
 
-.app.dark .amount-number {
-  color: #fbbf24;
-}
-
-.amount-unit {
-  font-size: 16px;
-  font-weight: 700;
-  color: #666;
-}
-
-.app.dark .amount-unit {
-  color: #999;
-}
-
-/* Card Prices */
-.card-prices {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 10px;
+.card-prices-compare {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 12px;
   padding: 12px;
   background: #fafafa;
   border-radius: 8px;
+  font-size: 12px;
 }
 
-.app.dark .card-prices {
-  background: #0a0a0a;
-}
-
-.price-section {
+.card-prices-compare > div {
   text-align: center;
+  flex: 1;
 }
 
 .price-label {
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 10px;
+  color: #888;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #999;
   margin-bottom: 4px;
 }
 
-.app.dark .price-label {
-  color: #666;
-}
-
-.price-amount {
-  font-size: 14px;
-  font-weight: 900;
+.price-value {
+  font-size: 13px;
+  font-weight: 700;
   color: #1a1a1a;
-  margin-bottom: 2px;
 }
 
-.app.dark .price-amount {
-  color: #e5e5e5;
+.arrow {
+  color: #ddd;
+  font-weight: bold;
+  font-size: 14px;
 }
 
-.price-per-unit {
-  font-size: 10px;
-  color: #666;
-  font-weight: 500;
-}
-
-.app.dark .price-per-unit {
-  color: #999;
-}
-
-.price-arrow {
-  color: #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.price-arrow svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Card Result */
 .card-result {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px;
   border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-}
-
-.card-result::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  opacity: 0.1;
-  z-index: 0;
-}
-
-.card-result.profit {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  background: #f0fdf4;
   border: 2px solid #10b981;
 }
 
-.card-result.profit::before {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.app.dark .card-result.profit {
-  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
-}
-
 .card-result.loss {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 2px solid #ef4444;
+  background: #fef2f2;
+  border-color: #ef4444;
 }
 
-.card-result.loss::before {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.app.dark .card-result.loss {
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
-}
-
-.result-icon-large {
-  font-size: 32px;
+.result-emoji {
+  font-size: 20px;
   flex-shrink: 0;
-  z-index: 1;
 }
 
 .result-info {
   flex: 1;
-  z-index: 1;
 }
 
-.card-result .result-label {
+.result-label {
+  display: block;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #10b981;
   margin-bottom: 2px;
-}
-
-.card-result.profit .result-label {
-  color: #065f46;
-}
-
-.app.dark .card-result.profit .result-label {
-  color: #6ee7b7;
 }
 
 .card-result.loss .result-label {
-  color: #991b1b;
+  color: #ef4444;
 }
 
-.app.dark .card-result.loss .result-label {
-  color: #fca5a5;
-}
-
-.card-result .result-value {
-  font-size: 18px;
-  font-weight: 900;
-  margin-bottom: 2px;
-}
-
-.card-result.profit .result-value {
-  color: #10b981;
-}
-
-.app.dark .card-result.profit .result-value {
+.result-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
   color: #10b981;
 }
 
@@ -2518,116 +1524,145 @@ export default {
   color: #ef4444;
 }
 
-.app.dark .card-result.loss .result-value {
+.result-percent {
+  font-size: 11px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.card-result.loss .result-percent {
   color: #ef4444;
 }
 
-.result-percentage {
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.8;
-}
-
-.card-result.profit .result-percentage {
-  color: #065f46;
-}
-
-.app.dark .card-result.profit .result-percentage {
-  color: #6ee7b7;
-}
-
-.card-result.loss .result-percentage {
-  color: #991b1b;
-}
-
-.app.dark .card-result.loss .result-percentage {
-  color: #fca5a5;
-}
-
-/* Add Purchase Section */
-.add-purchase-section {
-  margin-bottom: 0px;
-}
-
-/* Calculator */
-.calculator {
+/* Add Purchase Form */
+.add-purchase-form {
   background: white;
+  border: 2px solid #10b981;
   border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
+  padding: 28px;
+  margin-bottom: 32px;
+  position: relative;
 }
 
-.calculator:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+.form-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  color: #1a1a1a;
+  padding-right: 40px;
 }
 
-.app.dark .calculator {
-  background: #1a1a1a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+.add-purchase-form .btn-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
 
-.app.dark .calculator:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.form-group {
+  margin-bottom: 20px;
 }
 
-.calc-input-group {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 12px;
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 16px;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+}
+
+.form-input-currency {
+  position: relative;
+}
+
+.currency-prefix {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  font-weight: 700;
+  color: #10b981;
+  pointer-events: none;
+}
+
+.form-input-currency input {
+  width: 100%;
+  padding: 16px 16px 16px 40px;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 16px;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.form-input-currency input:focus {
+  outline: none;
+  border-color: #10b981;
+  background: white;
+}
+
+.form-preview {
+  background: #f0fdf4;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 12px;
   margin-bottom: 16px;
 }
 
-.calc-input,
-.calc-select {
-  padding: 12px;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #fafafa;
-}
-
-.app.dark .calc-input,
-.app.dark .calc-select {
-  background: #0a0a0a;
-  border-color: #2a2a2a;
-  color: #e5e5e5;
-}
-
-.calc-input:focus,
-.calc-select:focus {
-  outline: none;
-  border-color: #fbbf24;
-}
-
-.calc-result {
-  text-align: center;
-  font-size: 24px;
-  font-weight: 700;
-  color: #fbbf24;
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 8px;
-}
-
-.app.dark .calc-result {
-  background: #0a0a0a;
-}
-
-/* Actions */
-.actions {
+.preview-row {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  color: #666;
 }
 
-.btn {
-  flex: 1;
-  padding: 14px;
+.preview-row.total {
+  border-top: 1px solid #10b981;
+  padding-top: 8px;
+  margin-top: 8px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* Action Section */
+.action-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 640px) {
+  .action-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 16px;
   border: none;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -2642,9 +1677,10 @@ export default {
   color: white;
 }
 
-.app.dark .btn-primary {
-  background: #fbbf24;
-  color: #1a1a1a;
+.btn-primary:hover:not(:disabled) {
+  background: #000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .btn-secondary {
@@ -2652,47 +1688,112 @@ export default {
   color: #1a1a1a;
 }
 
-.app.dark .btn-secondary {
-  background: #2a2a2a;
-  color: #e5e5e5;
+.btn-secondary:hover:not(:disabled) {
+  background: #e5e5e5;
+  transform: translateY(-2px);
 }
 
-.btn:disabled {
+.btn-large {
+  padding: 18px 24px;
+  font-size: 16px;
+  min-height: 54px;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn:not(:disabled):hover {
-  transform: translateY(-2px);
-}
-
 .icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .icon.spin {
   animation: spin 1s linear infinite;
 }
 
-/* Status */
-.status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Calculator */
+.calculator-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.calc-controls {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
   gap: 12px;
-  font-size: 13px;
-  color: #666;
   margin-bottom: 16px;
 }
 
-.app.dark .status {
-  color: #999;
+.calc-input,
+.calc-select {
+  padding: 12px;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fafafa;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.calc-input:focus,
+.calc-select:focus {
+  outline: none;
+  border-color: #fbbf24;
+  background: white;
+}
+
+.calc-result {
+  text-align: center;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.calc-label {
+  font-size: 12px;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.calc-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+/* Status Footer */
+.status-footer {
+  background: white;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
@@ -2709,82 +1810,26 @@ export default {
   background: #ef4444;
 }
 
-.status-text {
-  flex-shrink: 0;
-}
-
-.quota-text {
+.quota-info {
+  font-size: 12px;
   color: #999;
-  font-size: 11px;
 }
 
-/* API Error Section */
-.api-error-section {
+/* Error Section */
+.error-section {
   background: #fef3cd;
   border: 2px solid #fbbf24;
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 24px;
   text-align: center;
-}
-
-.app.dark .api-error-section {
-  background: #2a2410;
-  border-color: #fbbf24;
+  margin-bottom: 32px;
 }
 
 .error-message {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #856404;
   margin-bottom: 16px;
-}
-
-.app.dark .error-message {
-  color: #fbbf24;
-}
-
-/* Tips Box */
-.tip-box {
-  margin-top: 32px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border-left: 3px solid #fbbf24;
-}
-
-.app.dark .tip-box {
-  background: #1a1a1a;
-}
-
-.tip-title {
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-  color: #1a1a1a;
-}
-
-.app.dark .tip-title {
-  color: #e5e5e5;
-}
-.tip-list {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.6;
-}
-
-.app.dark .tip-list {
-  color: #999;
-}
-
-.tip-list li {
-  margin-bottom: 4px;
-}
-
-.tip-list li:last-child {
-  margin-bottom: 0;
 }
 
 /* Animations */
@@ -2796,24 +1841,6 @@ export default {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Responsive */
-@media (min-width: 640px) {
-  .container {
-    max-width: 600px;
-  }
 }
 
 /* Remove number spinners */
