@@ -1,4 +1,4 @@
-<!-- pages/index.vue - OPTIMIZED CALCULATIONS -->
+<!-- pages/index.vue - TABBED LAYOUT VERSION -->
 
 <template>
   <div class="app">
@@ -12,7 +12,7 @@
     <main class="main">
       <div class="container">
         
-        <!-- HERO: Large Price Display -->
+        <!-- Price Display (Always Visible) -->
         <section class="hero-price">
           <div class="price-label">ដំឡឹង</div>
           <div v-if="loading" class="skeleton-hero"></div>
@@ -20,350 +20,368 @@
           <div class="price-sublabel">37.5g • Current Market Price</div>
         </section>
 
-        <!-- Quick Stats Grid -->
-        <section class="quick-stats">
-          <div class="stat-card">
-            <div class="stat-label">ជី</div>
-            <div v-if="loading" class="skeleton-stat"></div>
-            <div v-else class="stat-value">{{ memoizedChiPrice }}</div>
-            <div class="stat-sublabel">3.75g</div>
+        <!-- TAB NAVIGATION -->
+        <div class="tabs-wrapper">
+          <div class="tabs-container">
+            <button 
+              v-for="tab in tabs" 
+              :key="tab.id"
+              @click="activeTab = tab.id"
+              :class="['tab-button', { 'active': activeTab === tab.id }]"
+            >
+              <span class="tab-icon">{{ tab.icon }}</span>
+              <span class="tab-label">{{ tab.label }}</span>
+            </button>
           </div>
-          
-          <div class="stat-card">
-            <div class="stat-label">Troy Oz</div>
-            <div v-if="loading" class="skeleton-stat"></div>
-            <div v-else class="stat-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
-            <div class="stat-sublabel">31.1g</div>
-          </div>
+        </div>
 
-          <div class="stat-card">
-            <div class="stat-label">Gram</div>
-            <div v-if="loading" class="skeleton-stat"></div>
-            <div v-else class="stat-value">{{ memoizedGramPrice }}</div>
-            <div class="stat-sublabel">1g</div>
-          </div>
-        </section>
+        <!-- TAB CONTENT -->
 
-        <!-- Custom Price Input -->
-        <section class="custom-price-section">
-          <div v-if="!isManualMode" class="custom-price-prompt" @click="enableManualMode">
-            <svg class="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            <span>Set Custom Price</span>
-          </div>
+        <!-- TAB 1: PRICES -->
+        <div v-show="activeTab === 'prices'" class="tab-content">
+          <!-- Quick Stats Grid -->
+          <section class="quick-stats">
+            <div class="stat-card">
+              <div class="stat-label">ជី</div>
+              <div v-if="loading" class="skeleton-stat"></div>
+              <div v-else class="stat-value">{{ memoizedChiPrice }}</div>
+              <div class="stat-sublabel">3.75g</div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-label">Troy Oz</div>
+              <div v-if="loading" class="skeleton-stat"></div>
+              <div v-else class="stat-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
+              <div class="stat-sublabel">31.1g</div>
+            </div>
 
-          <div v-else class="custom-price-editor">
-            <div class="editor-header">
-              <span class="editor-label">Custom Price (USD)</span>
-              <button @click="clearManualPrice" class="btn-close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
+            <div class="stat-card">
+              <div class="stat-label">Gram</div>
+              <div v-if="loading" class="skeleton-stat"></div>
+              <div v-else class="stat-value">{{ memoizedGramPrice }}</div>
+              <div class="stat-sublabel">1g</div>
+            </div>
+          </section>
+
+          <!-- Custom Price Input -->
+          <section class="custom-price-section">
+            <div v-if="!isManualMode" class="custom-price-prompt" @click="enableManualMode">
+              <svg class="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              <span>Set Custom Price</span>
+            </div>
+
+            <div v-else class="custom-price-editor">
+              <div class="editor-header">
+                <span class="editor-label">Custom Price (USD)</span>
+                <button @click="clearManualPrice" class="btn-close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              
+              <div class="editor-input">
+                <span class="currency-symbol">$</span>
+                <input 
+                  v-model.number="manualPrice" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  class="price-input-large"
+                  placeholder="4242.00"
+                  @input="onManualPriceInput"
+                  ref="manualInput"
+                >
+              </div>
+
+              <div v-if="manualPrice > 0" class="conversions-grid">
+                <div class="conversion">
+                  <span class="conversion-label">ដំឡឹង</span>
+                  <span class="conversion-value">{{ cachedDamlungFromManual }}</span>
+                </div>
+                <div class="conversion">
+                  <span class="conversion-label">ជី</span>
+                  <span class="conversion-value">{{ cachedChiFromManual }}</span>
+                </div>
+                <div class="conversion">
+                  <span class="conversion-label">Gram</span>
+                  <span class="conversion-value">{{ cachedGramFromManual }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Calculator -->
+          <section class="calculator-section">
+            <h3 class="section-title-small">💰 Quick Calculator</h3>
+            <div class="calc-controls">
+              <input 
+                v-model.number="calculatorAmount" 
+                type="number" 
+                min="0" 
+                step="0.1"
+                class="calc-input"
+                placeholder="Enter amount"
+              >
+              <select v-model="calculatorUnit" class="calc-select">
+                <option value="damlung">ដំឡឹង</option>
+                <option value="chi">ជី</option>
+                <option value="oz">Troy Oz</option>
+                <option value="gram">Gram</option>
+              </select>
+            </div>
+            
+            <div v-if="calculatorAmount > 0" class="calc-result">
+              <div class="calc-label">Estimated Value</div>
+              <div class="calc-value">{{ memoizedCalculatorResult }}</div>
+            </div>
+          </section>
+
+          <!-- Refresh Button -->
+          <section class="action-section">
+            <button 
+              @click="handleRefresh" 
+              :disabled="loading || isRefreshDisabled" 
+              class="btn-primary btn-large"
+            >
+              <svg class="icon" :class="{ 'spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              </svg>
+              {{ refreshButtonText }}
+            </button>
+          </section>
+
+          <!-- Status Footer -->
+          <section class="status-footer">
+            <div class="status-info">
+              <span class="status-dot" :class="statusClass"></span>
+              <span class="status-text">{{ lastUpdated }}</span>
+            </div>
+            <div class="quota-info">
+              API: {{ apiQuota.dailyCalls }}/{{ apiQuota.dailyLimit }} • {{ apiQuota.totalCalls }}/{{ apiQuota.monthlyLimit }}
+            </div>
+          </section>
+
+          <!-- API Error -->
+          <section v-if="!loading && currentPrice === 0" class="error-section">
+            <div class="error-message">⚠️ Unable to fetch prices</div>
+            <button @click="tryAlternativeApi" class="btn-secondary">Try Alternative API</button>
+          </section>
+        </div>
+
+        <!-- TAB 2: PORTFOLIO -->
+        <div v-show="activeTab === 'portfolio'" class="tab-content">
+          <section v-if="purchases.length > 0" class="portfolio-section">
+            <div v-if="manualGoldPrice" class="custom-price-badge">
+              Using custom price: <strong>${{ manualGoldPrice.toFixed(2) }}/oz</strong>
+            </div>
+            
+            <div class="portfolio-cards">
+              <div class="portfolio-card invested">
+                <div class="portfolio-label">💰 Total Invested</div>
+                <div class="portfolio-value">{{ memoizedTotalInvested }}</div>
+              </div>
+
+              <div class="portfolio-card current">
+                <div class="portfolio-label">📈 Current Value</div>
+                <div class="portfolio-value">{{ memoizedCurrentValue }}</div>
+              </div>
+
+              <div class="portfolio-card" :class="memoizedProfitLossClass">
+                <div class="portfolio-label">{{ memoizedProfitLoss >= 0 ? '✅ Profit' : '❌ Loss' }}</div>
+                <div class="portfolio-value-large">{{ memoizedProfitLossDisplay }}</div>
+                <div class="portfolio-change">{{ memoizedProfitChangePercent }}</div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="purchases.length === 0" class="empty-state">
+            <div class="empty-icon">📊</div>
+            <h3>No Purchases Yet</h3>
+            <p>Start tracking your gold by adding your first purchase</p>
+            <button @click="switchToAddPurchase" class="btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add First Purchase
+            </button>
+          </section>
+        </div>
+
+        <!-- TAB 3: HISTORY -->
+        <div v-show="activeTab === 'history'" class="tab-content">
+          <section v-if="purchases.length > 0" class="history-section">
+            <div class="history-header">
+              <h2 class="section-title">Purchase History</h2>
+              <button @click="toggleHistoryExpanded" class="btn-toggle">
+                <svg v-if="!historyExpanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="18 15 12 9 6 15"/>
                 </svg>
               </button>
             </div>
-            
-            <div class="editor-input">
-              <span class="currency-symbol">$</span>
+
+            <div v-if="historyExpanded" class="history-grid">
+              <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="history-card" :class="{ 'editing': editingId === purchase.id }">
+                
+                <!-- Card Header with Edit/Delete -->
+                <div class="card-header">
+                  <span class="card-date">📅 {{ formatDate(purchase.date) }}</span>
+                  <div class="card-actions">
+                    <button v-if="editingId !== purchase.id" @click="startEdit(purchase)" class="btn-action btn-edit" title="Edit">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                    <button @click="deletePurchase(purchase.id)" class="btn-action btn-delete" title="Delete">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Editable View -->
+                <div v-if="editingId === purchase.id" class="card-edit-mode">
+                  <div class="edit-field">
+                    <label class="edit-label">Amount (ជី)</label>
+                    <input v-model.number="editingPurchase.amount" type="number" step="0.01" min="0" class="edit-input">
+                  </div>
+                  <div class="edit-field">
+                    <label class="edit-label">Price Paid (USD)</label>
+                    <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" min="0" class="edit-input">
+                  </div>
+                  <div class="edit-field">
+                    <label class="edit-label">Date</label>
+                    <input v-model="editingPurchase.date" type="date" class="edit-input">
+                  </div>
+                  <div class="edit-actions">
+                    <button @click="saveEdit(purchase.id)" class="btn-primary btn-small">Save</button>
+                    <button @click="cancelEdit" class="btn-secondary btn-small">Cancel</button>
+                  </div>
+                </div>
+
+                <!-- Normal View -->
+                <div v-else class="card-view">
+                  <!-- Amount -->
+                  <div class="card-amount">
+                    <span class="amount-label">Gold Purchased</span>
+                    <span class="amount-value">{{ purchase.amount }} <strong>ជី</strong></span>
+                  </div>
+
+                  <!-- Prices -->
+                  <div class="card-prices-compare">
+                    <div>
+                      <div class="price-label">Bought at</div>
+                      <div class="price-value">{{ getPricePerChiCached(purchase) }}</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div>
+                      <div class="price-label">Worth today</div>
+                      <div class="price-value">{{ getWorthTodayPerChiCached(purchase) }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Result -->
+                  <div class="card-result" :class="getProfitClassCached(purchase.id)">
+                    <span class="result-emoji">{{ getProfitValueCached(purchase.id) >= 0 ? '📈' : '📉' }}</span>
+                    <div class="result-info">
+                      <span class="result-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Profit' : 'Loss' }}</span>
+                      <span class="result-value">{{ getProfitDisplayCached(purchase.id) }}</span>
+                    </div>
+                    <span class="result-percent">{{ getProfitPercentCached(purchase.id) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="purchases.length === 0" class="empty-state">
+            <div class="empty-icon">📜</div>
+            <h3>No Purchase History</h3>
+            <p>Your purchase history will appear here</p>
+          </section>
+        </div>
+
+        <!-- TAB 4: ADD PURCHASE -->
+        <div v-show="activeTab === 'addPurchase'" class="tab-content">
+          <section class="add-purchase-form">
+            <h2 class="form-title">Add Gold Purchase</h2>
+
+            <div class="form-group">
+              <label class="form-label">Amount (ជី)</label>
               <input 
-                v-model.number="manualPrice" 
+                v-model.number="newPurchase.amount" 
                 type="number" 
                 step="0.01"
                 min="0"
-                class="price-input-large"
-                placeholder="4242.00"
-                @input="onManualPriceInput"
-                ref="manualInput"
+                class="form-input"
+                placeholder="e.g., 2"
               >
             </div>
 
-            <div v-if="manualPrice > 0" class="conversions-grid">
-              <div class="conversion">
-                <span class="conversion-label">ដំឡឹង</span>
-                <span class="conversion-value">{{ cachedDamlungFromManual }}</span>
-              </div>
-              <div class="conversion">
-                <span class="conversion-label">ជី</span>
-                <span class="conversion-value">{{ cachedChiFromManual }}</span>
-              </div>
-              <div class="conversion">
-                <span class="conversion-label">Gram</span>
-                <span class="conversion-value">{{ cachedGramFromManual }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Portfolio Summary - Prominent -->
-        <section v-if="purchases.length > 0" class="portfolio-section">
-          <h2 class="section-title">📊 Your Gold Portfolio</h2>
-          
-          <div v-if="manualGoldPrice" class="custom-price-badge">
-            Using custom price: <strong>${{ manualGoldPrice.toFixed(2) }}/oz</strong>
-          </div>
-          
-          <div class="portfolio-cards">
-            <div class="portfolio-card invested">
-              <div class="portfolio-label">💰 Total Invested</div>
-              <div class="portfolio-value">{{ memoizedTotalInvested }}</div>
-            </div>
-
-            <div class="portfolio-card current">
-              <div class="portfolio-label">📈 Current Value</div>
-              <div class="portfolio-value">{{ memoizedCurrentValue }}</div>
-            </div>
-
-            <div class="portfolio-card" :class="memoizedProfitLossClass">
-              <div class="portfolio-label">{{ memoizedProfitLoss >= 0 ? '✅ Profit' : '❌ Loss' }}</div>
-              <div class="portfolio-value-large">{{ memoizedProfitLossDisplay }}</div>
-              <div class="portfolio-change">{{ memoizedProfitChangePercent }}</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Purchase History -->
-        <section v-if="purchases.length > 0" class="history-section">
-          <div class="history-header">
-            <h2 class="section-title">Purchase History</h2>
-            <button @click="toggleHistoryExpanded" class="btn-toggle">
-              <svg v-if="!historyExpanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="18 15 12 9 6 15"/>
-              </svg>
-            </button>
-          </div>
-
-          <div v-if="historyExpanded" class="history-grid">
-            <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="history-card" :class="{ 'editing': editingId === purchase.id }">
-              
-              <!-- Card Header with Edit/Delete -->
-              <div class="card-header">
-                <span class="card-date">📅 {{ formatDate(purchase.date) }}</span>
-                <div class="card-actions">
-                  <button v-if="editingId !== purchase.id" @click="startEdit(purchase)" class="btn-action btn-edit" title="Edit">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                  </button>
-                  <button @click="deletePurchase(purchase.id)" class="btn-action btn-delete" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="3 6 5 6 21 6"/>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Editable View -->
-              <div v-if="editingId === purchase.id" class="card-edit-mode">
-                <div class="edit-field">
-                  <label class="edit-label">Amount (ជី)</label>
-                  <input v-model.number="editingPurchase.amount" type="number" step="0.01" min="0" class="edit-input">
-                </div>
-                <div class="edit-field">
-                  <label class="edit-label">Price Paid (USD)</label>
-                  <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" min="0" class="edit-input">
-                </div>
-                <div class="edit-field">
-                  <label class="edit-label">Date</label>
-                  <input v-model="editingPurchase.date" type="date" class="edit-input">
-                </div>
-                <div class="edit-actions">
-                  <button @click="saveEdit(purchase.id)" class="btn-primary btn-small">Save</button>
-                  <button @click="cancelEdit" class="btn-secondary btn-small">Cancel</button>
-                </div>
-              </div>
-
-              <!-- Normal View -->
-              <div v-else class="card-view">
-                <!-- Amount -->
-                <div class="card-amount">
-                  <span class="amount-label">Gold Purchased</span>
-                  <span class="amount-value">{{ purchase.amount }} <strong>ជី</strong></span>
-                </div>
-
-                <!-- Prices -->
-                <div class="card-prices-compare">
-                  <div>
-                    <div class="price-label">Bought at</div>
-                    <div class="price-value">{{ getPricePerChiCached(purchase) }}</div>
-                  </div>
-                  <div class="arrow">→</div>
-                  <div>
-                    <div class="price-label">Worth today</div>
-                    <div class="price-value">{{ getWorthTodayPerChiCached(purchase) }}</div>
-                  </div>
-                </div>
-
-                <!-- Result -->
-                <div class="card-result" :class="getProfitClassCached(purchase.id)">
-                  <span class="result-emoji">{{ getProfitValueCached(purchase.id) >= 0 ? '📈' : '📉' }}</span>
-                  <div class="result-info">
-                    <span class="result-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Profit' : 'Loss' }}</span>
-                    <span class="result-value">{{ getProfitDisplayCached(purchase.id) }}</span>
-                  </div>
-                  <span class="result-percent">{{ getProfitPercentCached(purchase.id) }}</span>
-                </div>
+            <div class="form-group">
+              <label class="form-label">Price Paid (USD)</label>
+              <div class="form-input-currency">
+                <span class="currency-prefix">$</span>
+                <input 
+                  v-model.number="newPurchase.totalPaid" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  placeholder="e.g., 1020.00"
+                >
               </div>
             </div>
-          </div>
-        </section>
 
-        <!-- Add Purchase Form -->
-        <section v-if="showPurchaseForm" class="add-purchase-form">
-          <h2 class="form-title">Add Gold Purchase</h2>
-          <button @click="closePurchaseForm" class="btn-close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-
-          <div class="form-group">
-            <label class="form-label">Amount (ជី)</label>
-            <input 
-              v-model.number="newPurchase.amount" 
-              type="number" 
-              step="0.01"
-              min="0"
-              class="form-input"
-              placeholder="e.g., 2"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Price Paid (USD)</label>
-            <div class="form-input-currency">
-              <span class="currency-prefix">$</span>
+            <div class="form-group">
+              <label class="form-label">Purchase Date</label>
               <input 
-                v-model.number="newPurchase.totalPaid" 
-                type="number" 
-                step="0.01"
-                min="0"
-                placeholder="e.g., 1020.00"
+                v-model="newPurchase.date" 
+                type="date" 
+                class="form-input"
+                :max="getCurrentDate()"
               >
             </div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label">Purchase Date</label>
-            <input 
-              v-model="newPurchase.date" 
-              type="date" 
-              class="form-input"
-              :max="getCurrentDate()"
-            >
-          </div>
-
-          <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="form-preview">
-            <div class="preview-row">
-              <span>Amount:</span>
-              <strong>{{ newPurchase.amount }} ជី</strong>
+            <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="form-preview">
+              <div class="preview-row">
+                <span>Amount:</span>
+                <strong>{{ newPurchase.amount }} ជី</strong>
+              </div>
+              <div class="preview-row">
+                <span>Price per ជី:</span>
+                <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid / newPurchase.amount) }}</strong>
+              </div>
+              <div class="preview-row total">
+                <span>Total:</span>
+                <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid) }}</strong>
+              </div>
             </div>
-            <div class="preview-row">
-              <span>Price per ជី:</span>
-              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid / newPurchase.amount) }}</strong>
+
+            <div class="form-actions">
+              <button @click="addPurchase" class="btn-primary btn-large" :disabled="!canAddPurchase()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Save Purchase
+              </button>
+              <button @click="activeTab = 'history'" class="btn-secondary btn-large">
+                Cancel
+              </button>
             </div>
-            <div class="preview-row total">
-              <span>Total:</span>
-              <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid) }}</strong>
-            </div>
-          </div>
-
-          <button @click="addPurchase" class="btn-primary" :disabled="!canAddPurchase()">
-            Save Purchase
-          </button>
-          <button @click="closePurchaseForm" class="btn-secondary">
-            Cancel
-          </button>
-        </section>
-
-        <!-- Action Buttons -->
-        <section class="action-section">
-          <button 
-            @click="handleRefresh" 
-            :disabled="loading || isRefreshDisabled" 
-            class="btn-primary btn-large"
-          >
-            <svg class="icon" :class="{ 'spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-            </svg>
-            {{ refreshButtonText }}
-          </button>
-          
-          <button 
-            v-if="purchases.length === 0 && !showPurchaseForm" 
-            @click="showPurchaseForm = true" 
-            class="btn-secondary btn-large"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Add First Purchase
-          </button>
-
-          <button 
-            v-if="purchases.length > 0 && !showPurchaseForm" 
-            @click="showPurchaseForm = true" 
-            class="btn-secondary btn-large"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Add Purchase
-          </button>
-        </section>
-
-        <!-- Calculator -->
-        <section class="calculator-section">
-          <h3 class="section-title-small">💰 Quick Calculator</h3>
-          <div class="calc-controls">
-            <input 
-              v-model.number="calculatorAmount" 
-              type="number" 
-              min="0" 
-              step="0.1"
-              class="calc-input"
-              placeholder="Enter amount"
-            >
-            <select v-model="calculatorUnit" class="calc-select">
-              <option value="damlung">ដំឡឹង</option>
-              <option value="chi">ជី</option>
-              <option value="oz">Troy Oz</option>
-              <option value="gram">Gram</option>
-            </select>
-          </div>
-          
-          <div v-if="calculatorAmount > 0" class="calc-result">
-            <div class="calc-label">Estimated Value</div>
-            <div class="calc-value">{{ memoizedCalculatorResult }}</div>
-          </div>
-        </section>
-
-        <!-- Status Footer -->
-        <section class="status-footer">
-          <div class="status-info">
-            <span class="status-dot" :class="statusClass"></span>
-            <span class="status-text">{{ lastUpdated }}</span>
-          </div>
-          <div class="quota-info">
-            API: {{ apiQuota.dailyCalls }}/{{ apiQuota.dailyLimit }} today • {{ apiQuota.totalCalls }}/{{ apiQuota.monthlyLimit }} month
-          </div>
-        </section>
-
-        <!-- API Error -->
-        <section v-if="!loading && currentPrice === 0" class="error-section">
-          <div class="error-message">⚠️ Unable to fetch prices</div>
-          <button @click="tryAlternativeApi" class="btn-secondary">Try Alternative API</button>
-        </section>
+          </section>
+        </div>
 
       </div>
     </main>
@@ -385,13 +403,22 @@ export default {
 
   data() {
     return {
+      // Tab system
+      activeTab: 'prices',
+      tabs: [
+        { id: 'prices', label: 'Prices', icon: '💲' },
+        { id: 'portfolio', label: 'Portfolio', icon: '📊' },
+        { id: 'history', label: 'History', icon: '📜' },
+        { id: 'addPurchase', label: 'Add', icon: '➕' }
+      ],
+
       // Constants (pre-calculated for speed)
       TROY_OUNCE_TO_GRAM: 31.1035,
       DAMLUNG_TO_GRAM: 37.5,
       CHI_TO_GRAM: 3.75,
-      CHI_TO_OZ: 3.75 / 31.1035, // Pre-calculated: 0.120543
-      GRAM_TO_OZ: 1 / 31.1035,   // Pre-calculated: 0.032151
-      DAMLUNG_TO_OZ: 37.5 / 31.1035, // Pre-calculated: 1.204819
+      CHI_TO_OZ: 3.75 / 31.1035,
+      GRAM_TO_OZ: 1 / 31.1035,
+      DAMLUNG_TO_OZ: 37.5 / 31.1035,
 
       apiKey: '03cc06614a49b9d29f1d4cdb2250467d',
       apiBaseUrl: 'https://www.goldapi.io/api',
@@ -410,7 +437,6 @@ export default {
       calculatorUnit: 'damlung',
       
       purchases: [],
-      showPurchaseForm: false,
       historyExpanded: true,
       newPurchase: {
         amount: null,
@@ -438,7 +464,6 @@ export default {
         gold: 4000
       },
 
-      // Optimized caching
       manualPriceUpdateTimeout: null,
       lastCalculatedPrice: null,
       portfolioCache: {
@@ -483,7 +508,6 @@ export default {
       );
     },
 
-    // Fast price calculations with pre-calculated multipliers
     memoizedDamlungPrice() {
       return this.formatCurrencyDisplay(this.currentPrice * this.DAMLUNG_TO_OZ);
     },
@@ -496,7 +520,6 @@ export default {
       return this.formatCurrencyDisplay(this.currentPrice * this.GRAM_TO_OZ);
     },
 
-    // Manual mode conversions
     cachedDamlungFromManual() {
       if (!this.manualPrice) return '$0.00';
       return this.formatCurrencyDisplay(this.manualPrice * this.DAMLUNG_TO_OZ);
@@ -512,7 +535,6 @@ export default {
       return this.formatCurrencyDisplay(this.manualPrice * this.GRAM_TO_OZ);
     },
 
-    // Portfolio calculations (only recalculate when prices or purchases change)
     memoizedTotalInvested() {
       if (this.portfolioCache.totalInvested !== null && 
           this.lastCalculatedPrice === this.currentPrice) {
@@ -594,7 +616,7 @@ export default {
         case 'damlung':
           ozAmount = this.calculatorAmount * this.DAMLUNG_TO_OZ;
           break;
-        default: // 'oz'
+        default:
           ozAmount = this.calculatorAmount;
       }
       
@@ -603,7 +625,10 @@ export default {
   },
 
   methods: {
-    // Fast currency formatting with caching
+    switchToAddPurchase() {
+      this.activeTab = 'addPurchase';
+    },
+
     formatCurrencyDisplay(value) {
       if (!value) return '$0.00';
       
@@ -621,7 +646,6 @@ export default {
       
       this.formattingCache.set(cacheKey, formatted);
 
-      // Limit cache size
       if (this.formattingCache.size > 200) {
         const firstKey = this.formattingCache.keys().next().value;
         this.formattingCache.delete(firstKey);
@@ -630,7 +654,6 @@ export default {
       return formatted;
     },
 
-    // Cached purchase detail calculations
     getPricePerChiCached(purchase) {
       const key = `ppchi-${purchase.id}`;
       if (this.purchaseDetailCache.has(key)) {
@@ -850,7 +873,14 @@ export default {
       this.purchases.push(purchase);
       this.clearCaches();
       this.savePurchases();
-      this.closePurchaseForm();
+      
+      this.newPurchase = {
+        amount: null,
+        totalPaid: null,
+        date: new Date().toISOString().split('T')[0]
+      };
+      
+      this.activeTab = 'history';
     },
 
     deletePurchase(purchaseId) {
@@ -859,15 +889,6 @@ export default {
         this.clearCaches();
         this.savePurchases();
       }
-    },
-
-    closePurchaseForm() {
-      this.showPurchaseForm = false;
-      this.newPurchase = {
-        amount: null,
-        totalPaid: null,
-        date: new Date().toISOString().split('T')[0]
-      };
     },
 
     toggleHistoryExpanded() {
@@ -1095,11 +1116,11 @@ export default {
 /* Header */
 .header {
   background: white;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 24px 0;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 28px 0;
   sticky: top;
   z-index: 10;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .header .container {
@@ -1108,26 +1129,27 @@ export default {
 }
 
 .title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 900;
   margin: 0;
   color: #1a1a1a;
+  letter-spacing: -1px;
 }
 
 /* Main */
 .main {
-  padding: 32px 0;
+  padding: 40px 0;
 }
 
 /* Hero Price */
 .hero-price {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-radius: 20px;
-  padding: 40px 32px;
+  border-radius: 24px;
+  padding: 56px 40px;
   text-align: center;
   color: white;
   margin-bottom: 32px;
-  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.2);
+  box-shadow: 0 20px 60px rgba(251, 191, 36, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -1145,30 +1167,32 @@ export default {
 }
 
 .price-label {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 800;
   opacity: 0.9;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   position: relative;
   z-index: 1;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
 .price-hero {
-  font-size: 56px;
+  font-size: 72px;
   font-weight: 900;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   position: relative;
   z-index: 1;
-  letter-spacing: -1px;
+  letter-spacing: -2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .price-sublabel {
-  font-size: 14px;
-  opacity: 0.85;
+  font-size: 15px;
+  opacity: 0.9;
   position: relative;
   z-index: 1;
+  font-weight: 500;
 }
 
 .skeleton-hero {
@@ -1180,42 +1204,155 @@ export default {
   animation: pulse 2s infinite;
 }
 
+/* TAB NAVIGATION */
+.tabs-wrapper {
+  background: white;
+  border-radius: 20px;
+  padding: 8px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.tabs-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .tabs-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tab-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 12px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: #999;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.tab-button:hover {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.25);
+}
+
+.tab-icon {
+  font-size: 24px;
+  display: block;
+}
+
+.tab-label {
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* TAB CONTENT */
+.tab-content {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Empty State */
+.empty-state {
+  background: white;
+  border-radius: 20px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.empty-state h3 {
+  font-size: 24px;
+  font-weight: 900;
+  margin: 0 0 12px 0;
+  color: #1a1a1a;
+}
+
+.empty-state p {
+  font-size: 16px;
+  color: #999;
+  margin: 0 0 24px 0;
+}
+
 /* Quick Stats */
 .quick-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
 }
 
 .stat-card {
   background: white;
-  border-radius: 16px;
-  padding: 24px 16px;
+  border-radius: 20px;
+  padding: 32px 20px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 2px solid #f5f5f5;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: default;
+}
+
+.stat-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  border-color: #fbbf24;
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #888;
-  font-weight: 600;
+  font-size: 11px;
+  color: #999;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
 }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 32px;
+  font-weight: 900;
   color: #fbbf24;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
 }
 
 .stat-sublabel {
-  font-size: 11px;
-  color: #aaa;
+  font-size: 12px;
+  color: #bbb;
+  font-weight: 600;
 }
 
 .skeleton-stat {
@@ -1234,21 +1371,23 @@ export default {
 .custom-price-prompt {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: 14px;
+  padding: 20px 24px;
   background: white;
   border: 2px solid #e5e5e5;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-weight: 600;
   color: #1a1a1a;
+  font-size: 16px;
 }
 
 .custom-price-prompt:hover {
   border-color: #fbbf24;
-  background: #fffbeb;
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.1);
+  background: #fffbf0;
+  box-shadow: 0 12px 32px rgba(251, 191, 36, 0.2);
+  transform: translateY(-4px);
 }
 
 .icon-edit {
@@ -1319,22 +1458,23 @@ export default {
 
 .price-input-large {
   width: 100%;
-  padding: 16px 16px 16px 40px;
+  padding: 20px 20px 20px 50px;
   border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  font-size: 28px;
-  font-weight: 700;
-  background: #fafafa;
+  border-radius: 14px;
+  font-size: 32px;
+  font-weight: 800;
+  background: white;
   color: #1a1a1a;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   text-align: center;
 }
 
 .price-input-large:focus {
   outline: none;
   border-color: #fbbf24;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+  background: #fffbf0;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15);
+  transform: scale(1.02);
 }
 
 .conversions-grid {
@@ -1368,24 +1508,26 @@ export default {
 /* Portfolio Section */
 .portfolio-section {
   background: white;
-  border-radius: 16px;
-  padding: 28px;
-  margin-bottom: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .section-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 20px 0;
+  font-size: 26px;
+  font-weight: 900;
+  margin: 0 0 24px 0;
   color: #1a1a1a;
+  letter-spacing: -0.5px;
 }
 
 .section-title-small {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 18px 0;
   color: #1a1a1a;
+  letter-spacing: -0.3px;
 }
 
 .custom-price-badge {
@@ -1401,62 +1543,64 @@ export default {
 
 .portfolio-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
 }
 
 .portfolio-card {
   background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
   border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 18px;
+  padding: 28px;
   text-align: center;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .portfolio-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px);
 }
 
 .portfolio-card.invested {
   border-color: #d1fae5;
-  background: #f0fdf4;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
 }
 
 .portfolio-card.current {
   border-color: #bfdbfe;
-  background: #f0f9ff;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f8fbfd 100%);
 }
 
 .portfolio-card.profit {
   border-color: #d1fae5;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dbeafe 100%);
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
 }
 
 .portfolio-card.loss {
   border-color: #fee2e2;
-  background: linear-gradient(135deg, #fef2f2 0%, #fef2f2 100%);
+  background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
 }
 
 .portfolio-label {
   font-size: 12px;
-  color: #666;
-  font-weight: 600;
+  color: #777;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
 }
 
 .portfolio-value {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 900;
   color: #1a1a1a;
+  line-height: 1.2;
 }
 
 .portfolio-value-large {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 900;
+  line-height: 1.2;
 }
 
 .portfolio-card.profit .portfolio-value-large {
@@ -1468,19 +1612,19 @@ export default {
 }
 
 .portfolio-change {
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 8px;
   opacity: 0.8;
 }
 
 /* History Section */
 .history-section {
   background: white;
-  border-radius: 16px;
-  padding: 28px;
-  margin-bottom: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .history-header {
@@ -1514,8 +1658,8 @@ export default {
 
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 20px;
 }
 
 @media (max-width: 768px) {
@@ -1525,22 +1669,24 @@ export default {
 }
 
 .history-card {
-  background: #f9fafb;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  padding: 16px;
-  transition: all 0.3s;
+  background: white;
+  border: 2px solid #f0f0f0;
+  border-radius: 18px;
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .history-card:hover {
   border-color: #fbbf24;
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(251, 191, 36, 0.15);
+  transform: translateY(-6px);
 }
 
 .history-card.editing {
   border-color: #10b981;
-  background: #f0fdf4;
+  background: #f8fdf9;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .card-header {
@@ -1650,23 +1796,30 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px;
+  padding: 16px;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-  border-radius: 8px;
-  border: 1px solid #fbbf24;
+  border-radius: 12px;
+  border: 2px solid #fbbf24;
+  transition: all 0.3s;
+}
+
+.card-amount:hover {
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.2);
+  transform: scale(1.02);
 }
 
 .amount-label {
   font-size: 11px;
   color: #856404;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
 }
 
 .amount-value {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 900;
   color: #1a1a1a;
 }
 
@@ -1709,20 +1862,29 @@ export default {
 .card-result {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f0fdf4;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
   border: 2px solid #10b981;
+  transition: all 0.3s;
+}
+
+.card-result:hover {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.2);
 }
 
 .card-result.loss {
-  background: #fef2f2;
+  background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
   border-color: #ef4444;
 }
 
+.card-result.loss:hover {
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.2);
+}
+
 .result-emoji {
-  font-size: 20px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
@@ -1733,10 +1895,11 @@ export default {
 .result-label {
   display: block;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   color: #10b981;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
 }
 
 .card-result.loss .result-label {
@@ -1745,8 +1908,8 @@ export default {
 
 .result-value {
   display: block;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: #10b981;
 }
 
@@ -1755,8 +1918,8 @@ export default {
 }
 
 .result-percent {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   color: #10b981;
 }
 
@@ -1767,25 +1930,18 @@ export default {
 /* Add Purchase Form */
 .add-purchase-form {
   background: white;
-  border: 2px solid #10b981;
-  border-radius: 16px;
-  padding: 28px;
-  margin-bottom: 32px;
-  position: relative;
+  border: 3px solid #10b981;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
 }
 
 .form-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 20px 0;
+  font-size: 24px;
+  font-weight: 900;
+  margin: 0 0 24px 0;
   color: #1a1a1a;
-  padding-right: 40px;
-}
-
-.add-purchase-form .btn-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
+  letter-spacing: -0.5px;
 }
 
 .form-group {
@@ -1802,19 +1958,21 @@ export default {
 
 .form-input {
   width: 100%;
-  padding: 16px;
+  padding: 18px;
   border: 2px solid #e5e5e5;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 16px;
   background: #fafafa;
   color: #1a1a1a;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-weight: 500;
 }
 
 .form-input:focus {
   outline: none;
   border-color: #10b981;
   background: white;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
 }
 
 .form-input-currency {
@@ -1834,19 +1992,20 @@ export default {
 
 .form-input-currency input {
   width: 100%;
-  padding: 16px 16px 16px 40px;
+  padding: 18px 18px 18px 45px;
   border: 2px solid #e5e5e5;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 16px;
   background: #fafafa;
   color: #1a1a1a;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .form-input-currency input:focus {
   outline: none;
   border-color: #10b981;
   background: white;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
 }
 
 .form-preview {
@@ -1873,60 +2032,70 @@ export default {
   color: #1a1a1a;
 }
 
-/* Action Section */
-.action-section {
+.form-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 32px;
 }
 
 @media (max-width: 640px) {
-  .action-section {
+  .form-actions {
     grid-template-columns: 1fr;
   }
 }
 
+/* Action Section */
+.action-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
 .btn-primary,
 .btn-secondary {
-  padding: 16px;
+  padding: 18px 24px;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition: all 0.2s;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .btn-primary {
-  background: #1a1a1a;
+  background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
   color: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #000;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
 }
 
 .btn-secondary {
-  background: #f5f5f5;
+  background: white;
   color: #1a1a1a;
+  border: 2px solid #e5e5e5;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e5e5e5;
-  transform: translateY(-2px);
+  background: #f5f5f5;
+  border-color: #fbbf24;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2);
 }
 
 .btn-large {
-  padding: 18px 24px;
+  padding: 20px 28px;
   font-size: 16px;
-  min-height: 54px;
+  min-height: 60px;
 }
 
 .btn-primary:disabled,
@@ -1947,28 +2116,29 @@ export default {
 /* Calculator */
 .calculator-section {
   background: white;
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .calc-controls {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .calc-input,
 .calc-select {
-  padding: 12px;
+  padding: 16px;
   border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 12px;
+  font-size: 15px;
   background: #fafafa;
   color: #1a1a1a;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-weight: 500;
 }
 
 .calc-input:focus,
@@ -1976,54 +2146,59 @@ export default {
   outline: none;
   border-color: #fbbf24;
   background: white;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1);
 }
 
 .calc-result {
   text-align: center;
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 8px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 12px;
+  border: 2px solid #fbbf24;
 }
 
 .calc-label {
   font-size: 12px;
-  color: #888;
-  font-weight: 600;
+  color: #856404;
+  font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
 }
 
 .calc-value {
-  font-size: 28px;
-  font-weight: 800;
-  color: #fbbf24;
+  font-size: 32px;
+  font-weight: 900;
+  color: #f59e0b;
 }
 
 /* Status Footer */
 .status-footer {
   background: white;
   border-radius: 16px;
-  padding: 16px 20px;
-  margin-bottom: 32px;
+  padding: 18px 24px;
+  margin-bottom: 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
+  border: 1px solid #f0f0f0;
 }
 
 .status-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 14px;
   color: #666;
+  font-weight: 500;
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
@@ -2033,7 +2208,7 @@ export default {
 }
 
 .status-dot.success {
-  background: #22c55e;
+  background: #10b981;
 }
 
 .status-dot.error {
@@ -2041,8 +2216,9 @@ export default {
 }
 
 .quota-info {
-  font-size: 12px;
+  font-size: 13px;
   color: #999;
+  font-weight: 500;
 }
 
 /* Error Section */
