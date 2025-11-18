@@ -1,5 +1,4 @@
-<!-- pages/index.vue - IMPROVED LAYOUT VERSION -->
-<!-- Key improvements: Larger typography, better spacing, dashboard layout, touch-friendly UI -->
+<!-- pages/index.vue - IMPROVED LAYOUT WITH EDIT FEATURE -->
 
 <template>
   <div class="app">
@@ -139,46 +138,77 @@
           </div>
 
           <div v-if="historyExpanded" class="history-grid">
-            <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="history-card">
+            <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="history-card" :class="{ 'editing': editingId === purchase.id }">
               
-              <!-- Card Header -->
+              <!-- Card Header with Edit/Delete -->
               <div class="card-header">
                 <span class="card-date">📅 {{ formatDate(purchase.date) }}</span>
-                <button @click="deletePurchase(purchase.id)" class="btn-delete">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </div>
-
-              <!-- Amount -->
-              <div class="card-amount">
-                <span class="amount-label">Gold Purchased</span>
-                <span class="amount-value">{{ purchase.amount }} <strong>ជី</strong></span>
-              </div>
-
-              <!-- Prices -->
-              <div class="card-prices-compare">
-                <div>
-                  <div class="price-label">Bought at</div>
-                  <div class="price-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/ជី</div>
-                </div>
-                <div class="arrow">→</div>
-                <div>
-                  <div class="price-label">Worth today</div>
-                  <div class="price-value">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id] / purchase.amount) }}/ជី</div>
+                <div class="card-actions">
+                  <button v-if="editingId !== purchase.id" @click="startEdit(purchase)" class="btn-action btn-edit" title="Edit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button @click="deletePurchase(purchase.id)" class="btn-action btn-delete" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
 
-              <!-- Result -->
-              <div class="card-result" :class="memoizedPurchaseProfitClass[purchase.id]">
-                <span class="result-emoji">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '📈' : '📉' }}</span>
-                <div class="result-info">
-                  <span class="result-label">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'Profit' : 'Loss' }}</span>
-                  <span class="result-value">{{ formatCurrencyDisplay(Math.abs(memoizedPurchaseProfitValue[purchase.id])) }}</span>
+              <!-- Editable View -->
+              <div v-if="editingId === purchase.id" class="card-edit-mode">
+                <div class="edit-field">
+                  <label class="edit-label">Amount (ជី)</label>
+                  <input v-model.number="editingPurchase.amount" type="number" step="0.01" min="0" class="edit-input">
                 </div>
-                <span class="result-percent">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '+' : '-' }}{{ memoizedPurchaseProfitPercent[purchase.id] }}%</span>
+                <div class="edit-field">
+                  <label class="edit-label">Price Paid (USD)</label>
+                  <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" min="0" class="edit-input">
+                </div>
+                <div class="edit-field">
+                  <label class="edit-label">Date</label>
+                  <input v-model="editingPurchase.date" type="date" class="edit-input">
+                </div>
+                <div class="edit-actions">
+                  <button @click="saveEdit(purchase.id)" class="btn-primary btn-small">Save</button>
+                  <button @click="cancelEdit" class="btn-secondary btn-small">Cancel</button>
+                </div>
+              </div>
+
+              <!-- Normal View -->
+              <div v-else class="card-view">
+                <!-- Amount -->
+                <div class="card-amount">
+                  <span class="amount-label">Gold Purchased</span>
+                  <span class="amount-value">{{ purchase.amount }} <strong>ជី</strong></span>
+                </div>
+
+                <!-- Prices -->
+                <div class="card-prices-compare">
+                  <div>
+                    <div class="price-label">Bought at</div>
+                    <div class="price-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/ជី</div>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div>
+                    <div class="price-label">Worth today</div>
+                    <div class="price-value">{{ formatCurrencyDisplay(memoizedPurchaseValues[purchase.id] / purchase.amount) }}/ជី</div>
+                  </div>
+                </div>
+
+                <!-- Result -->
+                <div class="card-result" :class="memoizedPurchaseProfitClass[purchase.id]">
+                  <span class="result-emoji">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '📈' : '📉' }}</span>
+                  <div class="result-info">
+                    <span class="result-label">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? 'Profit' : 'Loss' }}</span>
+                    <span class="result-value">{{ formatCurrencyDisplay(Math.abs(memoizedPurchaseProfitValue[purchase.id])) }}</span>
+                  </div>
+                  <span class="result-percent">{{ memoizedPurchaseProfitValue[purchase.id] >= 0 ? '+' : '-' }}{{ memoizedPurchaseProfitPercent[purchase.id] }}%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -383,6 +413,10 @@ export default {
         totalPaid: null,
         date: new Date().toISOString().split('T')[0]
       },
+
+      // Edit mode
+      editingId: null,
+      editingPurchase: null,
       
       apiQuota: {
         dailyCalls: 0,
@@ -397,7 +431,7 @@ export default {
       },
 
       fallbackPrices: {
-        gold: 2650
+        gold: 4000
       },
 
       manualPriceUpdateTimeout: null,
@@ -525,6 +559,34 @@ export default {
         (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
       
       return metalCache.data && cacheAgeHours < 24;
+    },
+
+    startEdit(purchase) {
+      this.editingId = purchase.id;
+      this.editingPurchase = {
+        amount: purchase.amount,
+        totalPaid: purchase.totalPaid,
+        date: purchase.date
+      };
+    },
+
+    saveEdit(purchaseId) {
+      const purchaseIndex = this.purchases.findIndex(p => p.id === purchaseId);
+      if (purchaseIndex !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
+        this.purchases[purchaseIndex] = {
+          ...this.purchases[purchaseIndex],
+          ...this.editingPurchase
+        };
+        this.purchaseValuesCache.clear();
+        this.savePurchases();
+        this.editingId = null;
+        this.editingPurchase = null;
+      }
+    },
+
+    cancelEdit() {
+      this.editingId = null;
+      this.editingPurchase = null;
     },
 
     enableManualMode() {
@@ -1375,6 +1437,11 @@ export default {
   transform: translateY(-2px);
 }
 
+.history-card.editing {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -1390,7 +1457,12 @@ export default {
   color: #666;
 }
 
-.btn-delete {
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-action {
   width: 28px;
   height: 28px;
   border: none;
@@ -1404,21 +1476,79 @@ export default {
   color: #aaa;
 }
 
+.btn-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-edit:hover {
+  background: #fef3cd;
+  color: #fbbf24;
+}
+
 .btn-delete:hover {
   background: #fee;
   color: #ef4444;
 }
 
-.btn-delete svg {
-  width: 16px;
-  height: 16px;
+/* Edit Mode */
+.card-edit-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.edit-input {
+  padding: 8px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  color: #1a1a1a;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-small {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Normal View */
+.card-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .card-amount {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 12px;
   padding: 12px;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   border-radius: 8px;
@@ -1444,7 +1574,6 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 12px;
   padding: 12px;
   background: #fafafa;
   border-radius: 8px;
