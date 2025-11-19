@@ -1,387 +1,298 @@
-<!-- pages/index.vue - TABBED LAYOUT VERSION -->
-
+<!-- pages/index.vue - FULL SCREEN MOBILE RESPONSIVE ALL-IN-ONE PAGE -->
 <template>
   <div class="app">
     <!-- Header -->
     <header class="header">
       <div class="container">
-        <h1 class="title">តម្លៃមាស</h1>
+        <h1 class="title">Gold Tracker</h1>
       </div>
     </header>
 
+    <!-- Main Content -->
     <main class="main">
       <div class="container">
         
-        <!-- Price Display (Always Visible) -->
-        <section class="hero-price">
-          <div class="price-label">ដំឡឹង</div>
-          <div v-if="loading" class="skeleton-hero"></div>
-          <div v-else class="price-hero">{{ memoizedDamlungPrice }}</div>
-          <div class="price-sublabel">37.5g • Current Market Price</div>
-        </section>
-
-        <!-- TAB NAVIGATION -->
-        <div class="tabs-wrapper">
-          <div class="tabs-container">
-            <button 
-              v-for="tab in tabs" 
-              :key="tab.id"
-              @click="activeTab = tab.id"
-              :class="['tab-button', { 'active': activeTab === tab.id }]"
-            >
-              <span class="tab-icon">{{ tab.icon }}</span>
-              <span class="tab-label">{{ tab.label }}</span>
-            </button>
-          </div>
+        <!-- CUSTOM PRICE ALERT BANNER (Always Visible) -->
+        <div v-if="isManualMode" class="custom-price-banner">
+          <span class="banner-icon">⚡</span>
+          <span class="banner-text">Using custom price: <strong>${{ manualPrice.toFixed(2) }}/oz</strong></span>
+          <button @click="clearManualPrice" class="banner-btn">Reset</button>
         </div>
 
-        <!-- TAB CONTENT -->
+        <!-- Current Price Card with Toggle Button -->
+        <section class="price-card">
+          <div class="price-card-header">
+            <div class="price-card-content">
+              <div class="price-label">Current Price (Troy Oz)</div>
+              <div v-if="loading" class="price-skeleton"></div>
+              <div v-else class="price-display">{{ formatCurrencyDisplay(currentPrice) }}</div>
+              <div class="price-time">{{ lastUpdated }}</div>
+            </div>
+            <button 
+              @click="toggleCustomPriceMode"
+              :class="['price-toggle-btn', { active: isManualMode }]"
+              title="Toggle custom price"
+            >
+              ⚙️
+            </button>
+          </div>
 
-        <!-- TAB 1: PRICES -->
-        <div v-show="activeTab === 'prices'" class="tab-content">
-          <!-- Quick Stats Grid -->
-          <section class="quick-stats">
-            <div class="stat-card">
-              <div class="stat-label">ជី</div>
-              <div v-if="loading" class="skeleton-stat"></div>
-              <div v-else class="stat-value">{{ memoizedChiPrice }}</div>
-              <div class="stat-sublabel">3.75g</div>
+          <!-- Custom Price Input - Expanded Below Card -->
+          <div v-if="isManualMode" class="custom-price-expanded">
+            <div class="custom-price-title">Set Custom Price</div>
+            <div class="custom-price-input-group">
+              <span class="currency-symbol">$</span>
+              <input 
+                v-model.number="manualPrice" 
+                type="number" 
+                step="0.01"
+                min="0"
+                class="custom-price-input"
+                placeholder="Enter price"
+                inputmode="decimal"
+              >
+              <span class="unit-label">/oz</span>
+            </div>
+            <button @click="clearManualPrice" class="btn btn-secondary btn-full">
+              Reset to Live Price
+            </button>
+          </div>
+        </section>
+
+        <!-- Refresh Button -->
+        <button 
+          @click="handleRefresh" 
+          :disabled="loading || isRefreshDisabled" 
+          class="btn btn-primary btn-block"
+        >
+          {{ refreshButtonText }}
+        </button>
+
+        <!-- Price Conversions Section -->
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Price Conversions</h2>
+          </div>
+
+          <div class="price-grid">
+            <div class="price-item">
+              <span class="price-name">Chi (ជី)</span>
+              <span class="price-value">{{ memoizedChiPrice }}</span>
+              <span class="price-unit">3.75g</span>
             </div>
             
-            <div class="stat-card">
-              <div class="stat-label">Troy Oz</div>
-              <div v-if="loading" class="skeleton-stat"></div>
-              <div v-else class="stat-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
-              <div class="stat-sublabel">31.1g</div>
+            <div class="price-item">
+              <span class="price-name">Gram</span>
+              <span class="price-value">{{ memoizedGramPrice }}</span>
+              <span class="price-unit">1g</span>
             </div>
 
-            <div class="stat-card">
-              <div class="stat-label">Gram</div>
-              <div v-if="loading" class="skeleton-stat"></div>
-              <div v-else class="stat-value">{{ memoizedGramPrice }}</div>
-              <div class="stat-sublabel">1g</div>
+            <div class="price-item">
+              <span class="price-name">Damlung (ដំឡឹង)</span>
+              <span class="price-value">{{ memoizedDamlungPrice }}</span>
+              <span class="price-unit">37.5g</span>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <!-- Custom Price Input -->
-          <section class="custom-price-section">
-            <div v-if="!isManualMode" class="custom-price-prompt" @click="enableManualMode">
-              <svg class="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              <span>Set Custom Price</span>
-            </div>
+        <!-- Quick Calculator Section -->
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Quick Calculator</h2>
+          </div>
 
-            <div v-else class="custom-price-editor">
-              <div class="editor-header">
-                <span class="editor-label">Custom Price (USD)</span>
-                <button @click="clearManualPrice" class="btn-close">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
-              </div>
-              
-              <div class="editor-input">
-                <span class="currency-symbol">$</span>
-                <input 
-                  v-model.number="manualPrice" 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  class="price-input-large"
-                  placeholder="4242.00"
-                  @input="onManualPriceInput"
-                  ref="manualInput"
-                >
-              </div>
-
-              <div v-if="manualPrice > 0" class="conversions-grid">
-                <div class="conversion">
-                  <span class="conversion-label">ដំឡឹង</span>
-                  <span class="conversion-value">{{ cachedDamlungFromManual }}</span>
-                </div>
-                <div class="conversion">
-                  <span class="conversion-label">ជី</span>
-                  <span class="conversion-value">{{ cachedChiFromManual }}</span>
-                </div>
-                <div class="conversion">
-                  <span class="conversion-label">Gram</span>
-                  <span class="conversion-value">{{ cachedGramFromManual }}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Calculator -->
-          <section class="calculator-section">
-            <h3 class="section-title-small">💰 Quick Calculator</h3>
-            <div class="calc-controls">
+          <div class="card">
+            <div class="form-row">
               <input 
                 v-model.number="calculatorAmount" 
                 type="number" 
                 min="0" 
                 step="0.1"
-                class="calc-input"
-                placeholder="Enter amount"
+                placeholder="Amount"
+                class="input"
+                inputmode="decimal"
               >
-              <select v-model="calculatorUnit" class="calc-select">
-                <option value="damlung">ដំឡឹង</option>
-                <option value="chi">ជី</option>
-                <option value="oz">Troy Oz</option>
+              <select v-model="calculatorUnit" class="select">
+                <option value="chi">Chi</option>
                 <option value="gram">Gram</option>
+                <option value="damlung">Damlung</option>
+                <option value="oz">Troy Oz</option>
               </select>
             </div>
-            
-            <div v-if="calculatorAmount > 0" class="calc-result">
-              <div class="calc-label">Estimated Value</div>
-              <div class="calc-value">{{ memoizedCalculatorResult }}</div>
+            <div v-if="calculatorAmount > 0" class="result">
+              Value: <strong>{{ memoizedCalculatorResult }}</strong>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <!-- Refresh Button -->
-          <section class="action-section">
-            <button 
-              @click="handleRefresh" 
-              :disabled="loading || isRefreshDisabled" 
-              class="btn-primary btn-large"
-            >
-              <svg class="icon" :class="{ 'spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-              </svg>
-              {{ refreshButtonText }}
-            </button>
-          </section>
+        <!-- Portfolio Summary Section -->
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Portfolio Summary</h2>
+          </div>
 
-          <!-- Status Footer -->
-          <section class="status-footer">
-            <div class="status-info">
-              <span class="status-dot" :class="statusClass"></span>
-              <span class="status-text">{{ lastUpdated }}</span>
-            </div>
-            <div class="quota-info">
-              API: {{ apiQuota.dailyCalls }}/{{ apiQuota.dailyLimit }} • {{ apiQuota.totalCalls }}/{{ apiQuota.monthlyLimit }}
-            </div>
-          </section>
-
-          <!-- API Error -->
-          <section v-if="!loading && currentPrice === 0" class="error-section">
-            <div class="error-message">⚠️ Unable to fetch prices</div>
-            <button @click="tryAlternativeApi" class="btn-secondary">Try Alternative API</button>
-          </section>
-        </div>
-
-        <!-- TAB 2: PORTFOLIO -->
-        <div v-show="activeTab === 'portfolio'" class="tab-content">
-          <section v-if="purchases.length > 0" class="portfolio-section">
-            <div v-if="manualGoldPrice" class="custom-price-badge">
-              Using custom price: <strong>${{ manualGoldPrice.toFixed(2) }}/oz</strong>
-            </div>
-            
-            <div class="portfolio-cards">
-              <div class="portfolio-card invested">
-                <div class="portfolio-label">💰 Total Invested</div>
-                <div class="portfolio-value">{{ memoizedTotalInvested }}</div>
-              </div>
-
-              <div class="portfolio-card current">
-                <div class="portfolio-label">📈 Current Value</div>
-                <div class="portfolio-value">{{ memoizedCurrentValue }}</div>
-              </div>
-
-              <div class="portfolio-card" :class="memoizedProfitLossClass">
-                <div class="portfolio-label">{{ memoizedProfitLoss >= 0 ? '✅ Profit' : '❌ Loss' }}</div>
-                <div class="portfolio-value-large">{{ memoizedProfitLossDisplay }}</div>
-                <div class="portfolio-change">{{ memoizedProfitChangePercent }}</div>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="purchases.length === 0" class="empty-state">
-            <div class="empty-icon">📊</div>
-            <h3>No Purchases Yet</h3>
-            <p>Start tracking your gold by adding your first purchase</p>
-            <button @click="switchToAddPurchase" class="btn-primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Add First Purchase
-            </button>
-          </section>
-        </div>
-
-        <!-- TAB 3: HISTORY -->
-        <div v-show="activeTab === 'history'" class="tab-content">
-          <section v-if="purchases.length > 0" class="history-section">
-            <div class="history-header">
-              <h2 class="section-title">Purchase History</h2>
-              <button @click="toggleHistoryExpanded" class="btn-toggle">
-                <svg v-if="!historyExpanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="18 15 12 9 6 15"/>
-                </svg>
-              </button>
+          <div v-if="purchases.length > 0" class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">Total Invested</span>
+              <span class="stat-amount">{{ memoizedTotalInvested }}</span>
             </div>
 
-            <div v-if="historyExpanded" class="history-grid">
-              <div v-for="purchase in memoizedSortedPurchases" :key="purchase.id" class="history-card" :class="{ 'editing': editingId === purchase.id }">
-                
-                <!-- Card Header with Edit/Delete -->
-                <div class="card-header">
-                  <span class="card-date">📅 {{ formatDate(purchase.date) }}</span>
-                  <div class="card-actions">
-                    <button v-if="editingId !== purchase.id" @click="startEdit(purchase)" class="btn-action btn-edit" title="Edit">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                    <button @click="deletePurchase(purchase.id)" class="btn-action btn-delete" title="Delete">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Editable View -->
-                <div v-if="editingId === purchase.id" class="card-edit-mode">
-                  <div class="edit-field">
-                    <label class="edit-label">Amount (ជី)</label>
-                    <input v-model.number="editingPurchase.amount" type="number" step="0.01" min="0" class="edit-input">
-                  </div>
-                  <div class="edit-field">
-                    <label class="edit-label">Price Paid (USD)</label>
-                    <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" min="0" class="edit-input">
-                  </div>
-                  <div class="edit-field">
-                    <label class="edit-label">Date</label>
-                    <input v-model="editingPurchase.date" type="date" class="edit-input">
-                  </div>
-                  <div class="edit-actions">
-                    <button @click="saveEdit(purchase.id)" class="btn-primary btn-small">Save</button>
-                    <button @click="cancelEdit" class="btn-secondary btn-small">Cancel</button>
-                  </div>
-                </div>
-
-                <!-- Normal View -->
-                <div v-else class="card-view">
-                  <!-- Amount -->
-                  <div class="card-amount">
-                    <span class="amount-label">Gold Purchased</span>
-                    <span class="amount-value">{{ purchase.amount }} <strong>ជី</strong></span>
-                  </div>
-
-                  <!-- Prices -->
-                  <div class="card-prices-compare">
-                    <div>
-                      <div class="price-label">Bought at</div>
-                      <div class="price-value">{{ getPricePerChiCached(purchase) }}</div>
-                    </div>
-                    <div class="arrow">→</div>
-                    <div>
-                      <div class="price-label">Worth today</div>
-                      <div class="price-value">{{ getWorthTodayPerChiCached(purchase) }}</div>
-                    </div>
-                  </div>
-
-                  <!-- Result -->
-                  <div class="card-result" :class="getProfitClassCached(purchase.id)">
-                    <span class="result-emoji">{{ getProfitValueCached(purchase.id) >= 0 ? '📈' : '📉' }}</span>
-                    <div class="result-info">
-                      <span class="result-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Profit' : 'Loss' }}</span>
-                      <span class="result-value">{{ getProfitDisplayCached(purchase.id) }}</span>
-                    </div>
-                    <span class="result-percent">{{ getProfitPercentCached(purchase.id) }}</span>
-                  </div>
-                </div>
-              </div>
+            <div class="stat-box">
+              <span class="stat-label">Current Value</span>
+              <span class="stat-amount">{{ memoizedCurrentValue }}</span>
             </div>
-          </section>
 
-          <section v-if="purchases.length === 0" class="empty-state">
-            <div class="empty-icon">📜</div>
-            <h3>No Purchase History</h3>
-            <p>Your purchase history will appear here</p>
-          </section>
-        </div>
+            <div class="stat-box" :class="memoizedProfitLoss >= 0 ? 'positive' : 'negative'">
+              <span class="stat-label">{{ memoizedProfitLoss >= 0 ? 'Profit' : 'Loss' }}</span>
+              <span class="stat-amount">{{ memoizedProfitLossDisplay }}</span>
+              <span class="stat-percent">{{ memoizedProfitChangePercent }}</span>
+            </div>
+          </div>
 
-        <!-- TAB 4: ADD PURCHASE -->
-        <div v-show="activeTab === 'addPurchase'" class="tab-content">
-          <section class="add-purchase-form">
-            <h2 class="form-title">Add Gold Purchase</h2>
+          <div v-else class="empty-message">
+            <p>No purchases yet. Add your first purchase to get started.</p>
+          </div>
+        </section>
 
+        <!-- Add Purchase Section -->
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Add Purchase</h2>
+          </div>
+
+          <div class="card">
             <div class="form-group">
-              <label class="form-label">Amount (ជី)</label>
+              <label class="label">Amount (Chi)</label>
               <input 
                 v-model.number="newPurchase.amount" 
                 type="number" 
                 step="0.01"
                 min="0"
-                class="form-input"
+                class="input"
                 placeholder="e.g., 2"
+                inputmode="decimal"
               >
             </div>
 
             <div class="form-group">
-              <label class="form-label">Price Paid (USD)</label>
-              <div class="form-input-currency">
-                <span class="currency-prefix">$</span>
-                <input 
-                  v-model.number="newPurchase.totalPaid" 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g., 1020.00"
-                >
-              </div>
+              <label class="label">Price Paid (USD)</label>
+              <input 
+                v-model.number="newPurchase.totalPaid" 
+                type="number" 
+                step="0.01"
+                min="0"
+                class="input"
+                placeholder="e.g., 1020.00"
+                inputmode="decimal"
+              >
             </div>
 
             <div class="form-group">
-              <label class="form-label">Purchase Date</label>
+              <label class="label">Date</label>
               <input 
                 v-model="newPurchase.date" 
                 type="date" 
-                class="form-input"
+                class="input"
                 :max="getCurrentDate()"
               >
             </div>
 
-            <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="form-preview">
+            <div v-if="newPurchase.amount > 0 && newPurchase.totalPaid > 0" class="preview">
               <div class="preview-row">
-                <span>Amount:</span>
-                <strong>{{ newPurchase.amount }} ជី</strong>
-              </div>
-              <div class="preview-row">
-                <span>Price per ជី:</span>
+                <span>Price per Chi:</span>
                 <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid / newPurchase.amount) }}</strong>
               </div>
-              <div class="preview-row total">
+              <div class="preview-row">
                 <span>Total:</span>
                 <strong>{{ formatCurrencyDisplay(newPurchase.totalPaid) }}</strong>
               </div>
             </div>
 
-            <div class="form-actions">
-              <button @click="addPurchase" class="btn-primary btn-large" :disabled="!canAddPurchase()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                Save Purchase
-              </button>
-              <button @click="activeTab = 'history'" class="btn-secondary btn-large">
-                Cancel
-              </button>
+            <button 
+              @click="addPurchase" 
+              :disabled="!canAddPurchase()"
+              class="btn btn-primary btn-block"
+            >
+              Save Purchase
+            </button>
+          </div>
+        </section>
+
+        <!-- Purchase History Section -->
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Purchase History</h2>
+            <button @click="historyExpanded = !historyExpanded" class="btn-icon">
+              {{ historyExpanded ? '▼' : '▶' }}
+            </button>
+          </div>
+
+          <div v-if="historyExpanded" class="history-list">
+            <div v-if="purchases.length === 0" class="empty-message">
+              <p>No purchases recorded.</p>
             </div>
-          </section>
-        </div>
+
+            <div 
+              v-for="purchase in memoizedSortedPurchases" 
+              :key="purchase.id" 
+              class="history-item"
+              :class="{ editing: editingId === purchase.id }"
+            >
+              <!-- View Mode -->
+              <div v-if="editingId !== purchase.id" class="item-content">
+                <div class="item-main">
+                  <span class="item-date">{{ formatDate(purchase.date) }}</span>
+                  <span class="item-amount">{{ purchase.amount }} Chi</span>
+                </div>
+                <div class="item-price">
+                  <span class="label">Bought:</span>
+                  <span>{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount) }}/Chi</span>
+                </div>
+                <div class="item-current">
+                  <span class="label">Today:</span>
+                  <span>{{ getWorthTodayPerChiCached(purchase) }}/Chi</span>
+                </div>
+                <div class="item-profit" :class="getProfitClassCached(purchase.id)">
+                  {{ getProfitValueCached(purchase.id) >= 0 ? '+' : '' }}{{ getProfitDisplayCached(purchase.id) }}
+                  <span class="percent">({{ getProfitPercentCached(purchase.id) }})</span>
+                </div>
+              </div>
+
+              <!-- Edit Mode -->
+              <div v-else class="item-edit">
+                <input 
+                  v-model.number="editingPurchase.amount" 
+                  type="number" 
+                  step="0.01" 
+                  class="input"
+                  placeholder="Amount"
+                >
+                <input 
+                  v-model.number="editingPurchase.totalPaid" 
+                  type="number" 
+                  step="0.01" 
+                  class="input"
+                  placeholder="Price Paid"
+                >
+                <input 
+                  v-model="editingPurchase.date" 
+                  type="date" 
+                  class="input"
+                >
+                <div class="edit-actions">
+                  <button @click="saveEdit(purchase.id)" class="btn btn-small btn-primary">Save</button>
+                  <button @click="cancelEdit" class="btn btn-small btn-secondary">Cancel</button>
+                </div>
+              </div>
+
+              <!-- Item Actions -->
+              <div v-if="editingId !== purchase.id" class="item-actions">
+                <button @click="startEdit(purchase)" class="btn-action">✎</button>
+                <button @click="deletePurchase(purchase.id)" class="btn-action btn-danger">✕</button>
+              </div>
+            </div>
+          </div>
+        </section>
 
       </div>
     </main>
@@ -394,48 +305,40 @@ export default {
   
   head() {
     return {
-      title: 'តម្លៃមាស - Gold Tracker',
+      title: 'Gold Tracker',
       meta: [
-        { hid: 'description', name: 'description', content: 'Gold price tracker for Cambodia' }
+        { hid: 'description', name: 'description', content: 'Simple gold price tracker' },
+        { hid: 'viewport', name: 'viewport', content: 'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no' }
       ]
     }
   },
 
   data() {
     return {
-      // Tab system
-      activeTab: 'prices',
-      tabs: [
-        { id: 'prices', label: 'Prices', icon: '💲' },
-        { id: 'portfolio', label: 'Portfolio', icon: '📊' },
-        { id: 'history', label: 'History', icon: '📜' },
-        { id: 'addPurchase', label: 'Add', icon: '➕' }
-      ],
-
-      // Constants (pre-calculated for speed)
+      // Constants
       TROY_OUNCE_TO_GRAM: 31.1035,
-      DAMLUNG_TO_GRAM: 37.5,
-      CHI_TO_GRAM: 3.75,
       CHI_TO_OZ: 3.75 / 31.1035,
       GRAM_TO_OZ: 1 / 31.1035,
       DAMLUNG_TO_OZ: 37.5 / 31.1035,
 
-      apiKey: '03cc06614a49b9d29f1d4cdb2250467d',
+      // API
+      apiKey: 'goldapi-3yrz5zhtl5zcyqg4-io',
       apiBaseUrl: 'https://www.goldapi.io/api',
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
+      // Price state
       goldPrice: 0,
       loading: true,
       lastUpdated: 'Loading...',
       refreshCooldown: 0,
-      
       isManualMode: false,
       manualPrice: null,
-      manualGoldPrice: null,
       
+      // Calculator
       calculatorAmount: 1,
-      calculatorUnit: 'damlung',
+      calculatorUnit: 'chi',
       
+      // Purchases
       purchases: [],
       historyExpanded: true,
       newPurchase: {
@@ -448,54 +351,36 @@ export default {
       editingId: null,
       editingPurchase: null,
       
+      // API quota
       apiQuota: {
         dailyCalls: 0,
-        totalCalls: 0,
         lastCallDate: null,
-        dailyLimit: 10,
-        monthlyLimit: 100
+        dailyLimit: 10
       },
       
-      cache: {
-        gold: { data: null, timestamp: null, maxAgeHours: 24 }
-      },
+      // Cache
+      cache: { gold: { data: null, timestamp: null } },
+      fallbackPrice: 4000,
 
-      fallbackPrices: {
-        gold: 4000
-      },
-
-      manualPriceUpdateTimeout: null,
+      // Performance
       lastCalculatedPrice: null,
-      portfolioCache: {
-        totalInvested: null,
-        currentValue: null,
-        profitLoss: null,
-        timestamp: null
-      },
-      purchaseDetailCache: new Map(),
-      formattingCache: new Map()
+      portfolioCache: { invested: null, current: null, profit: null },
+      purchaseCache: new Map(),
+      formatCache: new Map()
     };
   },
   
   computed: {
     currentPrice() {
-      if (this.isManualMode && this.manualPrice) {
-        return this.manualPrice;
-      }
+      if (this.isManualMode && this.manualPrice) return this.manualPrice;
       return this.goldPrice;
-    },
-
-    statusClass() {
-      if (this.loading) return 'loading';
-      if (this.currentPrice > 0) return 'success';
-      return 'error';
     },
 
     refreshButtonText() {
       if (this.loading) return 'Loading...';
       if (this.refreshCooldown > 0) return `Wait ${this.refreshCooldown}s`;
-      if (this.isRefreshDisabled) return 'Limit Reached';
-      return 'Refresh Prices';
+      if (this.isRefreshDisabled) return 'Daily Limit';
+      return 'Refresh Price';
     },
 
     isRefreshDisabled() {
@@ -503,13 +388,7 @@ export default {
     },
 
     memoizedSortedPurchases() {
-      return [...this.purchases].sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-      );
-    },
-
-    memoizedDamlungPrice() {
-      return this.formatCurrencyDisplay(this.currentPrice * this.DAMLUNG_TO_OZ);
+      return [...this.purchases].sort((a, b) => new Date(b.date) - new Date(a.date));
     },
 
     memoizedChiPrice() {
@@ -520,181 +399,127 @@ export default {
       return this.formatCurrencyDisplay(this.currentPrice * this.GRAM_TO_OZ);
     },
 
-    cachedDamlungFromManual() {
-      if (!this.manualPrice) return '$0.00';
-      return this.formatCurrencyDisplay(this.manualPrice * this.DAMLUNG_TO_OZ);
-    },
-
-    cachedChiFromManual() {
-      if (!this.manualPrice) return '$0.00';
-      return this.formatCurrencyDisplay(this.manualPrice * this.CHI_TO_OZ);
-    },
-
-    cachedGramFromManual() {
-      if (!this.manualPrice) return '$0.00';
-      return this.formatCurrencyDisplay(this.manualPrice * this.GRAM_TO_OZ);
+    memoizedDamlungPrice() {
+      return this.formatCurrencyDisplay(this.currentPrice * this.DAMLUNG_TO_OZ);
     },
 
     memoizedTotalInvested() {
-      if (this.portfolioCache.totalInvested !== null && 
-          this.lastCalculatedPrice === this.currentPrice) {
-        return this.portfolioCache.totalInvested;
+      if (this.portfolioCache.invested !== null && this.lastCalculatedPrice === this.currentPrice) {
+        return this.portfolioCache.invested;
       }
-
       const total = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      const formatted = this.formatCurrencyDisplay(total);
-      
-      this.portfolioCache.totalInvested = formatted;
+      this.portfolioCache.invested = this.formatCurrencyDisplay(total);
       this.lastCalculatedPrice = this.currentPrice;
-      return formatted;
+      return this.portfolioCache.invested;
     },
 
     memoizedCurrentValue() {
-      if (this.portfolioCache.currentValue !== null && 
-          this.lastCalculatedPrice === this.currentPrice) {
-        return this.portfolioCache.currentValue;
+      if (this.portfolioCache.current !== null && this.lastCalculatedPrice === this.currentPrice) {
+        return this.portfolioCache.current;
       }
-
       let sum = 0;
-      for (let i = 0; i < this.purchases.length; i++) {
-        const p = this.purchases[i];
+      for (let p of this.purchases) {
         sum += p.amount * this.CHI_TO_OZ * this.currentPrice;
       }
-      
-      const formatted = this.formatCurrencyDisplay(sum);
-      this.portfolioCache.currentValue = formatted;
-      return formatted;
+      this.portfolioCache.current = this.formatCurrencyDisplay(sum);
+      return this.portfolioCache.current;
     },
 
     memoizedProfitLoss() {
-      if (this.portfolioCache.profitLoss !== null && 
-          this.lastCalculatedPrice === this.currentPrice) {
-        return this.portfolioCache.profitLoss;
+      if (this.portfolioCache.profit !== null && this.lastCalculatedPrice === this.currentPrice) {
+        return this.portfolioCache.profit;
       }
-
-      let currentSum = 0;
-      for (let i = 0; i < this.purchases.length; i++) {
-        const p = this.purchases[i];
-        currentSum += p.amount * this.CHI_TO_OZ * this.currentPrice;
+      let current = 0;
+      for (let p of this.purchases) {
+        current += p.amount * this.CHI_TO_OZ * this.currentPrice;
       }
-      
-      const investedSum = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      const profit = currentSum - investedSum;
-      
-      this.portfolioCache.profitLoss = profit;
-      return profit;
-    },
-
-    memoizedProfitLossClass() {
-      return this.memoizedProfitLoss >= 0 ? 'profit' : 'loss';
+      const invested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      this.portfolioCache.profit = current - invested;
+      return this.portfolioCache.profit;
     },
 
     memoizedProfitLossDisplay() {
-      const value = Math.abs(this.memoizedProfitLoss);
-      return this.formatCurrencyDisplay(value);
+      return this.formatCurrencyDisplay(Math.abs(this.memoizedProfitLoss));
     },
 
     memoizedProfitChangePercent() {
-      const investedSum = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      if (investedSum === 0) return '0.00%';
-      const percent = (Math.abs(this.memoizedProfitLoss) / investedSum) * 100;
+      const invested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      if (invested === 0) return '0.00%';
+      const percent = (Math.abs(this.memoizedProfitLoss) / invested) * 100;
       const sign = this.memoizedProfitLoss >= 0 ? '+' : '-';
       return `${sign}${percent.toFixed(2)}%`;
     },
 
     memoizedCalculatorResult() {
       if (!this.calculatorAmount || !this.currentPrice) return '$0.00';
-      
       let ozAmount;
       switch (this.calculatorUnit) {
-        case 'chi':
-          ozAmount = this.calculatorAmount * this.CHI_TO_OZ;
-          break;
-        case 'gram':
-          ozAmount = this.calculatorAmount * this.GRAM_TO_OZ;
-          break;
-        case 'damlung':
-          ozAmount = this.calculatorAmount * this.DAMLUNG_TO_OZ;
-          break;
-        default:
-          ozAmount = this.calculatorAmount;
+        case 'chi': ozAmount = this.calculatorAmount * this.CHI_TO_OZ; break;
+        case 'gram': ozAmount = this.calculatorAmount * this.GRAM_TO_OZ; break;
+        case 'damlung': ozAmount = this.calculatorAmount * this.DAMLUNG_TO_OZ; break;
+        default: ozAmount = this.calculatorAmount;
       }
-      
       return this.formatCurrencyDisplay(ozAmount * this.currentPrice);
     }
   },
 
   methods: {
-    switchToAddPurchase() {
-      this.activeTab = 'addPurchase';
+    toggleCustomPriceMode() {
+      if (this.isManualMode) {
+        this.clearManualPrice();
+      } else {
+        this.enableManualMode();
+      }
     },
 
     formatCurrencyDisplay(value) {
       if (!value) return '$0.00';
-      
       const rounded = Math.round(value * 100) / 100;
-      const cacheKey = rounded.toFixed(2);
-      
-      if (this.formattingCache.has(cacheKey)) {
-        return this.formattingCache.get(cacheKey);
+      const key = rounded.toFixed(2);
+      if (this.formatCache.has(key)) return this.formatCache.get(key);
+      const formatted = `$${rounded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      this.formatCache.set(key, formatted);
+      if (this.formatCache.size > 100) {
+        const first = this.formatCache.keys().next().value;
+        this.formatCache.delete(first);
       }
-
-      const formatted = `$${rounded.toLocaleString(undefined, { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-      })}`;
-      
-      this.formattingCache.set(cacheKey, formatted);
-
-      if (this.formattingCache.size > 200) {
-        const firstKey = this.formattingCache.keys().next().value;
-        this.formattingCache.delete(firstKey);
-      }
-
       return formatted;
     },
 
     getPricePerChiCached(purchase) {
-      const key = `ppchi-${purchase.id}`;
-      if (this.purchaseDetailCache.has(key)) {
-        return this.purchaseDetailCache.get(key);
-      }
+      const key = `price-${purchase.id}`;
+      if (this.purchaseCache.has(key)) return this.purchaseCache.get(key);
       const result = this.formatCurrencyDisplay(purchase.totalPaid / purchase.amount);
-      this.purchaseDetailCache.set(key, result);
+      this.purchaseCache.set(key, result);
       return result;
     },
 
     getWorthTodayPerChiCached(purchase) {
       const key = `worth-${purchase.id}-${this.currentPrice}`;
-      if (this.purchaseDetailCache.has(key)) {
-        return this.purchaseDetailCache.get(key);
-      }
+      if (this.purchaseCache.has(key)) return this.purchaseCache.get(key);
       const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
       const currentValue = ozEquivalent * this.currentPrice;
       const pricePerChi = currentValue / purchase.amount;
       const result = this.formatCurrencyDisplay(pricePerChi);
-      this.purchaseDetailCache.set(key, result);
+      this.purchaseCache.set(key, result);
       return result;
     },
 
     getProfitValueCached(purchaseId) {
       const purchase = this.purchases.find(p => p.id === purchaseId);
       if (!purchase) return 0;
-      
       const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
       const currentValue = ozEquivalent * this.currentPrice;
       return currentValue - purchase.totalPaid;
     },
 
     getProfitDisplayCached(purchaseId) {
-      const profit = this.getProfitValueCached(purchaseId);
-      return this.formatCurrencyDisplay(Math.abs(profit));
+      return this.formatCurrencyDisplay(Math.abs(this.getProfitValueCached(purchaseId)));
     },
 
     getProfitPercentCached(purchaseId) {
       const purchase = this.purchases.find(p => p.id === purchaseId);
       if (!purchase) return '0.00%';
-      
       const profit = this.getProfitValueCached(purchaseId);
       const percentage = (profit / purchase.totalPaid) * 100;
       const sign = profit >= 0 ? '+' : '-';
@@ -702,29 +527,21 @@ export default {
     },
 
     getProfitClassCached(purchaseId) {
-      return this.getProfitValueCached(purchaseId) >= 0 ? 'profit' : 'loss';
+      return this.getProfitValueCached(purchaseId) >= 0 ? 'positive' : 'negative';
     },
 
     startEdit(purchase) {
       this.editingId = purchase.id;
-      this.editingPurchase = {
-        amount: purchase.amount,
-        totalPaid: purchase.totalPaid,
-        date: purchase.date
-      };
+      this.editingPurchase = { ...purchase };
     },
 
     saveEdit(purchaseId) {
-      const purchaseIndex = this.purchases.findIndex(p => p.id === purchaseId);
-      if (purchaseIndex !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
-        this.purchases[purchaseIndex] = {
-          ...this.purchases[purchaseIndex],
-          ...this.editingPurchase
-        };
-        this.clearCaches();
+      const index = this.purchases.findIndex(p => p.id === purchaseId);
+      if (index !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
+        this.purchases[index] = { ...this.purchases[index], ...this.editingPurchase };
         this.savePurchases();
+        this.clearCaches();
         this.editingId = null;
-        this.editingPurchase = null;
       }
     },
 
@@ -736,81 +553,26 @@ export default {
     enableManualMode() {
       this.isManualMode = true;
       this.manualPrice = this.currentPrice || 4242;
-      this.manualGoldPrice = this.manualPrice;
-      
-      if (process.client) {
-        localStorage.setItem('isManualMode', true);
-        localStorage.setItem('manualPrice', this.manualPrice);
-        
-        this.$nextTick(() => {
-          if (this.$refs.manualInput) {
-            this.$refs.manualInput.focus();
-            this.$refs.manualInput.select();
-          }
-        });
-      }
-    },
-
-    onManualPriceInput() {
-      clearTimeout(this.manualPriceUpdateTimeout);
-      this.manualPriceUpdateTimeout = setTimeout(() => {
-        this.updateManualPrice();
-      }, 500);
-    },
-
-    updateManualPrice() {
-      if (this.manualPrice && this.manualPrice > 0 && process.client) {
-        this.manualGoldPrice = this.manualPrice;
-        localStorage.setItem('manualGoldPrice', this.manualGoldPrice);
-        this.clearCaches();
-      }
     },
 
     clearManualPrice() {
       this.isManualMode = false;
       this.manualPrice = null;
-      this.manualGoldPrice = null;
-      
-      if (process.client) {
-        localStorage.removeItem('manualPrice');
-        localStorage.removeItem('isManualMode');
-        localStorage.removeItem('manualGoldPrice');
-      }
-
+      if (process.client) localStorage.removeItem('manualPrice');
       this.clearCaches();
-
-      const cached = this.getCachedPrice();
-      if (!cached) {
-        this.fetchMetalPrice(false);
-      }
     },
 
     clearCaches() {
-      this.portfolioCache = {
-        totalInvested: null,
-        currentValue: null,
-        profitLoss: null,
-        timestamp: null
-      };
-      this.purchaseDetailCache.clear();
+      this.portfolioCache = { invested: null, current: null, profit: null };
+      this.purchaseCache.clear();
       this.lastCalculatedPrice = null;
-    },
-
-    getCachedPrice() {
-      const metalCache = this.cache.gold;
-      const cacheAgeHours = metalCache.timestamp ? 
-        (new Date() - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
-      
-      return metalCache.data && cacheAgeHours < 24;
     },
 
     startRefreshCooldown() {
       this.refreshCooldown = 3;
       const timer = setInterval(() => {
         this.refreshCooldown--;
-        if (this.refreshCooldown <= 0) {
-          clearInterval(timer);
-        }
+        if (this.refreshCooldown <= 0) clearInterval(timer);
       }, 1000);
     },
 
@@ -823,33 +585,18 @@ export default {
     async tryAlternativeApi() {
       try {
         const response = await fetch(this.alternativeApiUrl);
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-        
+        if (!response.ok) throw new Error('Failed');
         const data = await response.json();
-        
         if (data && typeof data.gold === 'number') {
           this.goldPrice = data.gold;
-          const now = new Date();
-          this.lastUpdated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          
-          this.cache.gold = {
-            data: { price: data.gold },
-            timestamp: now.toISOString(),
-            maxAgeHours: 24
-          };
-          
-          if (process.client) {
-            localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
-          }
-          
-          this.clearCaches();
+          this.lastUpdated = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          if (process.client) localStorage.setItem('goldPrice', this.goldPrice);
           return true;
         }
-        return false;
-      } catch (error) {
-        console.error('Alternative API failed:', error);
-        return false;
+      } catch (e) {
+        console.error('Alternative API failed');
       }
+      return false;
     },
 
     getCurrentDate() {
@@ -862,56 +609,36 @@ export default {
 
     addPurchase() {
       if (!this.canAddPurchase()) return;
-
-      const purchase = {
+      this.purchases.push({
         id: Date.now(),
         amount: this.newPurchase.amount,
         totalPaid: this.newPurchase.totalPaid,
         date: this.newPurchase.date
-      };
-
-      this.purchases.push(purchase);
-      this.clearCaches();
+      });
       this.savePurchases();
-      
-      this.newPurchase = {
-        amount: null,
-        totalPaid: null,
-        date: new Date().toISOString().split('T')[0]
-      };
-      
-      this.activeTab = 'history';
+      this.clearCaches();
+      this.newPurchase = { amount: null, totalPaid: null, date: new Date().toISOString().split('T')[0] };
     },
 
     deletePurchase(purchaseId) {
       if (confirm('Delete this purchase?')) {
         this.purchases = this.purchases.filter(p => p.id !== purchaseId);
-        this.clearCaches();
         this.savePurchases();
-      }
-    },
-
-    toggleHistoryExpanded() {
-      this.historyExpanded = !this.historyExpanded;
-      if (process.client) {
-        localStorage.setItem('historyExpanded', this.historyExpanded);
+        this.clearCaches();
       }
     },
 
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     },
 
     savePurchases() {
-      if (process.client) {
-        localStorage.setItem('purchases', JSON.stringify(this.purchases));
-      }
+      if (process.client) localStorage.setItem('purchases', JSON.stringify(this.purchases));
     },
 
     loadPurchases() {
       if (!process.client) return;
-      
       const saved = localStorage.getItem('purchases');
       if (saved) {
         try {
@@ -920,25 +647,16 @@ export default {
           console.error('Failed to load purchases');
         }
       }
-
-      const savedExpanded = localStorage.getItem('historyExpanded');
-      if (savedExpanded !== null) {
-        this.historyExpanded = JSON.parse(savedExpanded);
-      }
     },
 
     async fetchMetalPrice(userRequested = false) {
       const now = new Date();
-      const metalCache = this.cache.gold;
+      const cached = this.cache.gold;
+      const cacheAge = cached.timestamp ? (now - new Date(cached.timestamp)) / (1000 * 60 * 60) : 999;
       
-      const cacheAgeHours = metalCache.timestamp ? 
-        (now - new Date(metalCache.timestamp)) / (1000 * 60 * 60) : 999;
-      
-      if (metalCache.data && cacheAgeHours < metalCache.maxAgeHours) {
-        this.goldPrice = metalCache.data.price;
-        const hours = Math.floor(cacheAgeHours);
-        const minutes = Math.floor((cacheAgeHours - hours) * 60);
-        this.lastUpdated = hours > 0 ? `${hours}h ago` : `${minutes}m ago`;
+      if (cached.data && cacheAge < 24) {
+        this.goldPrice = cached.data.price;
+        this.lastUpdated = cacheAge > 1 ? `${Math.floor(cacheAge)}h ago` : 'now';
         this.loading = false;
         return;
       }
@@ -950,142 +668,84 @@ export default {
       }
 
       if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit) {
-        if (!userRequested) {
-          if (metalCache.data) {
-            this.goldPrice = metalCache.data.price;
-            this.lastUpdated = 'Using cached (limit reached)';
-          } else {
-            this.goldPrice = this.fallbackPrices.gold;
-            this.lastUpdated = 'Estimated (limit reached)';
-          }
-          this.loading = false;
-          return;
-        } else {
-          this.lastUpdated = 'Daily limit reached';
-          this.loading = false;
-          return;
+        if (!userRequested && cached.data) {
+          this.goldPrice = cached.data.price;
+          this.lastUpdated = 'Cached';
+        } else if (!userRequested) {
+          this.goldPrice = this.fallbackPrice;
+          this.lastUpdated = 'Offline';
         }
+        this.loading = false;
+        return;
       }
 
       this.loading = true;
-      
       try {
-        const endpoint = `${this.apiBaseUrl}/XAU/USD`;
-        const response = await fetch(endpoint, {
-          method: 'GET',
-          headers: {
+        // Try primary API first
+        const response = await fetch(`${this.apiBaseUrl}/XAU/USD`, {
+          headers: { 
             'x-access-token': this.apiKey,
             'Content-Type': 'application/json'
-          }
+          },
+          method: 'GET'
         });
 
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-        const data = await response.json();
-        
-        if (!data || typeof data.price !== 'number') {
-          throw new Error('Invalid data format');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && typeof data.price === 'number') {
+            this.goldPrice = data.price;
+            this.apiQuota.dailyCalls++;
+            this.cache.gold = { data, timestamp: now.toISOString() };
+            this.lastUpdated = 'now';
+            if (process.client) localStorage.setItem('goldPrice', this.goldPrice);
+            this.clearCaches();
+            this.loading = false;
+            return;
+          }
         }
-        
-        this.goldPrice = data.price;
-        this.apiQuota.dailyCalls++;
-        this.apiQuota.totalCalls++;
-        
-        this.cache.gold = {
-          data: data,
-          timestamp: now.toISOString(),
-          maxAgeHours: 24
-        };
-        
-        if (process.client) {
-          localStorage.setItem('apiQuota', JSON.stringify(this.apiQuota));
-          localStorage.setItem('goldPriceCache', JSON.stringify(this.cache.gold));
-        }
-        
-        this.lastUpdated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        this.clearCaches();
-        
+        throw new Error(`API error: ${response.status}`);
       } catch (error) {
-        console.error('API Error:', error);
-        
-        const alternativeSuccess = await this.tryAlternativeApi();
-        if (alternativeSuccess) {
-          this.loading = false;
-          return;
+        console.error('Primary API Error:', error);
+        // Try alternative API
+        const altSuccess = await this.tryAlternativeApi();
+        if (!altSuccess) {
+          if (cached.data) {
+            this.goldPrice = cached.data.price;
+            this.lastUpdated = 'Cached';
+          } else {
+            this.goldPrice = this.fallbackPrice;
+            this.lastUpdated = 'Offline';
+          }
         }
-        
-        if (metalCache.data) {
-          this.goldPrice = metalCache.data.price;
-          this.lastUpdated = 'Using cached (API error)';
-        } else {
-          this.goldPrice = this.fallbackPrices.gold;
-          this.lastUpdated = 'Estimated (API error)';
-        }
-      } finally {
         this.loading = false;
       }
     },
 
     loadSavedData() {
       if (!process.client) return false;
-
       try {
-        const savedManualMode = localStorage.getItem('isManualMode');
-        if (savedManualMode !== null) {
-          this.isManualMode = JSON.parse(savedManualMode);
-        }
-
-        const savedManualPrice = localStorage.getItem('manualPrice');
-        if (savedManualPrice) {
-          this.manualPrice = parseFloat(savedManualPrice);
-        }
-
-        const savedManualGoldPrice = localStorage.getItem('manualGoldPrice');
-        if (savedManualGoldPrice) {
-          this.manualGoldPrice = parseFloat(savedManualGoldPrice);
-        }
-
-        const savedQuota = localStorage.getItem('apiQuota');
-        if (savedQuota) {
-          this.apiQuota = { ...this.apiQuota, ...JSON.parse(savedQuota) };
-        }
+        const saved = localStorage.getItem('goldPrice');
+        if (saved) this.goldPrice = parseFloat(saved);
         
-        const savedGoldCache = localStorage.getItem('goldPriceCache');
-        if (savedGoldCache) {
-          this.cache.gold = JSON.parse(savedGoldCache);
-          const cacheAge = (new Date() - new Date(this.cache.gold.timestamp)) / (1000 * 60 * 60);
-          if (cacheAge < 24) {
-            this.goldPrice = this.cache.gold.data.price;
-          }
+        const savedManual = localStorage.getItem('manualPrice');
+        if (savedManual) {
+          this.isManualMode = true;
+          this.manualPrice = parseFloat(savedManual);
         }
 
         this.loadPurchases();
-
-        if (this.cache.gold.data) {
-          const cacheAge = (new Date() - new Date(this.cache.gold.timestamp)) / (1000 * 60 * 60);
-          if (cacheAge < 24) {
-            this.lastUpdated = `${Math.floor(cacheAge)}h ago`;
-            this.loading = false;
-            return true;
-          }
-        }
+        return !!saved;
       } catch (e) {
-        console.log('Failed to load saved data');
+        return false;
       }
-      
-      return false;
     }
   },
 
   mounted() {
-    const hasCache = this.loadSavedData();
-    if (!hasCache) {
+    const hasData = this.loadSavedData();
+    if (!hasData) {
       this.fetchMetalPrice(false);
     }
-  },
-
-  beforeDestroy() {
-    if (this.manualPriceUpdateTimeout) clearTimeout(this.manualPriceUpdateTimeout);
   }
 }
 </script>
@@ -1095,184 +755,128 @@ export default {
   box-sizing: border-box;
 }
 
-.app {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-  color: #1a1a1a;
+/* Reset */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 100%;
+  height: 100%;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
+#__nuxt, #__layout {
+  width: 100%;
+  height: 100%;
+}
+
+.app {
+  background: #fafafa;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #333;
+}
+
+/* Container */
 .container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 16px;
+  width: 100%;
+  padding: 0 12px;
+}
+
+@media (min-width: 480px) {
+  .container {
+    padding: 0 16px;
+  }
 }
 
 @media (min-width: 768px) {
   .container {
-    padding: 0 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1200px;
   }
 }
 
 /* Header */
 .header {
   background: white;
-  border-bottom: 1px solid #e8e8e8;
-  padding: 28px 0;
-  sticky: top;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.header .container {
-  display: flex;
-  align-items: center;
+  flex-shrink: 0;
 }
 
 .title {
-  font-size: 32px;
-  font-weight: 900;
   margin: 0;
-  color: #1a1a1a;
-  letter-spacing: -1px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+@media (min-width: 480px) {
+  .title {
+    font-size: 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 28px;
+  }
 }
 
 /* Main */
 .main {
-  padding: 40px 0;
+  flex: 1;
+  padding: 12px 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Hero Price */
-.hero-price {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-radius: 24px;
-  padding: 56px 40px;
-  text-align: center;
-  color: white;
-  margin-bottom: 32px;
-  box-shadow: 0 20px 60px rgba(251, 191, 36, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.hero-price::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  z-index: 0;
-}
-
-.price-label {
-  font-size: 14px;
-  font-weight: 800;
-  opacity: 0.9;
-  margin-bottom: 16px;
-  position: relative;
-  z-index: 1;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-}
-
-.price-hero {
-  font-size: 72px;
-  font-weight: 900;
-  margin-bottom: 12px;
-  position: relative;
-  z-index: 1;
-  letter-spacing: -2px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.price-sublabel {
-  font-size: 15px;
-  opacity: 0.9;
-  position: relative;
-  z-index: 1;
-  font-weight: 500;
-}
-
-.skeleton-hero {
-  height: 60px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  margin: 12px auto;
-  max-width: 250px;
-  animation: pulse 2s infinite;
-}
-
-/* TAB NAVIGATION */
-.tabs-wrapper {
-  background: white;
-  border-radius: 20px;
-  padding: 8px;
-  margin-bottom: 32px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
-.tabs-container {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-@media (max-width: 640px) {
-  .tabs-container {
-    grid-template-columns: repeat(2, 1fr);
+@media (min-width: 480px) {
+  .main {
+    padding: 16px 0;
   }
 }
 
-.tab-button {
+/* Custom Price Banner */
+.custom-price-banner {
+  background: linear-gradient(135deg, #fff3cd 0%, #fffbf0 100%);
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 14px 12px;
-  border: none;
-  border-radius: 14px;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  color: #999;
-  font-weight: 600;
-  font-size: 13px;
+  gap: 10px;
+  animation: slideDown 0.3s ease-out;
+  flex-wrap: wrap;
 }
 
-.tab-button:hover {
-  background: #f5f5f5;
-  color: #666;
+@media (min-width: 480px) {
+  .custom-price-banner {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+    gap: 12px;
+  }
 }
 
-.tab-button.active {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: white;
-  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.25);
-}
-
-.tab-icon {
-  font-size: 24px;
-  display: block;
-}
-
-.tab-label {
-  display: block;
-  text-align: center;
-  white-space: nowrap;
-}
-
-/* TAB CONTENT */
-.tab-content {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
+@keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
@@ -1280,962 +884,962 @@ export default {
   }
 }
 
-/* Empty State */
-.empty-state {
-  background: white;
-  border-radius: 20px;
-  padding: 60px 40px;
-  text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-}
-
-.empty-state h3 {
-  font-size: 24px;
-  font-weight: 900;
-  margin: 0 0 12px 0;
-  color: #1a1a1a;
-}
-
-.empty-state p {
-  font-size: 16px;
-  color: #999;
-  margin: 0 0 24px 0;
-}
-
-/* Quick Stats */
-.quick-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 20px;
-  margin-bottom: 40px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 20px;
-  padding: 32px 20px;
-  text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  border: 2px solid #f5f5f5;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  cursor: default;
-}
-
-.stat-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  border-color: #fbbf24;
-}
-
-.stat-label {
-  font-size: 11px;
-  color: #999;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 12px;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 900;
-  color: #fbbf24;
-  margin-bottom: 6px;
-  letter-spacing: -0.5px;
-}
-
-.stat-sublabel {
-  font-size: 12px;
-  color: #bbb;
-  font-weight: 600;
-}
-
-.skeleton-stat {
-  height: 28px;
-  background: #f0f0f0;
-  border-radius: 8px;
-  animation: pulse 2s infinite;
-  margin: 8px 0;
-}
-
-/* Custom Price Section */
-.custom-price-section {
-  margin-bottom: 32px;
-}
-
-.custom-price-prompt {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 24px;
-  background: white;
-  border: 2px solid #e5e5e5;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  font-weight: 600;
-  color: #1a1a1a;
-  font-size: 16px;
-}
-
-.custom-price-prompt:hover {
-  border-color: #fbbf24;
-  background: #fffbf0;
-  box-shadow: 0 12px 32px rgba(251, 191, 36, 0.2);
-  transform: translateY(-4px);
-}
-
-.icon-edit {
-  width: 20px;
-  height: 20px;
-  color: #fbbf24;
+.banner-icon {
+  font-size: 18px;
   flex-shrink: 0;
 }
 
-.custom-price-editor {
-  background: white;
-  border: 2px solid #fbbf24;
-  border-radius: 16px;
-  padding: 20px;
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.editor-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #666;
-}
-
-.btn-close {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: #f5f5f5;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.btn-close:hover {
-  background: #fee;
-  color: #ef4444;
-}
-
-.btn-close svg {
-  width: 16px;
-  height: 16px;
-}
-
-.editor-input {
-  position: relative;
-  margin-bottom: 16px;
-}
-
-.currency-symbol {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 20px;
-  font-weight: 700;
-  color: #fbbf24;
-  pointer-events: none;
-}
-
-.price-input-large {
-  width: 100%;
-  padding: 20px 20px 20px 50px;
-  border: 2px solid #e5e5e5;
-  border-radius: 14px;
-  font-size: 32px;
-  font-weight: 800;
-  background: white;
-  color: #1a1a1a;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  text-align: center;
-}
-
-.price-input-large:focus {
-  outline: none;
-  border-color: #fbbf24;
-  background: #fffbf0;
-  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15);
-  transform: scale(1.02);
-}
-
-.conversions-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 8px;
-}
-
-.conversion {
-  text-align: center;
-}
-
-.conversion-label {
-  display: block;
-  font-size: 11px;
-  color: #888;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.conversion-value {
-  display: block;
-  font-size: 14px;
-  font-weight: 700;
-  color: #fbbf24;
-}
-
-/* Portfolio Section */
-.portfolio-section {
-  background: white;
-  border-radius: 20px;
-  padding: 32px;
-  margin-bottom: 40px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.section-title {
-  font-size: 26px;
-  font-weight: 900;
-  margin: 0 0 24px 0;
-  color: #1a1a1a;
-  letter-spacing: -0.5px;
-}
-
-.section-title-small {
-  font-size: 18px;
-  font-weight: 800;
-  margin: 0 0 18px 0;
-  color: #1a1a1a;
-  letter-spacing: -0.3px;
-}
-
-.custom-price-badge {
-  display: inline-block;
-  padding: 8px 12px;
-  background: #fef3cd;
-  border: 1px solid #fbbf24;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #856404;
-  margin-bottom: 16px;
-}
-
-.portfolio-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
-}
-
-.portfolio-card {
-  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-  border: 2px solid #e5e5e5;
-  border-radius: 18px;
-  padding: 28px;
-  text-align: center;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.portfolio-card:hover {
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
-  transform: translateY(-6px);
-}
-
-.portfolio-card.invested {
-  border-color: #d1fae5;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-}
-
-.portfolio-card.current {
-  border-color: #bfdbfe;
-  background: linear-gradient(135deg, #f0f9ff 0%, #f8fbfd 100%);
-}
-
-.portfolio-card.profit {
-  border-color: #d1fae5;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-}
-
-.portfolio-card.loss {
-  border-color: #fee2e2;
-  background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
-}
-
-.portfolio-label {
-  font-size: 12px;
-  color: #777;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  margin-bottom: 12px;
-}
-
-.portfolio-value {
-  font-size: 28px;
-  font-weight: 900;
-  color: #1a1a1a;
-  line-height: 1.2;
-}
-
-.portfolio-value-large {
-  font-size: 36px;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.portfolio-card.profit .portfolio-value-large {
-  color: #10b981;
-}
-
-.portfolio-card.loss .portfolio-value-large {
-  color: #ef4444;
-}
-
-.portfolio-change {
-  font-size: 13px;
-  font-weight: 700;
-  margin-top: 8px;
-  opacity: 0.8;
-}
-
-/* History Section */
-.history-section {
-  background: white;
-  border-radius: 20px;
-  padding: 32px;
-  margin-bottom: 40px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.btn-toggle {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: #f5f5f5;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.btn-toggle:hover {
-  background: #e5e5e5;
-}
-
-.btn-toggle svg {
-  width: 20px;
-  height: 20px;
-}
-
-.history-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 20px;
-}
-
-@media (max-width: 768px) {
-  .history-grid {
-    grid-template-columns: 1fr;
+@media (min-width: 480px) {
+  .banner-icon {
+    font-size: 20px;
   }
 }
 
-.history-card {
+.banner-text {
+  flex: 1;
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  min-width: 150px;
+}
+
+@media (min-width: 480px) {
+  .banner-text {
+    font-size: 13px;
+  }
+}
+
+.banner-text strong {
+  color: #d39e00;
+  font-weight: 700;
+}
+
+.banner-btn {
+  padding: 6px 10px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+@media (min-width: 480px) {
+  .banner-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+.banner-btn:hover {
+  background: #c82333;
+  transform: scale(0.98);
+}
+
+/* Price Card */
+.price-card {
   background: white;
-  border: 2px solid #f0f0f0;
-  border-radius: 18px;
-  padding: 20px;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid #e0e0e0;
 }
 
-.history-card:hover {
-  border-color: #fbbf24;
-  box-shadow: 0 12px 32px rgba(251, 191, 36, 0.15);
-  transform: translateY(-6px);
+@media (min-width: 480px) {
+  .price-card {
+    padding: 20px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
 }
 
-.history-card.editing {
-  border-color: #10b981;
-  background: #f8fdf9;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+.price-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: center;
 }
 
-.card-header {
+.price-card-content {
+  flex: 1;
+}
+
+.price-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+@media (min-width: 480px) {
+  .price-label {
+    font-size: 12px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+}
+
+.price-skeleton {
+  height: 40px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  animation: pulse 2s infinite;
+  margin: 6px 0;
+}
+
+@media (min-width: 480px) {
+  .price-skeleton {
+    height: 48px;
+    margin: 8px 0;
+  }
+}
+
+.price-display {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  margin: 6px 0;
+}
+
+@media (min-width: 480px) {
+  .price-display {
+    font-size: 42px;
+    margin: 8px 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .price-display {
+    font-size: 48px;
+  }
+}
+
+.price-time {
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+}
+
+@media (min-width: 480px) {
+  .price-time {
+    font-size: 12px;
+    margin-top: 8px;
+  }
+}
+
+.price-toggle-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (min-width: 480px) {
+  .price-toggle-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+}
+
+.price-toggle-btn:hover {
+  border-color: #ffc107;
+  background: #fffbf0;
+}
+
+.price-toggle-btn.active {
+  border-color: #ffc107;
+  background: #ffc107;
+  opacity: 0.8;
+}
+
+/* Custom Price Input */
+.custom-price-expanded {
+  background: #fffbf0;
+  border-top: 2px solid #ffc107;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 0 0 10px 10px;
+}
+
+@media (min-width: 480px) {
+  .custom-price-expanded {
+    padding: 16px;
+    margin-top: 16px;
+    border-radius: 0 0 12px 12px;
+  }
+}
+
+.custom-price-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d39e00;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 10px;
+}
+
+@media (min-width: 480px) {
+  .custom-price-title {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+}
+
+.custom-price-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+@media (min-width: 480px) {
+  .custom-price-input-group {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+}
+
+.currency-symbol {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffc107;
+}
+
+@media (min-width: 480px) {
+  .currency-symbol {
+    font-size: 18px;
+  }
+}
+
+.custom-price-input {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #ffc107;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  color: #333;
+  min-height: 40px;
+}
+
+@media (min-width: 480px) {
+  .custom-price-input {
+    padding: 12px;
+    font-size: 18px;
+    border-radius: 8px;
+    min-height: 44px;
+  }
+}
+
+.custom-price-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
+}
+
+.unit-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  white-space: nowrap;
+}
+
+@media (min-width: 480px) {
+  .unit-label {
+    font-size: 14px;
+  }
+}
+
+/* Content Sections */
+.content-section {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 480px) {
+  .content-section {
+    margin-bottom: 20px;
+  }
+}
+
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e5e5;
 }
 
-.card-date {
-  font-size: 12px;
+@media (min-width: 480px) {
+  .section-header {
+    margin-bottom: 16px;
+  }
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 16px;
   font-weight: 600;
-  color: #666;
+  color: #333;
 }
 
-.card-actions {
-  display: flex;
-  gap: 6px;
+@media (min-width: 480px) {
+  .section-header h2 {
+    font-size: 18px;
+  }
 }
 
-.btn-action {
-  width: 28px;
-  height: 28px;
+.btn-icon {
+  background: none;
   border: none;
-  border-radius: 6px;
-  background: transparent;
+  font-size: 12px;
+  color: #888;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  color: #aaa;
+  padding: 4px 8px;
 }
 
-.btn-action svg {
-  width: 16px;
-  height: 16px;
+/* Cards */
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #e0e0e0;
 }
 
-.btn-edit:hover {
-  background: #fef3cd;
-  color: #fbbf24;
+@media (min-width: 480px) {
+  .card {
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
 }
 
-.btn-delete:hover {
-  background: #fee;
-  color: #ef4444;
+/* Price Grid */
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-/* Edit Mode */
-.card-edit-mode {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+@media (min-width: 480px) {
+  .price-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
 }
 
-.edit-field {
+.price-item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.edit-label {
+@media (min-width: 480px) {
+  .price-item {
+    padding: 12px;
+  }
+}
+
+.price-name {
   font-size: 11px;
-  font-weight: 600;
-  color: #666;
-  text-transform: uppercase;
-}
-
-.edit-input {
-  padding: 8px;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 13px;
-  background: white;
-  color: #1a1a1a;
-}
-
-.edit-input:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
-}
-
-.edit-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.btn-small {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 13px;
-}
-
-/* Normal View */
-.card-view {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.card-amount {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px;
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-  border-radius: 12px;
-  border: 2px solid #fbbf24;
-  transition: all 0.3s;
-}
-
-.card-amount:hover {
-  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.2);
-  transform: scale(1.02);
-}
-
-.amount-label {
-  font-size: 11px;
-  color: #856404;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-  letter-spacing: 0.5px;
-}
-
-.amount-value {
-  font-size: 24px;
-  font-weight: 900;
-  color: #1a1a1a;
-}
-
-.card-prices-compare {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.card-prices-compare > div {
-  text-align: center;
-  flex: 1;
-}
-
-.price-label {
-  font-size: 10px;
   color: #888;
-  font-weight: 600;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  letter-spacing: 0.4px;
+}
+
+@media (min-width: 480px) {
+  .price-name {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
 }
 
 .price-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.arrow {
-  color: #ddd;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.card-result {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-  border: 2px solid #10b981;
-  transition: all 0.3s;
-}
-
-.card-result:hover {
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.2);
-}
-
-.card-result.loss {
-  background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
-  border-color: #ef4444;
-}
-
-.card-result.loss:hover {
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.2);
-}
-
-.result-emoji {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.result-info {
-  flex: 1;
-}
-
-.result-label {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #10b981;
-  margin-bottom: 4px;
-  letter-spacing: 0.5px;
-}
-
-.card-result.loss .result-label {
-  color: #ef4444;
-}
-
-.result-value {
-  display: block;
   font-size: 16px;
-  font-weight: 800;
-  color: #10b981;
-}
-
-.card-result.loss .result-value {
-  color: #ef4444;
-}
-
-.result-percent {
-  font-size: 12px;
-  font-weight: 800;
-  color: #10b981;
-}
-
-.card-result.loss .result-percent {
-  color: #ef4444;
-}
-
-/* Add Purchase Form */
-.add-purchase-form {
-  background: white;
-  border: 3px solid #10b981;
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
-}
-
-.form-title {
-  font-size: 24px;
-  font-weight: 900;
-  margin: 0 0 24px 0;
-  color: #1a1a1a;
-  letter-spacing: -0.5px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #333;
-  margin-bottom: 8px;
 }
 
-.form-input {
-  width: 100%;
-  padding: 18px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  font-size: 16px;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  font-weight: 500;
+@media (min-width: 480px) {
+  .price-value {
+    font-size: 18px;
+  }
 }
 
-.form-input:focus {
-  outline: none;
-  border-color: #10b981;
+@media (min-width: 768px) {
+  .price-value {
+    font-size: 20px;
+  }
+}
+
+.price-unit {
+  font-size: 10px;
+  color: #aaa;
+}
+
+@media (min-width: 480px) {
+  .price-unit {
+    font-size: 11px;
+  }
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+@media (min-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+}
+
+.stat-box {
   background: white;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-}
-
-.form-input-currency {
-  position: relative;
-}
-
-.currency-prefix {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-  font-weight: 700;
-  color: #10b981;
-  pointer-events: none;
-}
-
-.form-input-currency input {
-  width: 100%;
-  padding: 18px 18px 18px 45px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  font-size: 16px;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.form-input-currency input:focus {
-  outline: none;
-  border-color: #10b981;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-}
-
-.form-preview {
-  background: #f0fdf4;
-  border: 1px solid #10b981;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 12px;
-  margin-bottom: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (min-width: 480px) {
+  .stat-box {
+    padding: 16px;
+  }
+}
+
+.stat-box.positive {
+  border-color: #d4edda;
+  background: #f8fff9;
+}
+
+.stat-box.negative {
+  border-color: #f5c6cb;
+  background: #fff8f8;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+@media (min-width: 480px) {
+  .stat-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+}
+
+.stat-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+@media (min-width: 480px) {
+  .stat-amount {
+    font-size: 22px;
+  }
+}
+
+.stat-box.positive .stat-amount {
+  color: #28a745;
+}
+
+.stat-box.negative .stat-amount {
+  color: #dc3545;
+}
+
+.stat-percent {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+}
+
+@media (min-width: 480px) {
+  .stat-percent {
+    font-size: 12px;
+  }
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 10px;
+}
+
+@media (min-width: 480px) {
+  .form-group {
+    margin-bottom: 12px;
+  }
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+@media (min-width: 480px) {
+  .label {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  min-height: 36px;
+  color: #333;
+}
+
+@media (min-width: 480px) {
+  .input,
+  .select {
+    padding: 10px;
+    font-size: 14px;
+    min-height: 40px;
+  }
+}
+
+@media (min-width: 768px) {
+  .input,
+  .select {
+    padding: 12px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: #333;
+  box-shadow: 0 0 0 3px rgba(51, 51, 51, 0.1);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+@media (min-width: 480px) {
+  .form-row {
+    gap: 8px;
+  }
+}
+
+.form-row .input,
+.form-row .select {
+  margin-bottom: 0;
+}
+
+/* Result & Preview */
+.result {
+  background: #f8fff9;
+  border: 1px solid #d4edda;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+  color: #28a745;
+  margin-top: 10px;
+}
+
+@media (min-width: 480px) {
+  .result {
+    padding: 12px;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+}
+
+.result strong {
+  color: #1e7e34;
+}
+
+.preview {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+
+@media (min-width: 480px) {
+  .preview {
+    padding: 12px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
 }
 
 .preview-row {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
-  padding: 6px 0;
-  color: #666;
+  padding: 3px 0;
 }
 
-.preview-row.total {
-  border-top: 1px solid #10b981;
-  padding-top: 8px;
-  margin-top: 8px;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.form-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 640px) {
-  .form-actions {
-    grid-template-columns: 1fr;
+@media (min-width: 480px) {
+  .preview-row {
+    padding: 4px 0;
   }
 }
 
-/* Action Section */
-.action-section {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  margin-bottom: 40px;
+.preview-row strong {
+  color: #333;
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 18px 24px;
+/* History */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .history-item {
+    padding: 12px;
+  }
+}
+
+.history-item.editing {
+  border-color: #333;
+  background: #f8f8f8;
+}
+
+.item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-main {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .item-main {
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+}
+
+.item-date {
+  color: #888;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 480px) {
+  .item-date {
+    font-size: 11px;
+  }
+}
+
+.item-amount {
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.item-price,
+.item-current {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 3px;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .item-price,
+  .item-current {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+}
+
+.item-price .label,
+.item-current .label {
+  color: #888;
+  flex-shrink: 0;
+}
+
+.item-profit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #28a745;
+  margin-top: 4px;
+}
+
+@media (min-width: 480px) {
+  .item-profit {
+    font-size: 13px;
+    margin-top: 6px;
+  }
+}
+
+.item-profit.negative {
+  color: #dc3545;
+}
+
+.percent {
+  font-size: 10px;
+  color: #888;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+@media (min-width: 480px) {
+  .percent {
+    font-size: 11px;
+  }
+}
+
+.item-edit {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (min-width: 480px) {
+  .item-edit {
+    gap: 8px;
+  }
+}
+
+.item-edit .input {
+  margin-bottom: 0;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+@media (min-width: 480px) {
+  .edit-actions {
+    gap: 6px;
+  }
+}
+
+.item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-action {
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 14px;
-  font-size: 16px;
-  font-weight: 700;
+  background: #f5f5f5;
+  border-radius: 4px;
   cursor: pointer;
+  font-size: 12px;
+  color: #666;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.2s;
+  min-height: 36px;
+  min-width: 36px;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
-  color: white;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+@media (min-width: 480px) {
+  .btn-action {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    min-height: 40px;
+    min-width: 40px;
+  }
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+.btn-action:hover {
+  background: #e0e0e0;
 }
 
-.btn-secondary {
-  background: white;
-  color: #1a1a1a;
-  border: 2px solid #e5e5e5;
+.btn-action.btn-danger:hover {
+  background: #ffebee;
+  color: #dc3545;
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #fbbf24;
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2);
+/* Buttons */
+.btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+  text-align: center;
+  min-height: 36px;
+  touch-action: manipulation;
 }
 
-.btn-large {
-  padding: 20px 28px;
-  font-size: 16px;
-  min-height: 60px;
+@media (min-width: 480px) {
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 40px;
+  }
 }
 
-.btn-primary:disabled,
-.btn-secondary:disabled {
+@media (min-width: 768px) {
+  .btn {
+    padding: 12px 20px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.icon {
-  width: 18px;
-  height: 18px;
+.btn-primary {
+  background: #333;
+  color: white;
 }
 
-.icon.spin {
-  animation: spin 1s linear infinite;
+.btn-primary:hover:not(:disabled) {
+  background: #1a1a1a;
 }
 
-/* Calculator */
-.calculator-section {
-  background: white;
-  border-radius: 18px;
-  padding: 28px;
-  margin-bottom: 40px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+.btn-secondary {
+  background: #f5f5f5;
+  color: #333;
 }
 
-.calc-controls {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 14px;
-  margin-bottom: 18px;
+.btn-secondary:hover {
+  background: #e0e0e0;
 }
 
-.calc-input,
-.calc-select {
-  padding: 16px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  font-size: 15px;
-  background: #fafafa;
-  color: #1a1a1a;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  font-weight: 500;
+.btn-danger {
+  color: #dc3545;
 }
 
-.calc-input:focus,
-.calc-select:focus {
-  outline: none;
-  border-color: #fbbf24;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1);
+.btn-danger:hover {
+  background: #ffebee;
 }
 
-.calc-result {
+.btn-small {
+  padding: 6px 10px;
+  font-size: 11px;
+  min-height: 32px;
+}
+
+@media (min-width: 480px) {
+  .btn-small {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 34px;
+  }
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+@media (min-width: 480px) {
+  .btn-block {
+    margin-bottom: 16px;
+  }
+}
+
+.btn-full {
+  width: 100%;
+}
+
+/* Empty State */
+.empty-message {
   text-align: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-  border-radius: 12px;
-  border: 2px solid #fbbf24;
+  padding: 16px 12px;
+  color: #888;
 }
 
-.calc-label {
-  font-size: 12px;
-  color: #856404;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  letter-spacing: 0.5px;
+@media (min-width: 480px) {
+  .empty-message {
+    padding: 24px 16px;
+  }
 }
 
-.calc-value {
-  font-size: 32px;
-  font-weight: 900;
-  color: #f59e0b;
-}
-
-/* Status Footer */
-.status-footer {
-  background: white;
-  border-radius: 16px;
-  padding: 18px 24px;
-  margin-bottom: 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  flex-wrap: wrap;
-  gap: 14px;
-  border: 1px solid #f0f0f0;
-}
-
-.status-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.status-dot.loading {
-  background: #fbbf24;
-  animation: pulse 2s infinite;
-}
-
-.status-dot.success {
-  background: #10b981;
-}
-
-.status-dot.error {
-  background: #ef4444;
-}
-
-.quota-info {
+.empty-message p {
+  margin: 0;
   font-size: 13px;
-  color: #999;
-  font-weight: 500;
 }
 
-/* Error Section */
-.error-section {
-  background: #fef3cd;
-  border: 2px solid #fbbf24;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.error-message {
-  font-size: 16px;
-  font-weight: 600;
-  color: #856404;
-  margin-bottom: 16px;
+@media (min-width: 480px) {
+  .empty-message p {
+    font-size: 14px;
+  }
 }
 
 /* Animations */
@@ -2244,12 +1848,7 @@ export default {
   50% { opacity: 0.5; }
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Remove number spinners */
+/* Input fixes */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -2258,5 +1857,18 @@ input[type="number"]::-webkit-outer-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* iOS */
+@supports (padding: max(0px)) {
+  .main {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 480px) {
+    .main {
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+  }
 }
 </style>
