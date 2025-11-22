@@ -1533,8 +1533,8 @@ html, body {
 
 /* History */
 .history-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
@@ -1542,19 +1542,23 @@ html, body {
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 10px;
+  padding: 16px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
 }
 
 @media (min-width: 480px) {
   .history-item {
-    padding: 12px;
+    padding: 4px;
   }
+  .history-list {
+  display: flex;
+  flex-direction:column;
+  gap: 8px;
 }
-
+}
 .history-item.editing {
   border-color: #333;
   background: #f8f8f8;
@@ -1622,15 +1626,16 @@ html, body {
 }
 
 .item-profit {
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 600;
   color: #28a745;
   margin-top: 4px;
+  text-align: center;
 }
 
 @media (min-width: 480px) {
   .item-profit {
-    font-size: 13px;
+    font-size: 16px;
     margin-top: 6px;
   }
 }
@@ -1682,7 +1687,8 @@ html, body {
 
 .item-actions {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 8px;
   flex-shrink: 0;
 }
 
