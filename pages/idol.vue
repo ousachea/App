@@ -9,6 +9,9 @@
           <p class="subtitle">Manage and track your collection</p>
         </div>
         <div class="header-controls">
+          <button @click="autoFillImages" class="icon-btn auto-fill-btn" title="Auto-fill missing images">
+            🖼️
+          </button>
           <button @click="openAddModal" class="icon-btn add-btn" title="Add new item">
             ➕
           </button>
@@ -23,6 +26,15 @@
         <div class="search-wrapper">
           <span class="search-icon">🔍</span>
           <input v-model="searchQuery" type="text" placeholder="Search by code or name..." class="search-input" />
+        </div>
+
+        <div class="quality-selector">
+          <label for="quality-select">Image Quality:</label>
+          <select v-model="imageQuality" id="quality-select" class="quality-select">
+            <option value="pl">Small (pl)</option>
+            <option value="ps">Medium (ps)</option>
+            <option value="jp-1">Large (jp-1)</option>
+          </select>
         </div>
 
         <div class="button-group">
@@ -83,12 +95,13 @@
               <div v-for="work in artist.mainWorks" :key="work.code"
                 :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]">
                 <template v-if="work.imageUrl">
-                  <div class="work-image-large" @click.stop="toggleCode(work.code)">
+                  <div class="work-image-large" @click.stop="openSampleViewer(work, artist.name)">
                     <img :src="work.imageUrl" :alt="work.code" class="work-img" onerror="this.style.display='none'">
                   </div>
                 </template>
                 <template v-else>
-                  <div class="work-image-large work-image-placeholder" @click.stop="toggleCode(work.code)">
+                  <div class="work-image-large work-image-placeholder"
+                    @click.stop="openSampleViewer(work, artist.name)">
                     <span>📷</span>
                   </div>
                 </template>
@@ -118,12 +131,13 @@
               <div v-for="work in artist.compilations" :key="work.code"
                 :class="['work-card', { 'work-card-selected': selectedCodes.includes(work.code) }]">
                 <template v-if="work.imageUrl">
-                  <div class="work-image-large" @click.stop="toggleCode(work.code)">
+                  <div class="work-image-large" @click.stop="openSampleViewer(work, artist.name)">
                     <img :src="work.imageUrl" :alt="work.code" class="work-img" onerror="this.style.display='none'">
                   </div>
                 </template>
                 <template v-else>
-                  <div class="work-image-large work-image-placeholder" @click.stop="toggleCode(work.code)">
+                  <div class="work-image-large work-image-placeholder"
+                    @click.stop="openSampleViewer(work, artist.name)">
                     <span>📷</span>
                   </div>
                 </template>
@@ -207,7 +221,7 @@
             </div>
 
             <div class="form-group">
-              <label>Image URL</label>
+              <label>Image URL (optional - will auto-generate if empty)</label>
               <input v-model="newItem.imageUrl" type="url" placeholder="https://example.com/image.jpg"
                 class="form-input" />
               <div v-if="newItem.imageUrl" class="image-preview">
@@ -260,11 +274,46 @@
                 <img :src="editItem.imageUrl" alt="Preview" @error="editImageError = true">
                 <span v-if="editImageError" class="image-error">❌ Image failed to load</span>
               </div>
+              <button @click="autoGenerateEditImage" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">
+                🖼️ Auto-Generate Image URL
+              </button>
             </div>
           </div>
           <div class="modal-footer">
             <button @click="closeEditModal" class="btn btn-secondary">Cancel</button>
             <button @click="saveEditedItem" class="btn btn-primary">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Sample Images Viewer Modal -->
+    <transition name="modal">
+      <div v-if="showSampleModal" class="modal-overlay" @click="closeSampleViewer">
+        <div class="modal-content modal-large" @click.stop>
+          <div class="modal-header">
+            <div>
+              <h3>📸 Sample Images</h3>
+              <p class="sample-modal-subtitle">{{ currentSampleCode }} - {{ currentSampleArtist }}</p>
+            </div>
+            <button @click="closeSampleViewer" class="modal-close">✕</button>
+          </div>
+          <div class="modal-body sample-modal-body">
+            <div class="sample-images-grid">
+              <div v-for="(sample, index) in sampleImages" :key="index" class="sample-image-item">
+                <div class="sample-image-wrapper">
+                  <img :src="sample.url" :alt="sample.label" class="sample-image"
+                    @error="$event.target.parentElement.classList.add('image-failed')"
+                    @load="$event.target.parentElement.classList.add('image-loaded')" />
+                  <div class="sample-loading">Loading...</div>
+                  <div class="sample-error">❌ Not available</div>
+                </div>
+                <p class="sample-label">{{ sample.label }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="closeSampleViewer" class="btn btn-secondary">Close</button>
           </div>
         </div>
       </div>
@@ -283,6 +332,10 @@ export default {
       showConfirmModal: false,
       showAddModal: false,
       showEditModal: false,
+      showSampleModal: false,
+      currentSampleCode: null,
+      currentSampleArtist: null,
+      sampleImages: [],
       newItem: {
         artist: '',
         code: '',
@@ -297,6 +350,8 @@ export default {
       },
       imageError: false,
       editImageError: false,
+      searchTimeout: null,
+      imageQuality: 'ps', // Options: 'pl' (small), 'ps' (medium), 'jp-1' (large)
       toast: {
         show: false,
         message: '',
@@ -351,6 +406,7 @@ export default {
           name: 'Mitsuki Momota (百田光稀)',
           period: '2019–2022 (25–28)',
           mainWorks: [
+            { code: 'MIDA-424', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00424/mida00424pl.jpg' },
             { code: 'MIDA-026', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/mida00026/mida00026pl.jpg' },
             { code: 'REBD-854', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/h_346rebd00854/h_346rebd00854pl.jpg' },
             { code: 'OAE-253', name: 'Mitsuki Momota (百田光稀)', imageUrl: 'https://pics.dmm.co.jp/digital/video/oae00253/oae00253pl.jpg' },
@@ -531,6 +587,11 @@ export default {
         localStorage.setItem('darkMode', JSON.stringify(newVal))
       }
     },
+    imageQuality(newVal) {
+      if (process.client) {
+        localStorage.setItem('imageQuality', newVal)
+      }
+    },
     artists: {
       handler(newVal) {
         if (process.client) {
@@ -567,6 +628,12 @@ export default {
         }
       }
 
+      // Load image quality preference
+      const qualityStored = localStorage.getItem('imageQuality')
+      if (qualityStored) {
+        this.imageQuality = qualityStored
+      }
+
       // Load artists - only if valid data exists
       const artistsStored = localStorage.getItem('artists')
       if (artistsStored) {
@@ -591,6 +658,217 @@ export default {
     }
   },
   methods: {
+    /**
+     * Auto-generate image URL based on code pattern
+     * Pattern: https://pics.dmm.co.jp/digital/video/{code_lower}/{code_lower}{quality}.jpg
+     * Example: SSIS-025 → https://pics.dmm.co.jp/digital/video/ssis00025/ssis00025pl.jpg
+     * Example: ADN-334 → https://pics.dmm.co.jp/digital/video/adn00334/adn00334pl.jpg
+     * 
+     * Quality options:
+     * - 'pl' = Small preview (~272x380px) - default
+     * - 'ps' = Medium size (~420x600px)
+     * - 'jp-1' = Large/High quality (~800x1144px)
+     */
+    generateImageUrl(code, quality = 'pl') {
+      if (!code) return null
+
+      // Convert to uppercase first for consistent processing
+      const upperCode = code.toUpperCase()
+
+      // Split into prefix (letters) and number parts
+      // Handle formats like: SSIS-025, ADN-334, MIRD-259, etc.
+      const match = upperCode.match(/^([A-Z]+)-?(\d+)$/)
+
+      if (!match) {
+        // Fallback: just remove hyphens and convert to lowercase
+        const cleanCode = code.toLowerCase().replace(/-/g, '')
+        return `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}${quality}.jpg`
+      }
+
+      const prefix = match[1].toLowerCase() // e.g., "ssis", "adn"
+      const number = match[2].padStart(5, '0') // e.g., "00025", "00334"
+
+      const cleanCode = prefix + number
+
+      // Build the URL
+      return `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}${quality}.jpg`
+    },
+
+    /**
+     * Validate if generated URL actually exists
+     */
+    async validateImageUrl(url) {
+      return new Promise((resolve) => {
+        const img = new Image()
+        const timeout = setTimeout(() => {
+          resolve(false)
+        }, 5000) // 5 second timeout
+
+        img.onload = () => {
+          clearTimeout(timeout)
+          resolve(true)
+        }
+        img.onerror = () => {
+          clearTimeout(timeout)
+          resolve(false)
+        }
+        img.src = url
+      })
+    },
+
+    /**
+     * Auto-fill missing images for all works
+     */
+    async autoFillImages() {
+      let updated = 0
+      let failed = 0
+
+      this.showToast('Checking images...', 'info')
+
+      for (const artist of this.artists) {
+        // Check main works
+        if (artist.mainWorks) {
+          for (const work of artist.mainWorks) {
+            if (!work.imageUrl) {
+              const generatedUrl = this.generateImageUrl(work.code, this.imageQuality)
+              const isValid = await this.validateImageUrl(generatedUrl)
+
+              if (isValid) {
+                work.imageUrl = generatedUrl
+                updated++
+              } else {
+                failed++
+              }
+            }
+          }
+        }
+
+        // Check compilations
+        if (artist.compilations) {
+          for (const work of artist.compilations) {
+            if (!work.imageUrl) {
+              const generatedUrl = this.generateImageUrl(work.code, this.imageQuality)
+              const isValid = await this.validateImageUrl(generatedUrl)
+
+              if (isValid) {
+                work.imageUrl = generatedUrl
+                updated++
+              } else {
+                failed++
+              }
+            }
+          }
+        }
+      }
+
+      // Force reactivity update
+      this.artists = [...this.artists]
+
+      if (updated > 0) {
+        this.showToast(`✅ Auto-filled ${updated} images${failed > 0 ? ` (${failed} failed)` : ''}`, 'success')
+      } else {
+        this.showToast('No missing images found', 'info')
+      }
+    },
+
+    /**
+     * Auto-fill image for a single work when code changes
+     */
+    async autoFillSingleImage(code) {
+      const generatedUrl = this.generateImageUrl(code, this.imageQuality)
+      const isValid = await this.validateImageUrl(generatedUrl)
+      return isValid ? generatedUrl : null
+    },
+
+    /**
+     * Auto-generate image URL for the item being edited
+     */
+    async autoGenerateEditImage() {
+      if (!this.editItem.code) {
+        this.showToast('No code available', 'error')
+        return
+      }
+
+      this.showToast('Generating image URL...', 'info')
+      const generatedUrl = this.generateImageUrl(this.editItem.code, this.imageQuality)
+      const isValid = await this.validateImageUrl(generatedUrl)
+
+      if (isValid) {
+        this.editItem.imageUrl = generatedUrl
+        this.editImageError = false
+        this.showToast('✅ Image URL generated successfully', 'success')
+      } else {
+        this.showToast('⚠️ Could not generate valid image URL', 'error')
+      }
+    },
+
+    /**
+     * Generate sample image URLs for a code
+     * DMM provides multiple sample images: jp-1.jpg, jp-2.jpg, jp-3.jpg, etc.
+     */
+    generateSampleUrls(code, count = 10) {
+      if (!code) return []
+
+      const upperCode = code.toUpperCase()
+      const match = upperCode.match(/^([A-Z]+)-?(\d+)$/)
+
+      if (!match) return []
+
+      const prefix = match[1].toLowerCase()
+      const number = match[2].padStart(5, '0')
+      const cleanCode = prefix + number
+
+      const samples = []
+
+      // Add main cover images
+      samples.push({
+        url: `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}pl.jpg`,
+        label: 'Cover (Small)',
+        type: 'cover'
+      })
+      samples.push({
+        url: `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}ps.jpg`,
+        label: 'Cover (Medium)',
+        type: 'cover'
+      })
+      samples.push({
+        url: `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}jp-1.jpg`,
+        label: 'Cover (Large)',
+        type: 'cover'
+      })
+
+      // Add sample images (jp-2 through jp-10)
+      for (let i = 2; i <= count + 1; i++) {
+        samples.push({
+          url: `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}jp-${i}.jpg`,
+          label: `Sample ${i - 1}`,
+          type: 'sample'
+        })
+      }
+
+      return samples
+    },
+
+    /**
+     * Open sample image viewer
+     */
+    async openSampleViewer(work, artistName) {
+      this.currentSampleCode = work.code
+      this.currentSampleArtist = artistName
+      this.sampleImages = this.generateSampleUrls(work.code)
+      this.showSampleModal = true
+    },
+
+    /**
+     * Close sample image viewer
+     */
+    closeSampleViewer() {
+      this.showSampleModal = false
+      this.currentSampleCode = null
+      this.currentSampleArtist = null
+      this.sampleImages = []
+    },
+
     filterWorks(works) {
       if (!Array.isArray(works)) return []
       const query = this.searchQuery.toLowerCase()
@@ -829,7 +1107,7 @@ export default {
         this.showToast('Item not found', 'error')
       }
     },
-    addNewItem() {
+    async addNewItem() {
       if (!this.newItem.artist.trim()) {
         this.showToast('Please select an artist', 'error')
         return
@@ -857,10 +1135,20 @@ export default {
         return
       }
 
+      // Auto-generate image URL if not provided
+      let imageUrl = this.newItem.imageUrl
+      if (!imageUrl) {
+        this.showToast('Generating image URL...', 'info')
+        imageUrl = await this.autoFillSingleImage(code)
+        if (!imageUrl) {
+          this.showToast('⚠️ Could not auto-generate valid image', 'error')
+        }
+      }
+
       const work = {
         code: code,
         name: artist.name,
-        imageUrl: this.newItem.imageUrl || null
+        imageUrl: imageUrl
       }
 
       if (this.newItem.type === 'mainWorks') {
@@ -873,7 +1161,7 @@ export default {
 
       this.artists = [...this.artists]
       this.showAddModal = false
-      this.showToast(`✅ Added ${code}`, 'success')
+      this.showToast(`✅ Added ${code}${imageUrl ? ' with image' : ''}`, 'success')
     }
   }
 }
@@ -982,6 +1270,20 @@ body {
   background: #1d3a5c;
 }
 
+.auto-fill-btn {
+  border-color: #8b5cf6;
+}
+
+.auto-fill-btn:hover {
+  border-color: #8b5cf6;
+  background: #f5f3ff;
+}
+
+.works-container.dark-mode .auto-fill-btn:hover {
+  border-color: #8b5cf6;
+  background: #2e1065;
+}
+
 .add-btn {
   border-color: #16a34a;
 }
@@ -1002,6 +1304,60 @@ body {
   gap: 15px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-wrapper {
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.quality-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.quality-selector label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.works-container.dark-mode .quality-selector label {
+  color: #e0e0e0;
+}
+
+.quality-select {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.works-container.dark-mode .quality-select {
+  background: #3a3a4e;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+.quality-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.quality-select:hover {
+  border-color: #2563eb;
 }
 
 .search-wrapper {
@@ -1392,6 +1748,34 @@ body {
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.work-image-large::after {
+  content: '🔍 Click to view samples';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.work-image-large:hover::after {
+  opacity: 1;
+}
+
+.work-image-large:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .works-container.dark-mode .work-image-large {
@@ -1584,6 +1968,118 @@ body {
 
 .modal-compact {
   max-width: 400px;
+}
+
+.modal-large {
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sample-modal-subtitle {
+  margin: 5px 0 0 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: #666;
+}
+
+.works-container.dark-mode .sample-modal-subtitle {
+  color: #aaa;
+}
+
+.sample-modal-body {
+  overflow-y: auto;
+  max-height: calc(90vh - 180px);
+}
+
+.sample-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 10px;
+}
+
+.sample-image-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sample-image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.works-container.dark-mode .sample-image-wrapper {
+  background: #3a3a4e;
+}
+
+.sample-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+
+.sample-image-wrapper.image-loaded .sample-image {
+  display: block;
+}
+
+.sample-image-wrapper.image-loaded .sample-loading {
+  display: none;
+}
+
+.sample-loading {
+  position: absolute;
+  color: #999;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.works-container.dark-mode .sample-loading {
+  color: #666;
+}
+
+.sample-image-wrapper.image-loaded .sample-loading,
+.sample-image-wrapper.image-failed .sample-loading {
+  display: none;
+}
+
+.sample-error {
+  position: absolute;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  display: none;
+}
+
+.sample-image-wrapper.image-failed .sample-error {
+  display: block;
+}
+
+.sample-image-wrapper.image-failed .sample-image {
+  display: none;
+}
+
+.sample-label {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.works-container.dark-mode .sample-label {
+  color: #e0e0e0;
 }
 
 .works-container.dark-mode .modal-content {
@@ -1824,6 +2320,11 @@ body {
 
   .controls-wrapper {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quality-selector {
+    justify-content: space-between;
   }
 
   .button-group {
@@ -1841,6 +2342,15 @@ body {
   .modal-content,
   .modal-compact {
     max-width: 90%;
+  }
+
+  .modal-large {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+
+  .sample-images-grid {
+    grid-template-columns: 1fr;
   }
 
   .toast {
