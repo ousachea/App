@@ -287,33 +287,63 @@
       </div>
     </transition>
 
-    <!-- Sample Images Viewer Modal -->
+    <!-- Sample Images Slideshow Modal -->
     <transition name="modal">
       <div v-if="showSampleModal" class="modal-overlay" @click="closeSampleViewer">
-        <div class="modal-content modal-large" @click.stop>
+        <div class="modal-content modal-slideshow" @click.stop>
           <div class="modal-header">
             <div>
               <h3>📸 Sample Images</h3>
-              <p class="sample-modal-subtitle">{{ currentSampleCode }} - {{ currentSampleArtist }}</p>
+              <p class="sample-modal-subtitle">
+                {{ currentSampleCode }} - {{ currentSampleArtist }}
+                <span class="slide-counter">({{ currentSlideIndex + 1 }} / {{ sampleImages.length }})</span>
+              </p>
             </div>
             <button @click="closeSampleViewer" class="modal-close">✕</button>
           </div>
-          <div class="modal-body sample-modal-body">
-            <div class="sample-images-grid">
-              <div v-for="(sample, index) in sampleImages" :key="index" class="sample-image-item">
-                <div class="sample-image-wrapper">
-                  <img :src="sample.url" :alt="sample.label" class="sample-image"
+
+          <div class="slideshow-container">
+            <!-- Previous Button -->
+            <button @click="prevSlide" class="slide-nav slide-prev" title="Previous (←)">
+              ❮
+            </button>
+
+            <!-- Main Slide Image -->
+            <div class="slide-main">
+              <div v-for="(sample, index) in sampleImages" :key="index"
+                :class="['slide-item', { active: index === currentSlideIndex }]">
+                <div class="slide-image-wrapper">
+                  <img :src="sample.url" :alt="sample.label" class="slide-image"
                     @error="$event.target.parentElement.classList.add('image-failed')"
                     @load="$event.target.parentElement.classList.add('image-loaded')" />
-                  <div class="sample-loading">Loading...</div>
-                  <div class="sample-error">❌ Not available</div>
+                  <div class="slide-loading">Loading...</div>
+                  <div class="slide-error">❌ Image not available</div>
                 </div>
-                <p class="sample-label">{{ sample.label }}</p>
+                <p class="slide-label">{{ sample.label }}</p>
               </div>
             </div>
+
+            <!-- Next Button -->
+            <button @click="nextSlide" class="slide-nav slide-next" title="Next (→)">
+              ❯
+            </button>
           </div>
+
+          <!-- Thumbnail Navigation -->
+          <div class="slide-thumbnails">
+            <div v-for="(sample, index) in sampleImages" :key="index"
+              :class="['thumbnail-item', { active: index === currentSlideIndex }]" @click="goToSlide(index)"
+              :title="sample.label">
+              <img :src="sample.url" :alt="sample.label" class="thumbnail-img" />
+              <span class="thumbnail-number">{{ index + 1 }}</span>
+            </div>
+          </div>
+
           <div class="modal-footer">
-            <button @click="closeSampleViewer" class="btn btn-secondary">Close</button>
+            <div class="slideshow-info">
+              Use ← → arrow keys or click thumbnails to navigate
+            </div>
+            <button @click="closeSampleViewer" class="btn btn-secondary">Close (Esc)</button>
           </div>
         </div>
       </div>
@@ -336,6 +366,7 @@ export default {
       currentSampleCode: null,
       currentSampleArtist: null,
       sampleImages: [],
+      currentSlideIndex: 0,
       newItem: {
         artist: '',
         code: '',
@@ -655,6 +686,14 @@ export default {
           // Keep the default artists data if loading fails
         }
       }
+
+      // Add keyboard event listener for slideshow
+      window.addEventListener('keydown', this.handleSlideKeydown)
+    }
+  },
+  beforeDestroy() {
+    if (process.client) {
+      window.removeEventListener('keydown', this.handleSlideKeydown)
     }
   },
   methods: {
@@ -856,6 +895,7 @@ export default {
       this.currentSampleCode = work.code
       this.currentSampleArtist = artistName
       this.sampleImages = this.generateSampleUrls(work.code)
+      this.currentSlideIndex = 0
       this.showSampleModal = true
     },
 
@@ -867,6 +907,51 @@ export default {
       this.currentSampleCode = null
       this.currentSampleArtist = null
       this.sampleImages = []
+      this.currentSlideIndex = 0
+    },
+
+    /**
+     * Go to next slide
+     */
+    nextSlide() {
+      if (this.currentSlideIndex < this.sampleImages.length - 1) {
+        this.currentSlideIndex++
+      } else {
+        this.currentSlideIndex = 0 // Loop back to start
+      }
+    },
+
+    /**
+     * Go to previous slide
+     */
+    prevSlide() {
+      if (this.currentSlideIndex > 0) {
+        this.currentSlideIndex--
+      } else {
+        this.currentSlideIndex = this.sampleImages.length - 1 // Loop to end
+      }
+    },
+
+    /**
+     * Go to specific slide
+     */
+    goToSlide(index) {
+      this.currentSlideIndex = index
+    },
+
+    /**
+     * Handle keyboard navigation
+     */
+    handleSlideKeydown(event) {
+      if (!this.showSampleModal) return
+
+      if (event.key === 'ArrowRight') {
+        this.nextSlide()
+      } else if (event.key === 'ArrowLeft') {
+        this.prevSlide()
+      } else if (event.key === 'Escape') {
+        this.closeSampleViewer()
+      }
     },
 
     filterWorks(works) {
@@ -1945,6 +2030,13 @@ body {
   justify-content: center;
   z-index: 999;
   animation: fadeIn 0.2s ease;
+  padding: 0;
+}
+
+/* Fullscreen overlay for slideshow */
+.modal-overlay:has(.modal-slideshow) {
+  background: rgba(0, 0, 0, 0.95);
+  padding: 0;
 }
 
 @keyframes fadeIn {
@@ -1970,12 +2062,16 @@ body {
   max-width: 400px;
 }
 
-.modal-large {
-  max-width: 1200px;
-  max-height: 90vh;
+.modal-slideshow {
+  max-width: 100vw;
+  width: 100vw;
+  max-height: 100vh;
+  height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  border-radius: 0;
 }
 
 .sample-modal-subtitle {
@@ -1989,97 +2085,262 @@ body {
   color: #aaa;
 }
 
-.sample-modal-body {
-  overflow-y: auto;
-  max-height: calc(90vh - 180px);
+.slide-counter {
+  font-weight: 600;
+  color: #2563eb;
+  margin-left: 8px;
 }
 
-.sample-images-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-  padding: 10px;
+.works-container.dark-mode .slide-counter {
+  color: #64b5f6;
 }
 
-.sample-image-item {
+/* Slideshow Container */
+.slideshow-container {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 80px;
+  background: #f9fafb;
+  flex: 1;
+  overflow: hidden;
 }
 
-.sample-image-wrapper {
+.works-container.dark-mode .slideshow-container {
+  background: #1a1a2e;
+}
+
+/* Navigation Buttons */
+.slide-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  font-size: 32px;
+  padding: 20px 15px;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s;
+  border-radius: 8px;
+  user-select: none;
+}
+
+.slide-nav:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.slide-prev {
+  left: 10px;
+}
+
+.slide-next {
+  right: 10px;
+}
+
+/* Main Slide */
+.slide-main {
   position: relative;
   width: 100%;
-  aspect-ratio: 3/4;
-  background: #f0f0f0;
-  border-radius: 8px;
-  overflow: hidden;
+  height: 100%;
+  max-width: 900px;
+  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.works-container.dark-mode .sample-image-wrapper {
-  background: #3a3a4e;
+.slide-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  pointer-events: none;
 }
 
-.sample-image {
+.slide-item.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.slide-image-wrapper {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.works-container.dark-mode .slide-image-wrapper {
+  background: #2a2a3e;
+}
+
+.slide-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: none;
 }
 
-.sample-image-wrapper.image-loaded .sample-image {
+.slide-image-wrapper.image-loaded .slide-image {
   display: block;
 }
 
-.sample-image-wrapper.image-loaded .sample-loading {
+.slide-image-wrapper.image-loaded .slide-loading {
   display: none;
 }
 
-.sample-loading {
+.slide-loading {
   position: absolute;
   color: #999;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
-.works-container.dark-mode .sample-loading {
+.works-container.dark-mode .slide-loading {
   color: #666;
 }
 
-.sample-image-wrapper.image-loaded .sample-loading,
-.sample-image-wrapper.image-failed .sample-loading {
+.slide-image-wrapper.image-loaded .slide-loading,
+.slide-image-wrapper.image-failed .slide-loading {
   display: none;
 }
 
-.sample-error {
+.slide-error {
   position: absolute;
   color: #dc2626;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   display: none;
 }
 
-.sample-image-wrapper.image-failed .sample-error {
+.slide-image-wrapper.image-failed .slide-error {
   display: block;
 }
 
-.sample-image-wrapper.image-failed .sample-image {
+.slide-image-wrapper.image-failed .slide-image {
   display: none;
 }
 
-.sample-label {
+.slide-label {
   text-align: center;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: #333;
   margin: 0;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.works-container.dark-mode .sample-label {
+.works-container.dark-mode .slide-label {
   color: #e0e0e0;
+  background: #2a2a3e;
+}
+
+/* Thumbnail Navigation */
+.slide-thumbnails {
+  display: flex;
+  gap: 8px;
+  padding: 15px 20px;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.95);
+  border-top: 2px solid #f0f0f0;
+  scrollbar-width: thin;
+  flex-shrink: 0;
+}
+
+.works-container.dark-mode .slide-thumbnails {
+  background: rgba(42, 42, 62, 0.95);
+  border-top-color: #3a3a4e;
+}
+
+.slide-thumbnails::-webkit-scrollbar {
+  height: 6px;
+}
+
+.slide-thumbnails::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.works-container.dark-mode .slide-thumbnails::-webkit-scrollbar-track {
+  background: #3a3a4e;
+}
+
+.slide-thumbnails::-webkit-scrollbar-thumb {
+  background: #2563eb;
+  border-radius: 3px;
+}
+
+.thumbnail-item {
+  position: relative;
+  min-width: 60px;
+  height: 80px;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #f0f0f0;
+}
+
+.works-container.dark-mode .thumbnail-item {
+  background: #3a3a4e;
+}
+
+.thumbnail-item:hover {
+  transform: scale(1.1);
+  border-color: #2563eb;
+}
+
+.thumbnail-item.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-number {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.slideshow-info {
+  flex: 1;
+  color: #666;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+.works-container.dark-mode .slideshow-info {
+  color: #aaa;
 }
 
 .works-container.dark-mode .modal-content {
@@ -2103,12 +2364,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px;
+  padding: 20px 30px;
   border-bottom: 2px solid #f0f0f0;
+  flex-shrink: 0;
+  background: white;
+}
+
+.modal-slideshow .modal-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
 }
 
 .works-container.dark-mode .modal-header {
   border-bottom-color: #3a3a4e;
+  background: #2a2a3e;
+}
+
+.works-container.dark-mode .modal-slideshow .modal-header {
+  background: rgba(42, 42, 62, 0.95);
 }
 
 .modal-header h3 {
@@ -2157,12 +2430,24 @@ body {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  padding: 20px 24px;
+  padding: 15px 30px;
   border-top: 2px solid #f0f0f0;
+  flex-shrink: 0;
+  background: white;
+}
+
+.modal-slideshow .modal-footer {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
 }
 
 .works-container.dark-mode .modal-footer {
   border-top-color: #3a3a4e;
+  background: #2a2a3e;
+}
+
+.works-container.dark-mode .modal-slideshow .modal-footer {
+  background: rgba(42, 42, 62, 0.95);
 }
 
 /* Form */
@@ -2344,13 +2629,58 @@ body {
     max-width: 90%;
   }
 
-  .modal-large {
-    max-width: 95%;
-    max-height: 95vh;
+  .modal-slideshow {
+    max-width: 100vw;
+    width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
   }
 
-  .sample-images-grid {
-    grid-template-columns: 1fr;
+  .modal-header {
+    padding: 15px 20px;
+  }
+
+  .modal-footer {
+    padding: 12px 20px;
+  }
+
+  .slideshow-container {
+    padding: 15px 45px;
+  }
+
+  .slide-nav {
+    font-size: 24px;
+    padding: 12px 8px;
+  }
+
+  .slide-prev {
+    left: 5px;
+  }
+
+  .slide-next {
+    right: 5px;
+  }
+
+  .slide-main {
+    max-width: 100%;
+  }
+
+  .slide-label {
+    font-size: 13px;
+    padding: 8px;
+  }
+
+  .slide-thumbnails {
+    padding: 10px 15px;
+  }
+
+  .thumbnail-item {
+    min-width: 50px;
+    height: 70px;
+  }
+
+  .slideshow-info {
+    display: none;
   }
 
   .toast {
