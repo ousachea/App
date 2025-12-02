@@ -106,6 +106,9 @@
                   </div>
                 </template>
                 <div class="work-card-overlay">
+                  <button @click.stop="openVideoPreview(work, artist.name)" class="preview-btn" title="Preview video">
+                    ▶️
+                  </button>
                   <button @click.stop="openEditModal(work, artist.name)" class="edit-btn" title="Edit item">
                     ✏️
                   </button>
@@ -142,6 +145,9 @@
                   </div>
                 </template>
                 <div class="work-card-overlay">
+                  <button @click.stop="openVideoPreview(work, artist.name)" class="preview-btn" title="Preview video">
+                    ▶️
+                  </button>
                   <button @click.stop="openEditModal(work, artist.name)" class="edit-btn" title="Edit item">
                     ✏️
                   </button>
@@ -348,6 +354,43 @@
         </div>
       </div>
     </transition>
+
+    <!-- Video Preview Modal -->
+    <transition name="modal">
+      <div v-if="showVideoModal" class="modal-overlay" @click="closeVideoPreview">
+        <div class="modal-content modal-video" @click.stop>
+          <div class="modal-header">
+            <div>
+              <h3>🎬 Video Preview</h3>
+              <p class="sample-modal-subtitle">
+                {{ currentVideoCode }} - {{ currentVideoArtist }}
+              </p>
+            </div>
+            <button @click="closeVideoPreview" class="modal-close">✕</button>
+          </div>
+
+          <div class="video-container">
+            <div v-if="videoLoading" class="video-loading">
+              <span>⏳ Loading video...</span>
+            </div>
+
+            <div v-if="videoError" class="video-error">
+              <span>❌ Video not available</span>
+              <p>This preview video may not exist or is unavailable.</p>
+            </div>
+
+            <video v-show="!videoLoading && !videoError" :src="videoUrl" controls autoplay
+              @loadeddata="handleVideoLoaded" @error="handleVideoError" class="video-player">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+
+          <div class="modal-footer">
+            <button @click="closeVideoPreview" class="btn btn-secondary">Close (Esc)</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -363,10 +406,16 @@ export default {
       showAddModal: false,
       showEditModal: false,
       showSampleModal: false,
+      showVideoModal: false,
       currentSampleCode: null,
       currentSampleArtist: null,
+      currentVideoCode: null,
+      currentVideoArtist: null,
       sampleImages: [],
       currentSlideIndex: 0,
+      videoUrl: null,
+      videoLoading: false,
+      videoError: false,
       newItem: {
         artist: '',
         code: '',
@@ -382,7 +431,7 @@ export default {
       imageError: false,
       editImageError: false,
       searchTimeout: null,
-      imageQuality: 'ps', // Options: 'pl' (small), 'ps' (medium), 'jp-1' (large)
+      imageQuality: 'ps',
       toast: {
         show: false,
         message: '',
@@ -573,6 +622,14 @@ export default {
             { code: 'ONSD-850', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/onsd00850/onsd00850pl.jpg' },
             { code: 'ONSD-899', name: 'Utsunomiya Shion (宇都宮しをん)', imageUrl: 'https://pics.dmm.co.jp/digital/video/onsd00899/onsd00899pl.jpg' }
           ]
+        },
+        {
+          name: 'Hitomi Tanaka',
+          period: '2013–2014 (19–20)',
+          mainWorks: [
+            { code: 'MIMK-007', name: 'Hitomi Tanaka', imageUrl: 'https://pics.dmm.co.jp/digital/video/mimk00007/mimk00007pl.jpg' },
+          ],
+
         }
       ]
     }
@@ -687,50 +744,62 @@ export default {
         }
       }
 
-      // Add keyboard event listener for slideshow
-      window.addEventListener('keydown', this.handleSlideKeydown)
+      // Add keyboard event listener for modals
+      window.addEventListener('keydown', this.handleModalKeydown)
     }
   },
   beforeDestroy() {
     if (process.client) {
-      window.removeEventListener('keydown', this.handleSlideKeydown)
+      window.removeEventListener('keydown', this.handleModalKeydown)
     }
   },
   methods: {
     /**
      * Auto-generate image URL based on code pattern
-     * Pattern: https://pics.dmm.co.jp/digital/video/{code_lower}/{code_lower}{quality}.jpg
-     * Example: SSIS-025 → https://pics.dmm.co.jp/digital/video/ssis00025/ssis00025pl.jpg
-     * Example: ADN-334 → https://pics.dmm.co.jp/digital/video/adn00334/adn00334pl.jpg
-     * 
-     * Quality options:
-     * - 'pl' = Small preview (~272x380px) - default
-     * - 'ps' = Medium size (~420x600px)
-     * - 'jp-1' = Large/High quality (~800x1144px)
      */
     generateImageUrl(code, quality = 'pl') {
       if (!code) return null
 
-      // Convert to uppercase first for consistent processing
       const upperCode = code.toUpperCase()
-
-      // Split into prefix (letters) and number parts
-      // Handle formats like: SSIS-025, ADN-334, MIRD-259, etc.
       const match = upperCode.match(/^([A-Z]+)-?(\d+)$/)
 
       if (!match) {
-        // Fallback: just remove hyphens and convert to lowercase
         const cleanCode = code.toLowerCase().replace(/-/g, '')
         return `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}${quality}.jpg`
       }
 
-      const prefix = match[1].toLowerCase() // e.g., "ssis", "adn"
-      const number = match[2].padStart(5, '0') // e.g., "00025", "00334"
-
+      const prefix = match[1].toLowerCase()
+      const number = match[2].padStart(5, '0')
       const cleanCode = prefix + number
 
-      // Build the URL
       return `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}${quality}.jpg`
+    },
+
+    /**
+     * Generate video preview URL based on code
+     * Pattern: https://cc3001.dmm.co.jp/litevideo/freepv/{first_letter}/{first_three_letters}/{code_lower}/{code_lower}_dmb_w.mp4
+     */
+    generateVideoUrl(code) {
+      if (!code) return null
+
+      const upperCode = code.toUpperCase()
+      const match = upperCode.match(/^([A-Z]+)-?(\d+)$/)
+
+      if (!match) {
+        const cleanCode = code.toLowerCase().replace(/-/g, '')
+        const firstLetter = cleanCode[0]
+        const firstThree = cleanCode.substring(0, 3)
+        return `https://cc3001.dmm.co.jp/litevideo/freepv/${firstLetter}/${firstThree}/${cleanCode}/${cleanCode}_dmb_w.mp4`
+      }
+
+      const prefix = match[1].toLowerCase()
+      const number = match[2].padStart(5, '0')
+      const cleanCode = prefix + number
+
+      const firstLetter = prefix[0]
+      const firstThree = prefix.substring(0, 3)
+
+      return `https://cc3001.dmm.co.jp/litevideo/freepv/${firstLetter}/${firstThree}/${cleanCode}/${cleanCode}_dmb_w.mp4`
     },
 
     /**
@@ -741,7 +810,7 @@ export default {
         const img = new Image()
         const timeout = setTimeout(() => {
           resolve(false)
-        }, 5000) // 5 second timeout
+        }, 5000)
 
         img.onload = () => {
           clearTimeout(timeout)
@@ -765,7 +834,6 @@ export default {
       this.showToast('Checking images...', 'info')
 
       for (const artist of this.artists) {
-        // Check main works
         if (artist.mainWorks) {
           for (const work of artist.mainWorks) {
             if (!work.imageUrl) {
@@ -782,7 +850,6 @@ export default {
           }
         }
 
-        // Check compilations
         if (artist.compilations) {
           for (const work of artist.compilations) {
             if (!work.imageUrl) {
@@ -800,7 +867,6 @@ export default {
         }
       }
 
-      // Force reactivity update
       this.artists = [...this.artists]
 
       if (updated > 0) {
@@ -843,7 +909,6 @@ export default {
 
     /**
      * Generate sample image URLs for a code
-     * DMM provides multiple sample images: jp-1.jpg, jp-2.jpg, jp-3.jpg, etc.
      */
     generateSampleUrls(code, count = 10) {
       if (!code) return []
@@ -859,7 +924,6 @@ export default {
 
       const samples = []
 
-      // Add main cover images
       samples.push({
         url: `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}pl.jpg`,
         label: 'Cover (Small)',
@@ -876,7 +940,6 @@ export default {
         type: 'cover'
       })
 
-      // Add sample images (jp-2 through jp-10)
       for (let i = 2; i <= count + 1; i++) {
         samples.push({
           url: `https://pics.dmm.co.jp/digital/video/${cleanCode}/${cleanCode}jp-${i}.jpg`,
@@ -911,13 +974,53 @@ export default {
     },
 
     /**
+     * Open video preview modal
+     */
+    openVideoPreview(work, artistName) {
+      this.currentVideoCode = work.code
+      this.currentVideoArtist = artistName
+      this.videoUrl = this.generateVideoUrl(work.code)
+      this.videoLoading = true
+      this.videoError = false
+      this.showVideoModal = true
+    },
+
+    /**
+     * Close video preview modal
+     */
+    closeVideoPreview() {
+      this.showVideoModal = false
+      this.currentVideoCode = null
+      this.currentVideoArtist = null
+      this.videoUrl = null
+      this.videoLoading = false
+      this.videoError = false
+    },
+
+    /**
+     * Handle video loaded
+     */
+    handleVideoLoaded() {
+      this.videoLoading = false
+      this.videoError = false
+    },
+
+    /**
+     * Handle video error
+     */
+    handleVideoError() {
+      this.videoLoading = false
+      this.videoError = true
+    },
+
+    /**
      * Go to next slide
      */
     nextSlide() {
       if (this.currentSlideIndex < this.sampleImages.length - 1) {
         this.currentSlideIndex++
       } else {
-        this.currentSlideIndex = 0 // Loop back to start
+        this.currentSlideIndex = 0
       }
     },
 
@@ -928,7 +1031,7 @@ export default {
       if (this.currentSlideIndex > 0) {
         this.currentSlideIndex--
       } else {
-        this.currentSlideIndex = this.sampleImages.length - 1 // Loop to end
+        this.currentSlideIndex = this.sampleImages.length - 1
       }
     },
 
@@ -940,17 +1043,23 @@ export default {
     },
 
     /**
-     * Handle keyboard navigation
+     * Handle keyboard navigation for all modals
      */
-    handleSlideKeydown(event) {
-      if (!this.showSampleModal) return
+    handleModalKeydown(event) {
+      if (event.key === 'Escape') {
+        if (this.showVideoModal) {
+          this.closeVideoPreview()
+        } else if (this.showSampleModal) {
+          this.closeSampleViewer()
+        }
+      }
 
-      if (event.key === 'ArrowRight') {
-        this.nextSlide()
-      } else if (event.key === 'ArrowLeft') {
-        this.prevSlide()
-      } else if (event.key === 'Escape') {
-        this.closeSampleViewer()
+      if (this.showSampleModal) {
+        if (event.key === 'ArrowRight') {
+          this.nextSlide()
+        } else if (event.key === 'ArrowLeft') {
+          this.prevSlide()
+        }
       }
     },
 
@@ -1056,7 +1165,6 @@ export default {
         try {
           const content = event.target.result
 
-          // Check if it's JSON
           if (file.name.endsWith('.json')) {
             const data = JSON.parse(content)
             if (data.codes && Array.isArray(data.codes)) {
@@ -1066,7 +1174,6 @@ export default {
               this.showToast('Invalid JSON format', 'error')
             }
           }
-          // Check if it's CSV
           else if (file.name.endsWith('.csv')) {
             const lines = content.split('\n')
             if (lines.length < 2) {
@@ -1075,12 +1182,10 @@ export default {
             }
 
             const codes = []
-            // Skip header row (line 0)
             for (let i = 1; i < lines.length; i++) {
               const line = lines[i].trim()
               if (!line) continue
 
-              // Parse CSV line, handling quoted fields
               const matches = line.match(/"([^"]*)"|([^,]+)/g)
               if (matches && matches.length > 0) {
                 let code = matches[0].replace(/"/g, '').trim()
@@ -1093,7 +1198,6 @@ export default {
               return
             }
 
-            // Validate codes exist in current data
             const validCodes = codes.filter(code =>
               this.artists.some(artist =>
                 artist.mainWorks?.some(w => w.code === code) ||
@@ -1220,7 +1324,6 @@ export default {
         return
       }
 
-      // Auto-generate image URL if not provided
       let imageUrl = this.newItem.imageUrl
       if (!imageUrl) {
         this.showToast('Generating image URL...', 'info')
@@ -1302,7 +1405,7 @@ body {
 
 .header-content h1 {
   font-size: 2.2em;
-  margin: 0;
+  margin: 0 0 5px 0;
   color: #2563eb;
 }
 
@@ -1443,14 +1546,6 @@ body {
 
 .quality-select:hover {
   border-color: #2563eb;
-}
-
-.search-wrapper {
-  flex: 1;
-  min-width: 250px;
-  position: relative;
-  display: flex;
-  align-items: center;
 }
 
 .search-icon {
@@ -1860,7 +1955,6 @@ body {
 
 .work-image-large:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .works-container.dark-mode .work-image-large {
@@ -2182,7 +2276,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 .works-container.dark-mode .slide-image-wrapper {
