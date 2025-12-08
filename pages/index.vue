@@ -83,18 +83,14 @@
 
         <div class="tlv-tree">
           <!-- Root tags -->
-          <div class="tree-item" v-if="parsedTLV['00']"
-            @mouseenter="setHoveredTag(parsedTLV['00'].tag + String(parsedTLV['00'].length).padStart(2, '0') + parsedTLV['00'].value)"
-            @mouseleave="clearHoveredTag()">
+          <div class="tree-item" v-if="parsedTLV['00']">
             <span class="tree-tag">{{ parsedTLV['00'].tag }}</span>
             <span class="tree-length">{{ String(parsedTLV['00'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['00'].value }}</span>
             <span class="tree-meaning">= Version</span>
           </div>
 
-          <div class="tree-item" v-if="parsedTLV['01']"
-            @mouseenter="setHoveredTag(parsedTLV['01'].tag + String(parsedTLV['01'].length).padStart(2, '0') + parsedTLV['01'].value)"
-            @mouseleave="clearHoveredTag()">
+          <div class="tree-item" v-if="parsedTLV['01']">
             <span class="tree-tag">{{ parsedTLV['01'].tag }}</span>
             <span class="tree-length">{{ String(parsedTLV['01'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['01'].value }}</span>
@@ -262,13 +258,13 @@
 
           <!-- Tag 63: Checksum -->
           <div class="tree-item" v-if="parsedTLV['63']"
-            :class="{ 'checksum-valid': validateChecksum(qrResult), 'checksum-invalid': !validateChecksum(qrResult) }">
+            :class="{ 'checksum-valid': validateChecksum(qrResult) === true, 'checksum-invalid': validateChecksum(qrResult) === false }">
             <span class="tree-tag">{{ parsedTLV['63'].tag }}</span>
             <span class="tree-length">{{ formatLength(parsedTLV['63'].length) }}</span>
             <span class="tree-data">{{ parsedTLV['63'].value }}</span>
             <span class="tree-meaning">= Checksum (CRC-16/IBM-3740)</span>
-            <span class="checksum-status" v-if="validateChecksum(qrResult)">✅ Valid</span>
-            <span class="checksum-status" v-else>⚠️ Invalid</span>
+            <span class="checksum-status" v-if="validateChecksum(qrResult) === true">✅ Valid</span>
+            <span class="checksum-status" v-else-if="validateChecksum(qrResult) === false">⚠️ Invalid</span>
           </div>
         </div>
       </div>
@@ -306,7 +302,7 @@
 
       <div class="raw-data" v-if="qrResult && activeTab === 'decode'">
         <h3 class="data-label">Raw Data</h3>
-        <pre class="data-content" :class="{ 'raw-data-highlight': hoveredTagData }">{{ highlightRawData() }}</pre>
+        <pre class="data-content">{{ qrResult }}</pre>
       </div>
     </div>
   </div>
@@ -330,16 +326,11 @@ export default {
         tag29Nested: {},
       },
       parsedTLV: {},
-      manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304BCF6',
+      manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh9934001317651742651430113176526066514363F3F6',
       copyText: 'Copy',
       activeTab: 'decode',
       generatedQRImage: null,
-      qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304BCF6',
-      hoveredTagData: null,
-      editMode: false,
-      editMerchantName: '',
-      editAmount: '',
-      editCurrency: 'KHR',
+      qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh9934001317651742651430113176526066514363F3F6',
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
         '116': 'Cambodian Riel (KHR)',
@@ -572,25 +563,6 @@ export default {
       return String(length).padStart(2, '0');
     },
 
-    setHoveredTag(tagData) {
-      this.hoveredTagData = tagData;
-    },
-
-    clearHoveredTag() {
-      this.hoveredTagData = null;
-    },
-
-    highlightRawData() {
-      if (!this.hoveredTagData) return this.qrResult;
-
-      const regex = new RegExp(`(${this.escapeRegex(this.hoveredTagData)})`, 'g');
-      return this.qrResult.replace(regex, '[\n$1\n]');
-    },
-
-    escapeRegex(string) {
-      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    },
-
     toggleEditMode() {
       this.editMode = !this.editMode;
       if (this.editMode) {
@@ -662,11 +634,11 @@ export default {
 
     validateChecksum(qrData) {
       // Extract checksum tag
-      const checksumMatch = qrData.match(/63\d{2}([A-F0-9]{4})$/);
-      if (!checksumMatch) return false;
+      const checksumMatch = qrData.match(/63\d{2}([A-Fa-f0-9]{4})$/);
+      if (!checksumMatch) return null;
 
-      const providedChecksum = checksumMatch[1];
-      const dataWithoutChecksum = qrData.replace(/63\d{2}[A-F0-9]{4}$/, '');
+      const providedChecksum = checksumMatch[1].toUpperCase();
+      const dataWithoutChecksum = qrData.replace(/63\d{2}[A-Fa-f0-9]{4}$/, '');
       const calculatedChecksum = this.calculateCRC16(dataWithoutChecksum);
 
       return providedChecksum === calculatedChecksum;
@@ -1353,21 +1325,6 @@ export default {
   line-height: 1.4;
   max-height: 200px;
   transition: background-color 0.2s ease;
-}
-
-.raw-data-highlight {
-  background: #fffacd;
-  animation: highlightPulse 0.4s ease;
-}
-
-@keyframes highlightPulse {
-  0% {
-    background: #ffff99;
-  }
-
-  100% {
-    background: #fffacd;
-  }
 }
 
 @media (max-width: 1200px) {
