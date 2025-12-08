@@ -97,13 +97,6 @@
             <span class="tree-meaning">= Dynamic</span>
           </div>
 
-          <div class="tree-item" v-if="parsedTLV['30']">
-            <span class="tree-tag">{{ parsedTLV['30'].tag }}</span>
-            <span class="tree-length">{{ formatLength(parsedTLV['30'].length) }}</span>
-            <span class="tree-data">{{ parsedTLV['30'].value }}</span>
-            <span class="tree-meaning">= Merchant</span>
-          </div>
-
           <!-- Tag 29: Remittance (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.tag29">
             <span class="tree-tag">29</span>
@@ -133,11 +126,33 @@
             </div>
           </div>
 
-          <div class="tree-item" v-if="headerInfo.tag30">
+          <!-- Tag 30: Merchant Info (nested) -->
+          <div class="tree-item tree-parent" v-if="headerInfo.tag30">
             <span class="tree-tag">30</span>
             <span class="tree-length">{{ formatLength(headerInfo.tag30.length) }}</span>
-            <span class="tree-data">{{ headerInfo.tag30.value }}</span>
-            <span class="tree-meaning">= Merchant</span>
+            <span class="tree-meaning">= Merchant Info</span>
+
+            <!-- Sub-layer for Tag 30 -->
+            <div class="tree-sublayer" v-if="Object.keys(headerInfo.tag30Nested).length > 0">
+              <div class="tree-subitem-line" v-if="headerInfo.tag30Nested['00']">
+                <span class="tree-tag">00</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag30Nested['00'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag30Nested['00'].value }}</span>
+                <span class="tree-meaning">= Bakong ID</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag30Nested['01']">
+                <span class="tree-tag">01</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag30Nested['01'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag30Nested['01'].value }}</span>
+                <span class="tree-meaning">= Merchant ID</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag30Nested['02']">
+                <span class="tree-tag">02</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag30Nested['02'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag30Nested['02'].value }}</span>
+                <span class="tree-meaning">= Bank Name</span>
+              </div>
+            </div>
           </div>
 
           <!-- Tag 51: Bank Info (nested) -->
@@ -324,6 +339,7 @@ export default {
         bankInfoNested: {},
         timestampNested: {},
         tag29Nested: {},
+        tag30Nested: {},
       },
       parsedTLV: {},
       manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh9934001317651742651430113176526066514363F3F6',
@@ -424,9 +440,10 @@ export default {
         this.headerInfo.tag29Nested = this.parseTLVStructure(this.parsedTLV['29'].value);
       }
 
-      // Extract tag 30 (Merchant Type)
+      // Extract tag 30 (Merchant Info with nested data)
       if (this.parsedTLV['30']) {
         this.headerInfo.tag30 = this.parsedTLV['30'];
+        this.headerInfo.tag30Nested = this.parseTLVStructure(this.parsedTLV['30'].value);
       }
 
       // Extract bank info (Tag 51)
