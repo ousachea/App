@@ -325,6 +325,9 @@
             <span class="tree-length">{{ formatLength(parsedTLV['63'].length) }}</span>
             <span class="tree-data">{{ parsedTLV['63'].value }}</span>
             <span class="tree-meaning">= Checksum (CRC-16/IBM-3740)</span>
+            <a v-if="editMode" :href="getCRCCalculatorLink()" target="_blank" class="crc-link">
+              🔗 Verify CRC
+            </a>
           </div>
         </div>
       </div>
@@ -469,6 +472,20 @@ export default {
         this.generateQRCode();
       });
     }
+  },
+
+  watch: {
+    manualQRInput(newValue) {
+      if (newValue.trim()) {
+        this.decodeManualQR();
+      }
+    },
+
+    qrDataToGenerate(newValue) {
+      if (newValue.trim()) {
+        this.generateQRCode();
+      }
+    },
   },
   methods: {
     async decodeQR(event) {
@@ -770,6 +787,19 @@ export default {
       const calculatedChecksum = this.calculateCRC16(dataWithoutChecksum);
 
       return providedChecksum === calculatedChecksum;
+    },
+
+    getCRCCalculatorLink() {
+      // Get QR data without the last 4 digits (checksum value)
+      let qrWithoutChecksum = this.qrResult;
+
+      // Remove tag 63 entirely (6304 + 4 digits = 8 characters)
+      qrWithoutChecksum = qrWithoutChecksum.replace(/63\d{2}[A-Fa-f0-9]{4}$/, '');
+
+      // Encode for URL
+      const encodedData = encodeURIComponent(qrWithoutChecksum);
+
+      return `https://crccalc.com/?crc=${encodedData}&method=CRC-16/IBM-3740&datatype=ascii&outtype=hex`;
     },
 
     async generateQRCode() {
@@ -1159,6 +1189,24 @@ export default {
 
 .copy-btn:hover {
   background: #000000;
+  color: white;
+}
+
+.crc-link {
+  margin-left: auto;
+  color: #0066cc;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #0066cc;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.crc-link:hover {
+  background: #0066cc;
   color: white;
 }
 
