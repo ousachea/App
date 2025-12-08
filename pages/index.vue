@@ -77,6 +77,13 @@
             <span class="tree-meaning">= Merchant</span>
           </div>
 
+          <div class="tree-item" v-if="parsedTLV['30']">
+            <span class="tree-tag">{{ parsedTLV['30'].tag }}</span>
+            <span class="tree-length">{{ parsedTLV['30'].length }}</span>
+            <span class="tree-data">{{ parsedTLV['30'].value }}</span>
+            <span class="tree-meaning">= Merchant Type</span>
+          </div>
+
           <!-- Tag 51: Bank Info (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.bankInfoTag">
             <span class="tree-tag">51</span>
@@ -435,6 +442,14 @@ export default {
       return this.merchantCategoryMap[code] || `Category: ${code}`;
     },
 
+    getMerchantTypeDescription(code) {
+      const typeMap = {
+        '29': 'Remittance',
+        '30': 'Merchant',
+      };
+      return typeMap[code] || `Merchant Type: ${code}`;
+    },
+
     getCurrencyDescription(code) {
       const codeStr = String(code).padStart(3, '0');
       return this.currencyCodeMap[codeStr] || `Currency Code: ${code}`;
@@ -459,9 +474,9 @@ export default {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
-          timeZone: 'UTC'
+          timeZone: 'Asia/Bangkok' // Cambodia uses Bangkok timezone (UTC+7)
         };
-        return date.toLocaleString('en-US', options) + ' UTC';
+        return date.toLocaleString('en-US', options) + ' ICT';
       } catch {
         return '';
       }
@@ -794,6 +809,8 @@ export default {
 .tree-parent {
   font-weight: 600;
   border-left-color: #000000;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .tree-tag {
@@ -848,14 +865,15 @@ export default {
 
 .tree-sublayer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 2px;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.8rem;
+  padding: 0.75rem;
+  background: #f5f5f5;
+  border: 2px solid #000000;
+  border-radius: 0px;
   width: 100%;
+  margin-left: 0.5rem;
 }
 
 .tree-subitem {
@@ -865,7 +883,7 @@ export default {
   padding: 0.4rem;
   background: white;
   border: 1px solid #000000;
-  border-radius: 2px;
+  border-radius: 0px;
 }
 
 .tree-subitem-line {
@@ -873,10 +891,10 @@ export default {
   flex-wrap: wrap;
   gap: 0.3rem;
   align-items: center;
-  padding: 0.4rem;
+  padding: 0.5rem;
   background: white;
   border: 1px solid #000000;
-  border-radius: 2px;
+  border-radius: 0px;
   width: 100%;
 }
 
@@ -892,9 +910,12 @@ export default {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0.3rem 0.4rem;
+  padding: 0.4rem 0.5rem;
   font-size: 0.7rem;
   padding-left: 2.5rem;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 0px;
 }
 
 .tree-subitem-timestamp .tree-meaning {
