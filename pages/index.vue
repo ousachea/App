@@ -58,21 +58,21 @@
           <!-- Root tags -->
           <div class="tree-item" v-if="parsedTLV['00']">
             <span class="tree-tag">{{ parsedTLV['00'].tag }}</span>
-            <span class="tree-length">{{ parsedTLV['00'].length }}</span>
+            <span class="tree-length">{{ String(parsedTLV['00'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['00'].value }}</span>
             <span class="tree-meaning">= Version</span>
           </div>
 
           <div class="tree-item" v-if="parsedTLV['01']">
             <span class="tree-tag">{{ parsedTLV['01'].tag }}</span>
-            <span class="tree-length">{{ parsedTLV['01'].length }}</span>
+            <span class="tree-length">{{ String(parsedTLV['01'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['01'].value }}</span>
             <span class="tree-meaning">= Dynamic</span>
           </div>
 
           <div class="tree-item" v-if="parsedTLV['30']">
             <span class="tree-tag">{{ parsedTLV['30'].tag }}</span>
-            <span class="tree-length">{{ parsedTLV['30'].length }}</span>
+            <span class="tree-length">{{ formatLength(parsedTLV['30'].length) }}</span>
             <span class="tree-data">{{ parsedTLV['30'].value }}</span>
             <span class="tree-meaning">= Merchant</span>
           </div>
@@ -80,26 +80,26 @@
           <!-- Tag 29: Remittance (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.tag29">
             <span class="tree-tag">29</span>
-            <span class="tree-length">{{ headerInfo.tag29.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.tag29.length) }}</span>
             <span class="tree-meaning">= Remittance</span>
 
             <!-- Sub-layer for Tag 29 -->
             <div class="tree-sublayer" v-if="Object.keys(headerInfo.tag29Nested).length > 0">
               <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['00']">
                 <span class="tree-tag">00</span>
-                <span class="tree-length">{{ headerInfo.tag29Nested['00'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag29Nested['00'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.tag29Nested['00'].value }}</span>
                 <span class="tree-meaning">= Bakong ID</span>
               </div>
               <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['01']">
                 <span class="tree-tag">01</span>
-                <span class="tree-length">{{ headerInfo.tag29Nested['01'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag29Nested['01'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.tag29Nested['01'].value }}</span>
                 <span class="tree-meaning">= Merchant ID</span>
               </div>
               <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['02']">
                 <span class="tree-tag">02</span>
-                <span class="tree-length">{{ headerInfo.tag29Nested['02'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag29Nested['02'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.tag29Nested['02'].value }}</span>
                 <span class="tree-meaning">= Bank Name</span>
               </div>
@@ -108,7 +108,7 @@
 
           <div class="tree-item" v-if="headerInfo.tag30">
             <span class="tree-tag">30</span>
-            <span class="tree-length">{{ headerInfo.tag30.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.tag30.length) }}</span>
             <span class="tree-data">{{ headerInfo.tag30.value }}</span>
             <span class="tree-meaning">= Merchant</span>
           </div>
@@ -116,26 +116,26 @@
           <!-- Tag 51: Bank Info (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.bankInfoTag">
             <span class="tree-tag">51</span>
-            <span class="tree-length">{{ headerInfo.bankInfoTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.bankInfoTag.length) }}</span>
             <span class="tree-meaning">= Bank Info</span>
 
             <!-- Sub-layer for Tag 51 -->
             <div class="tree-sublayer" v-if="Object.keys(headerInfo.bankInfoNested).length > 0">
               <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['00']">
                 <span class="tree-tag">00</span>
-                <span class="tree-length">{{ headerInfo.bankInfoNested['00'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.bankInfoNested['00'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.bankInfoNested['00'].value }}</span>
                 <span class="tree-meaning">= Bakong ID</span>
               </div>
               <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['01']">
                 <span class="tree-tag">01</span>
-                <span class="tree-length">{{ headerInfo.bankInfoNested['01'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.bankInfoNested['01'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.bankInfoNested['01'].value }}</span>
                 <span class="tree-meaning">= Merchant ID</span>
               </div>
               <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['02']">
                 <span class="tree-tag">02</span>
-                <span class="tree-length">{{ headerInfo.bankInfoNested['02'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.bankInfoNested['02'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.bankInfoNested['02'].value }}</span>
                 <span class="tree-meaning">= Bank Name</span>
               </div>
@@ -145,7 +145,7 @@
           <!-- Tag 52: Merchant Category -->
           <div class="tree-item" v-if="headerInfo.merchantCategoryTag">
             <span class="tree-tag">52</span>
-            <span class="tree-length">{{ headerInfo.merchantCategoryTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.merchantCategoryTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.merchantCategoryTag.value }}</span>
             <span class="tree-meaning">= {{ getMerchantCategoryDescription(headerInfo.merchantCategoryTag.value)
               }}</span>
@@ -154,7 +154,7 @@
           <!-- Tag 53: Currency -->
           <div class="tree-item" v-if="headerInfo.currencyTag">
             <span class="tree-tag">53</span>
-            <span class="tree-length">{{ headerInfo.currencyTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.currencyTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.currencyTag.value }}</span>
             <span class="tree-meaning">= {{ getCurrencyDescription(headerInfo.currencyTag.value) }}</span>
           </div>
@@ -162,7 +162,7 @@
           <!-- Tag 54: Amount -->
           <div class="tree-item" v-if="headerInfo.amountTag">
             <span class="tree-tag">54</span>
-            <span class="tree-length">{{ headerInfo.amountTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.amountTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.amountTag.value }}</span>
             <span class="tree-meaning">= Amount</span>
           </div>
@@ -170,7 +170,7 @@
           <!-- Tag 58: Country -->
           <div class="tree-item" v-if="headerInfo.countryTag">
             <span class="tree-tag">58</span>
-            <span class="tree-length">{{ headerInfo.countryTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.countryTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.countryTag.value }}</span>
             <span class="tree-meaning">= {{ getCountryDescription(headerInfo.countryTag.value) }}</span>
           </div>
@@ -178,7 +178,7 @@
           <!-- Tag 59: Merchant Name -->
           <div class="tree-item" v-if="headerInfo.merchantNameTag">
             <span class="tree-tag">59</span>
-            <span class="tree-length">{{ headerInfo.merchantNameTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.merchantNameTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.merchantNameTag.value }}</span>
             <span class="tree-meaning">= Merchant Name</span>
           </div>
@@ -186,7 +186,7 @@
           <!-- Tag 60: Merchant City -->
           <div class="tree-item" v-if="headerInfo.merchantCityTag">
             <span class="tree-tag">60</span>
-            <span class="tree-length">{{ headerInfo.merchantCityTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.merchantCityTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.merchantCityTag.value }}</span>
             <span class="tree-meaning">= Merchant City</span>
           </div>
@@ -194,7 +194,7 @@
           <!-- Tag 62: Additional Data -->
           <div class="tree-item" v-if="parsedTLV['62']">
             <span class="tree-tag">62</span>
-            <span class="tree-length">{{ parsedTLV['62'].length }}</span>
+            <span class="tree-length">{{ formatLength(parsedTLV['62'].length) }}</span>
             <span class="tree-data-long">{{ parsedTLV['62'].value }}</span>
             <span class="tree-meaning">= Additional Data</span>
           </div>
@@ -202,14 +202,14 @@
           <!-- Tag 99: Timestamp (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.timestampTag">
             <span class="tree-tag">99</span>
-            <span class="tree-length">{{ headerInfo.timestampTag.length }}</span>
+            <span class="tree-length">{{ formatLength(headerInfo.timestampTag.length) }}</span>
             <span class="tree-meaning">= Timestamp</span>
 
             <!-- Sub-layer for Tag 99 -->
             <div class="tree-sublayer" v-if="Object.keys(headerInfo.timestampNested).length > 0">
               <div class="tree-subitem-line" v-if="headerInfo.timestampNested['00']">
                 <span class="tree-tag">00</span>
-                <span class="tree-length">{{ headerInfo.timestampNested['00'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.timestampNested['00'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.timestampNested['00'].value }}</span>
                 <span class="tree-meaning">= Create Time</span>
               </div>
@@ -219,7 +219,7 @@
 
               <div class="tree-subitem-line" v-if="headerInfo.timestampNested['01']">
                 <span class="tree-tag">01</span>
-                <span class="tree-length">{{ headerInfo.timestampNested['01'].length }}</span>
+                <span class="tree-length">{{ formatLength(headerInfo.timestampNested['01'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.timestampNested['01'].value }}</span>
                 <span class="tree-meaning">= Expiry Time</span>
               </div>
@@ -232,7 +232,7 @@
           <!-- Tag 63: Checksum -->
           <div class="tree-item" v-if="parsedTLV['63']">
             <span class="tree-tag">{{ parsedTLV['63'].tag }}</span>
-            <span class="tree-length">{{ parsedTLV['63'].length }}</span>
+            <span class="tree-length">{{ formatLength(parsedTLV['63'].length) }}</span>
             <span class="tree-data">{{ parsedTLV['63'].value }}</span>
             <span class="tree-meaning">= Checksum</span>
           </div>
@@ -527,6 +527,10 @@ export default {
       } catch {
         return '';
       }
+    },
+
+    formatLength(length) {
+      return String(length).padStart(2, '0');
     },
 
     async generateQRCode() {
