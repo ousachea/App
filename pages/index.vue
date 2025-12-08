@@ -84,6 +84,35 @@
             <span class="tree-meaning">= Merchant Type</span>
           </div>
 
+          <!-- Tag 29: Merchant Info (nested) -->
+          <div class="tree-item tree-parent" v-if="headerInfo.tag29">
+            <span class="tree-tag">29</span>
+            <span class="tree-length">{{ headerInfo.tag29.length }}</span>
+            <span class="tree-meaning">= Merchant Info</span>
+
+            <!-- Sub-layer for Tag 29 -->
+            <div class="tree-sublayer" v-if="Object.keys(headerInfo.tag29Nested).length > 0">
+              <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['00']">
+                <span class="tree-tag">00</span>
+                <span class="tree-length">{{ headerInfo.tag29Nested['00'].length }}</span>
+                <span class="tree-data">{{ headerInfo.tag29Nested['00'].value }}</span>
+                <span class="tree-meaning">= Bakong ID</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['01']">
+                <span class="tree-tag">01</span>
+                <span class="tree-length">{{ headerInfo.tag29Nested['01'].length }}</span>
+                <span class="tree-data">{{ headerInfo.tag29Nested['01'].value }}</span>
+                <span class="tree-meaning">= Merchant ID</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['02']">
+                <span class="tree-tag">02</span>
+                <span class="tree-length">{{ headerInfo.tag29Nested['02'].length }}</span>
+                <span class="tree-data">{{ headerInfo.tag29Nested['02'].value }}</span>
+                <span class="tree-meaning">= Bank Name</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Tag 51: Bank Info (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.bankInfoTag">
             <span class="tree-tag">51</span>
@@ -264,6 +293,7 @@ export default {
       headerInfo: {
         bankInfoNested: {},
         timestampNested: {},
+        tag29Nested: {},
       },
       parsedTLV: {},
       manualQRInput: '00020101021230510016abaakhppxxx@abaa01151211209110909710208ABA Bank52047392530384054041.895802KH5919Ousa Chea by O.CHEA6010PHNOM PENH626368590010PAYWAY@ABA01061894950208031956110619408730268109455322Q993400131764302681094011317643029810946304D962',
@@ -352,7 +382,13 @@ export default {
       this.parsedTLV = this.parseTLVStructure(qrString);
       this.headerInfo = this.extractHeaderInfo(this.parsedTLV);
 
-      // Extract bank info
+      // Extract tag 29 (Merchant Info)
+      if (this.parsedTLV['29']) {
+        this.headerInfo.tag29 = this.parsedTLV['29'];
+        this.headerInfo.tag29Nested = this.parseTLVStructure(this.parsedTLV['29'].value);
+      }
+
+      // Extract bank info (Tag 51)
       if (this.parsedTLV['51']) {
         this.headerInfo.bankInfoTag = this.parsedTLV['51'];
         this.headerInfo.bankInfoNested = this.parseTLVStructure(this.parsedTLV['51'].value);
