@@ -296,11 +296,11 @@ export default {
         tag29Nested: {},
       },
       parsedTLV: {},
-      manualQRInput: '00020101021230510016abaakhppxxx@abaa01151211209110909710208ABA Bank52047392530384054041.895802KH5919Ousa Chea by O.CHEA6010PHNOM PENH626368590010PAYWAY@ABA01061894950208031956110619408730268109455322Q993400131764302681094011317643029810946304D962',
+      manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304BCF6',
       copyText: 'Copy',
       activeTab: 'decode',
       generatedQRImage: null,
-      qrDataToGenerate: '',
+      qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304BCF6',
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
         '116': 'Cambodian Riel (KHR)',
@@ -350,6 +350,12 @@ export default {
     if (this.manualQRInput.trim()) {
       this.$nextTick(() => {
         this.decodeManualQR();
+      });
+    }
+    // Auto-generate QR code
+    if (this.qrDataToGenerate.trim()) {
+      this.$nextTick(() => {
+        this.generateQRCode();
       });
     }
   },
@@ -733,7 +739,7 @@ export default {
   border: 1px solid #000000;
   border-radius: 0px;
   font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 0.85rem;
+  font-size: 16px;
   resize: vertical;
   transition: all 0.3s ease;
   color: #000000;
