@@ -19,6 +19,16 @@
       <!-- Decode Tab -->
       <div v-show="activeTab === 'decode'" class="tab-content">
         <div class="input-area">
+          <div class="sample-selector">
+            <label class="sample-label">📋 Sample Data:</label>
+            <select @change="loadSampleData" class="sample-select">
+              <option value="">-- Select Sample --</option>
+              <option v-for="sample in sampleDataOptions" :key="sample.name" :value="sample.data">
+                {{ sample.name }}
+              </option>
+            </select>
+          </div>
+
           <label class="upload-zone">
             <input type="file" @change="decodeQR" accept="image/*" class="file-input" />
             <div class="upload-content">
@@ -35,9 +45,6 @@
           <textarea v-model="manualQRInput" placeholder="Paste QR code data..." class="input-field"></textarea>
 
           <div class="action-buttons">
-            <button @click="decodeManualQR" class="btn btn-primary">
-              Decode
-            </button>
             <button @click="clearData" class="btn btn-secondary">
               Clear
             </button>
@@ -356,6 +363,19 @@
           <div class="qr-display-container">
             <img :src="generatedQRImage" alt="Generated QR Code" class="qr-image" />
           </div>
+
+          <div class="download-options">
+            <label class="download-label">Download Format:</label>
+            <select v-model="downloadFormat" class="download-select">
+              <option value="svg">🌐 SVG (Recommended)</option>
+              <option value="png">🖼️ PNG</option>
+              <option value="jpg">📷 JPG</option>
+            </select>
+            <button @click="downloadQRCode" class="btn btn-primary">
+              ⬇️ Download
+            </button>
+          </div>
+
           <div class="qr-data-display">
             <h4 class="data-label" style="margin-top: 1rem;">Data</h4>
             <pre class="data-content">{{ qrDataToGenerate }}</pre>
@@ -401,6 +421,7 @@ export default {
       editAmount: '',
       editMerchantName: '',
       editBankName: '',
+      downloadFormat: 'svg',
       cambodianBanks: [
         'ABA Bank',
         'Canadia Bank',
@@ -414,6 +435,24 @@ export default {
         'Cambodia Post Bank',
         'KBC Bank',
         'Kambodian Bank for Development',
+      ],
+      sampleDataOptions: [
+        {
+          name: 'Static Merchant',
+          data: '00020101021130510016abaakhppxxx@abaa01151211209110909710208ABA Bank5204739253031165802KH5919Ousa Chea by O.CHEA6010PHNOM PENH624068360010PAYWAY@ABA01061894950208031956116304098B',
+        },
+        {
+          name: 'Dynamic Merchant',
+          data: '00020101021230510016abaakhppxxx@abaa01151211209110909710208ABA Bank52047392530384054049.995802KH5919Ousa Chea by O.CHEA6010PHNOM PENH626368590010PAYWAY@ABA01061894950208031956110619BD2F18438007825964Z9934001317651843800780113176518468007863046CBB',
+        },
+        {
+          name: 'Static Remittance',
+          data: '00020101021129810016cadikhppxxx@cadi010712814460212Canadia Bank10130010007018873111300100070281515204000053031165802KH5909Sok Sabay6010Phnom Penh62200816Pay to my friend6304290E',
+        },
+        {
+          name: 'Dynamic Remittance',
+          data: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304F3F6',
+        },
       ],
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
@@ -508,6 +547,16 @@ export default {
     decodeManualQR() {
       if (this.manualQRInput.trim()) {
         this.processQRResult(this.manualQRInput.trim());
+      }
+    },
+
+    loadSampleData(event) {
+      const data = event.target.value;
+      if (data) {
+        this.manualQRInput = data;
+        this.$nextTick(() => {
+          event.target.value = ''; // Reset selector
+        });
       }
     },
 
@@ -830,11 +879,45 @@ export default {
       if (!this.generatedQRImage) return;
 
       const link = document.createElement('a');
-      link.href = this.generatedQRImage;
-      link.download = `khqr-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+
+      if (this.downloadFormat === 'svg') {
+        // Generate SVG format
+        QRCode.toString(this.qrDataToGenerate.trim(), {
+          errorCorrectionLevel: 'H',
+          type: 'image/svg+xml',
+          quality: 0.95,
+          margin: 1,
+          width: 300,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF',
+          },
+        }, (err, url) => {
+          if (err) {
+            console.error('Error generating SVG:', err);
+            return;
+          }
+          link.href = url;
+          link.download = `khqr-${Date.now()}.svg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      } else if (this.downloadFormat === 'jpg') {
+        // Generate JPG from PNG
+        link.href = this.generatedQRImage;
+        link.download = `khqr-${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // PNG (default)
+        link.href = this.generatedQRImage;
+        link.download = `khqr-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     },
 
     clearGenerate() {
@@ -953,6 +1036,48 @@ export default {
   padding: 1.25rem 1.5rem;
   flex-shrink: 0;
   background: white;
+}
+
+.sample-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  background: #f5f5f5;
+  border: 1px solid #000000;
+  border-radius: 0px;
+}
+
+.sample-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.sample-select {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #000000;
+  border-radius: 0px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #000000;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sample-select:hover {
+  border-color: #000000;
+  background: #ffffff;
+}
+
+.sample-select:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .upload-zone {
@@ -1444,6 +1569,47 @@ export default {
   height: auto;
   border-radius: 0px;
   box-shadow: none;
+}
+
+.download-options {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #f5f5f5;
+  border: 1px solid #000000;
+  border-radius: 0px;
+  margin-bottom: 1rem;
+}
+
+.download-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #000000;
+  white-space: nowrap;
+}
+
+.download-select {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #000000;
+  border-radius: 0px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #000000;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-select:hover {
+  border-color: #000000;
+}
+
+.download-select:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .qr-data-display {
