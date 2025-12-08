@@ -77,18 +77,11 @@
             <span class="tree-meaning">= Merchant</span>
           </div>
 
-          <div class="tree-item" v-if="parsedTLV['30']">
-            <span class="tree-tag">{{ parsedTLV['30'].tag }}</span>
-            <span class="tree-length">{{ parsedTLV['30'].length }}</span>
-            <span class="tree-data">{{ parsedTLV['30'].value }}</span>
-            <span class="tree-meaning">= Merchant Type</span>
-          </div>
-
-          <!-- Tag 29: Merchant Info (nested) -->
+          <!-- Tag 29: Remittance (nested) -->
           <div class="tree-item tree-parent" v-if="headerInfo.tag29">
             <span class="tree-tag">29</span>
             <span class="tree-length">{{ headerInfo.tag29.length }}</span>
-            <span class="tree-meaning">= Merchant Info</span>
+            <span class="tree-meaning">= Remittance</span>
 
             <!-- Sub-layer for Tag 29 -->
             <div class="tree-sublayer" v-if="Object.keys(headerInfo.tag29Nested).length > 0">
@@ -111,6 +104,13 @@
                 <span class="tree-meaning">= Bank Name</span>
               </div>
             </div>
+          </div>
+
+          <div class="tree-item" v-if="headerInfo.tag30">
+            <span class="tree-tag">30</span>
+            <span class="tree-length">{{ headerInfo.tag30.length }}</span>
+            <span class="tree-data">{{ headerInfo.tag30.value }}</span>
+            <span class="tree-meaning">= Merchant</span>
           </div>
 
           <!-- Tag 51: Bank Info (nested) -->
@@ -382,10 +382,15 @@ export default {
       this.parsedTLV = this.parseTLVStructure(qrString);
       this.headerInfo = this.extractHeaderInfo(this.parsedTLV);
 
-      // Extract tag 29 (Merchant Info)
+      // Extract tag 29 (Merchant Type with nested info)
       if (this.parsedTLV['29']) {
         this.headerInfo.tag29 = this.parsedTLV['29'];
         this.headerInfo.tag29Nested = this.parseTLVStructure(this.parsedTLV['29'].value);
+      }
+
+      // Extract tag 30 (Merchant Type)
+      if (this.parsedTLV['30']) {
+        this.headerInfo.tag30 = this.parsedTLV['30'];
       }
 
       // Extract bank info (Tag 51)
