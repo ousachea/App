@@ -1,6 +1,5 @@
 <template>
   <div class="container">
-    <PageSwitcher />
     <div class="scanner-card">
       <div class="header">
         <h1 class="title">KHQR Scanner</h1>
@@ -49,35 +48,8 @@
       <div v-if="qrResult && activeTab === 'decode'" class="result-section">
         <div class="result-header">
           <h2>TLV Structure</h2>
-          <div class="header-buttons">
-            <button @click="toggleEditMode" class="copy-btn" :class="{ 'edit-active': editMode }">
-              {{ editMode ? '❌ Cancel' : '✏️ Edit' }}
-            </button>
-            <button @click="copyToClipboard" class="copy-btn">
-              📋 {{ copyText }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Edit Panel -->
-        <div class="edit-panel" v-if="editMode">
-          <div class="edit-field">
-            <label>Merchant Name:</label>
-            <input v-model="editMerchantName" type="text" class="edit-input" placeholder="Enter merchant name">
-          </div>
-          <div class="edit-field">
-            <label>Amount:</label>
-            <input v-model="editAmount" type="text" class="edit-input" placeholder="Enter amount">
-          </div>
-          <div class="edit-field">
-            <label>Currency:</label>
-            <select v-model="editCurrency" class="edit-select">
-              <option value="KHR">KHR (Cambodian Riel)</option>
-              <option value="USD">USD (US Dollar)</option>
-            </select>
-          </div>
-          <button @click="updateMerchantData" class="btn btn-primary" style="margin-top: 1rem;">
-            ✅ Update & Regenerate QR
+          <button @click="copyToClipboard" class="copy-btn">
+            📋 {{ copyText }}
           </button>
         </div>
 
@@ -580,56 +552,6 @@ export default {
       return String(length).padStart(2, '0');
     },
 
-    toggleEditMode() {
-      this.editMode = !this.editMode;
-      if (this.editMode) {
-        this.editMerchantName = this.headerInfo.merchantNameTag?.value || '';
-        this.editAmount = this.headerInfo.amountTag?.value || '';
-        this.editCurrency = this.headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR';
-      }
-    },
-
-    updateMerchantData() {
-      if (!this.qrResult) return;
-
-      let updatedResult = this.qrResult;
-
-      // Update Merchant Name (Tag 59)
-      if (this.editMerchantName && this.headerInfo.merchantNameTag) {
-        const oldTag59 = '59' + String(this.headerInfo.merchantNameTag.length).padStart(2, '0') + this.headerInfo.merchantNameTag.value;
-        const newLength = String(this.editMerchantName.length).padStart(2, '0');
-        const newTag59 = '59' + newLength + this.editMerchantName;
-        updatedResult = updatedResult.replace(oldTag59, newTag59);
-      }
-
-      // Update Amount (Tag 54)
-      if (this.editAmount && this.headerInfo.amountTag) {
-        const oldTag54 = '54' + String(this.headerInfo.amountTag.length).padStart(2, '0') + this.headerInfo.amountTag.value;
-        const newLength = String(this.editAmount.length).padStart(2, '0');
-        const newTag54 = '54' + newLength + this.editAmount;
-        updatedResult = updatedResult.replace(oldTag54, newTag54);
-      }
-
-      // Update Currency (Tag 53)
-      if (this.headerInfo.currencyTag) {
-        const newCurrency = this.editCurrency === 'USD' ? '840' : '116';
-        const oldTag53 = '53' + String(this.headerInfo.currencyTag.length).padStart(2, '0') + this.headerInfo.currencyTag.value;
-        const newTag53 = '53' + '03' + newCurrency;
-        updatedResult = updatedResult.replace(oldTag53, newTag53);
-      }
-
-      // Remove old checksum (Tag 63)
-      updatedResult = updatedResult.replace(/63\d{2}[A-F0-9]{4}$/, '');
-
-      // Calculate and add new checksum
-      const newChecksum = this.calculateCRC16(updatedResult);
-      updatedResult = updatedResult + '63' + '04' + newChecksum;
-
-      this.manualQRInput = updatedResult;
-      this.processQRResult(updatedResult);
-      this.editMode = false;
-    },
-
     calculateCRC16(data) {
       let crc = 0x0000;
 
@@ -971,61 +893,6 @@ export default {
   color: #000000;
   font-weight: 700;
   letter-spacing: 0px;
-}
-
-.header-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.edit-panel {
-  background: #f5f5f5;
-  border: 2px solid #000000;
-  border-radius: 0px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  animation: slideDown 0.3s ease;
-}
-
-.edit-field {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.edit-field label {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: #000000;
-}
-
-.edit-input,
-.edit-select {
-  padding: 0.6rem;
-  border: 1px solid #000000;
-  border-radius: 0px;
-  font-size: 16px;
-  font-family: inherit;
-  color: #000000;
-  background: white;
-  transition: all 0.2s ease;
-}
-
-.edit-input:focus,
-.edit-select:focus {
-  outline: none;
-  border-color: #000000;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
-}
-
-.edit-input::placeholder {
-  color: #999999;
-}
-
-.edit-active {
-  background: #ff6b6b !important;
-  color: white !important;
 }
 
 .checksum-valid {
