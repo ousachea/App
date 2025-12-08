@@ -56,14 +56,18 @@
 
         <div class="tlv-tree">
           <!-- Root tags -->
-          <div class="tree-item" v-if="parsedTLV['00']">
+          <div class="tree-item" v-if="parsedTLV['00']"
+            @mouseenter="setHoveredTag(parsedTLV['00'].tag + String(parsedTLV['00'].length).padStart(2, '0') + parsedTLV['00'].value)"
+            @mouseleave="clearHoveredTag()">
             <span class="tree-tag">{{ parsedTLV['00'].tag }}</span>
             <span class="tree-length">{{ String(parsedTLV['00'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['00'].value }}</span>
             <span class="tree-meaning">= Version</span>
           </div>
 
-          <div class="tree-item" v-if="parsedTLV['01']">
+          <div class="tree-item" v-if="parsedTLV['01']"
+            @mouseenter="setHoveredTag(parsedTLV['01'].tag + String(parsedTLV['01'].length).padStart(2, '0') + parsedTLV['01'].value)"
+            @mouseleave="clearHoveredTag()">
             <span class="tree-tag">{{ parsedTLV['01'].tag }}</span>
             <span class="tree-length">{{ String(parsedTLV['01'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['01'].value }}</span>
@@ -272,7 +276,7 @@
 
       <div class="raw-data" v-if="qrResult && activeTab === 'decode'">
         <h3 class="data-label">Raw Data</h3>
-        <pre class="data-content">{{ qrResult }}</pre>
+        <pre class="data-content" :class="{ 'raw-data-highlight': hoveredTagData }">{{ highlightRawData() }}</pre>
       </div>
     </div>
   </div>
@@ -301,6 +305,7 @@ export default {
       activeTab: 'decode',
       generatedQRImage: null,
       qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304BCF6',
+      hoveredTagData: null,
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
         '116': 'Cambodian Riel (KHR)',
@@ -533,6 +538,25 @@ export default {
       return String(length).padStart(2, '0');
     },
 
+    setHoveredTag(tagData) {
+      this.hoveredTagData = tagData;
+    },
+
+    clearHoveredTag() {
+      this.hoveredTagData = null;
+    },
+
+    highlightRawData() {
+      if (!this.hoveredTagData) return this.qrResult;
+
+      const regex = new RegExp(`(${this.escapeRegex(this.hoveredTagData)})`, 'g');
+      return this.qrResult.replace(regex, '[\n$1\n]');
+    },
+
+    escapeRegex(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    },
+
     async generateQRCode() {
       if (!this.qrDataToGenerate.trim()) {
         alert('Please enter KHQR data to generate a QR code');
@@ -648,7 +672,7 @@ export default {
   font-weight: 600;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0px;
 }
 
@@ -659,6 +683,19 @@ export default {
 .tab-button.active {
   color: #000000;
   border-bottom-color: #000000;
+  animation: slideInDown 0.3s ease;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tab-content {
@@ -770,10 +807,19 @@ export default {
   font-weight: 600;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: white;
   color: #000000;
   letter-spacing: 0px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn-primary {
@@ -784,6 +830,7 @@ export default {
 
 .btn-primary:hover {
   background: #333333;
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
@@ -794,10 +841,12 @@ export default {
 
 .btn-secondary:hover {
   background: #f5f5f5;
+  border-color: #333333;
 }
 
 .result-section {
   padding: 1.25rem 1.5rem;
+  padding-bottom: 170px;
   border-top: none;
   overflow-y: auto;
   background: white;
@@ -855,13 +904,16 @@ export default {
   align-items: center;
   border-left: 2px solid transparent;
   padding-left: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 2px;
+  cursor: pointer;
 }
 
-.tree-parent {
-  font-weight: 600;
-  border-left-color: #000000;
-  width: 100%;
-  flex-wrap: wrap;
+.tree-item:hover {
+  background-color: #f0f0f0;
+  border-left-color: #ff6b6b;
+  padding-left: 1.2rem;
+  transform: translateX(2px);
 }
 
 .tree-tag {
@@ -871,6 +923,12 @@ export default {
   border: 1px solid #000000;
   font-weight: 700;
   border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.tree-item:hover .tree-tag {
+  background: #d0d0d0;
+  transform: scale(1.05);
 }
 
 .tree-length {
@@ -880,6 +938,12 @@ export default {
   border: 1px solid #000000;
   font-weight: 700;
   border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.tree-item:hover .tree-length {
+  background: #b8b8b8;
+  transform: scale(1.05);
 }
 
 .tree-data {
@@ -890,6 +954,12 @@ export default {
   font-weight: 600;
   border-radius: 2px;
   word-break: break-all;
+  transition: all 0.2s ease;
+}
+
+.tree-item:hover .tree-data {
+  background: #9a9a9a;
+  transform: scale(1.02);
 }
 
 .tree-meaning {
@@ -925,16 +995,19 @@ export default {
   border-radius: 0px;
   width: 100%;
   margin-left: 0.5rem;
+  animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.tree-subitem {
-  display: flex;
-  gap: 0.3rem;
-  align-items: center;
-  padding: 0.4rem;
-  background: white;
-  border: 1px solid #000000;
-  border-radius: 0px;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tree-subitem-line {
@@ -947,6 +1020,38 @@ export default {
   border: 1px solid #000000;
   border-radius: 0px;
   width: 100%;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.3s ease forwards;
+}
+
+.tree-sublayer>.tree-subitem-line:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.tree-sublayer>.tree-subitem-line:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.tree-sublayer>.tree-subitem-line:nth-child(5) {
+  animation-delay: 0.3s;
+}
+
+.tree-subitem-line:hover {
+  background: #f9f9f9;
+  transform: translateX(3px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tree-subitem-timestamp {
@@ -1023,8 +1128,17 @@ export default {
 }
 
 .raw-data {
-  margin-bottom: 1rem;
-  padding: 0 1.5rem;
+  padding: 1.5rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 2px solid #000000;
+  z-index: 50;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .data-label {
@@ -1049,6 +1163,22 @@ export default {
   font-family: 'Monaco', 'Courier New', monospace;
   line-height: 1.4;
   max-height: 200px;
+  transition: background-color 0.2s ease;
+}
+
+.raw-data-highlight {
+  background: #fffacd;
+  animation: highlightPulse 0.4s ease;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background: #ffff99;
+  }
+
+  100% {
+    background: #fffacd;
+  }
 }
 
 @media (max-width: 1200px) {
