@@ -49,8 +49,46 @@
       <div v-if="qrResult && activeTab === 'decode'" class="result-section">
         <div class="result-header">
           <h2>TLV Structure</h2>
-          <button @click="copyToClipboard" class="copy-btn">
-            📋 {{ copyText }}
+          <div class="header-buttons">
+            <button @click="toggleEditMode" class="copy-btn" :class="{ 'edit-active': editMode }">
+              {{ editMode ? '❌ Cancel' : '✏️ Edit' }}
+            </button>
+            <button @click="copyToClipboard" class="copy-btn">
+              📋 {{ copyText }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit Panel -->
+        <div class="edit-panel" v-if="editMode">
+          <div class="edit-field">
+            <label>Merchant ID:</label>
+            <input v-model="editMerchantID" type="text" class="edit-input" placeholder="Enter merchant ID">
+          </div>
+          <div class="edit-field">
+            <label>Currency:</label>
+            <select v-model="editCurrency" class="edit-select">
+              <option value="KHR">KHR (Cambodian Riel)</option>
+              <option value="USD">USD (US Dollar)</option>
+            </select>
+          </div>
+          <div class="edit-field">
+            <label>Amount:</label>
+            <input v-model="editAmount" type="text" class="edit-input" placeholder="Enter amount">
+          </div>
+          <div class="edit-field">
+            <label>Merchant Name:</label>
+            <input v-model="editMerchantName" type="text" class="edit-input" placeholder="Enter merchant name">
+          </div>
+          <div class="edit-field">
+            <label>Bank Name:</label>
+            <select v-model="editBankName" class="edit-select">
+              <option value="">-- Select Bank --</option>
+              <option v-for="bank in cambodianBanks" :key="bank" :value="bank">{{ bank }}</option>
+            </select>
+          </div>
+          <button @click="updateMerchantData" class="btn btn-primary" style="margin-top: 1rem;">
+            ✅ Update & Regenerate QR
           </button>
         </div>
 
@@ -282,13 +320,11 @@
 
           <!-- Tag 63: Checksum -->
           <div class="tree-item" v-if="parsedTLV['63']"
-            :class="{ 'checksum-valid': validateChecksum(qrResult) === true, 'checksum-invalid': validateChecksum(qrResult) === false }">
+            :class="{ 'checksum-valid': validateChecksum(qrResult) === true }">
             <span class="tree-tag">{{ parsedTLV['63'].tag }}</span>
             <span class="tree-length">{{ formatLength(parsedTLV['63'].length) }}</span>
             <span class="tree-data">{{ parsedTLV['63'].value }}</span>
             <span class="tree-meaning">= Checksum (CRC-16/IBM-3740)</span>
-            <span class="checksum-status" v-if="validateChecksum(qrResult) === true">✅ Valid</span>
-            <span class="checksum-status" v-else-if="validateChecksum(qrResult) === false">⚠️ Invalid</span>
           </div>
         </div>
       </div>
@@ -351,11 +387,31 @@ export default {
         tag30Nested: {},
       },
       parsedTLV: {},
-      manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh9934001317651742651430113176526066514363F3F6',
+      manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304F3F6',
       copyText: 'Copy',
       activeTab: 'decode',
       generatedQRImage: null,
-      qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh9934001317651742651430113176526066514363F3F6',
+      qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304F3F6',
+      editMode: false,
+      editMerchantID: '',
+      editCurrency: 'KHR',
+      editAmount: '',
+      editMerchantName: '',
+      editBankName: '',
+      cambodianBanks: [
+        'ABA Bank',
+        'Canadia Bank',
+        'Chip Mong Bank',
+        'ACLEDA Bank',
+        'Phnom Penh Commercial Bank',
+        'CPB Bank',
+        'Maybank',
+        'Vattanac Bank',
+        'Hattha Bank',
+        'Cambodia Post Bank',
+        'KBC Bank',
+        'Kambodian Bank for Development',
+      ],
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
         '116': 'Cambodian Riel (KHR)',
@@ -551,6 +607,94 @@ export default {
         '12': 'Dynamic QR Code',
       };
       return methodMap[code] || `Initiation Method: ${code}`;
+    },
+
+    toggleEditMode() {
+      this.editMode = !this.editMode;
+      if (this.editMode) {
+        // Extract current values from parsed TLV
+        this.editMerchantID = this.headerInfo.tag29Nested?.['01']?.value || this.headerInfo.tag30Nested?.['01']?.value || this.headerInfo.bankInfoNested?.['01']?.value || '';
+        this.editCurrency = this.headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR';
+        this.editAmount = this.headerInfo.amountTag?.value || '';
+        this.editMerchantName = this.headerInfo.merchantNameTag?.value || '';
+        this.editBankName = this.headerInfo.tag29Nested?.['02']?.value || this.headerInfo.tag30Nested?.['02']?.value || this.headerInfo.bankInfoNested?.['02']?.value || '';
+      }
+    },
+
+    updateMerchantData() {
+      if (!this.qrResult) return;
+
+      let updatedResult = this.qrResult;
+
+      // Update Merchant ID in Tag 29/30/51
+      if (this.editMerchantID) {
+        // Try tag 29 first
+        if (this.headerInfo.tag29Nested?.['01']) {
+          const oldTag = '01' + String(this.headerInfo.tag29Nested['01'].length).padStart(2, '0') + this.headerInfo.tag29Nested['01'].value;
+          const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
+          updatedResult = updatedResult.replace(oldTag, newTag);
+        } else if (this.headerInfo.tag30Nested?.['01']) {
+          const oldTag = '01' + String(this.headerInfo.tag30Nested['01'].length).padStart(2, '0') + this.headerInfo.tag30Nested['01'].value;
+          const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
+          updatedResult = updatedResult.replace(oldTag, newTag);
+        } else if (this.headerInfo.bankInfoNested?.['01']) {
+          const oldTag = '01' + String(this.headerInfo.bankInfoNested['01'].length).padStart(2, '0') + this.headerInfo.bankInfoNested['01'].value;
+          const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
+          updatedResult = updatedResult.replace(oldTag, newTag);
+        }
+      }
+
+      // Update Currency (Tag 53)
+      if (this.headerInfo.currencyTag) {
+        const newCurrency = this.editCurrency === 'USD' ? '840' : '116';
+        const oldTag53 = '53' + String(this.headerInfo.currencyTag.length).padStart(2, '0') + this.headerInfo.currencyTag.value;
+        const newTag53 = '53' + '03' + newCurrency;
+        updatedResult = updatedResult.replace(oldTag53, newTag53);
+      }
+
+      // Update Amount (Tag 54)
+      if (this.editAmount && this.headerInfo.amountTag) {
+        const oldTag54 = '54' + String(this.headerInfo.amountTag.length).padStart(2, '0') + this.headerInfo.amountTag.value;
+        const newLength = String(this.editAmount.length).padStart(2, '0');
+        const newTag54 = '54' + newLength + this.editAmount;
+        updatedResult = updatedResult.replace(oldTag54, newTag54);
+      }
+
+      // Update Merchant Name (Tag 59)
+      if (this.editMerchantName && this.headerInfo.merchantNameTag) {
+        const oldTag59 = '59' + String(this.headerInfo.merchantNameTag.length).padStart(2, '0') + this.headerInfo.merchantNameTag.value;
+        const newLength = String(this.editMerchantName.length).padStart(2, '0');
+        const newTag59 = '59' + newLength + this.editMerchantName;
+        updatedResult = updatedResult.replace(oldTag59, newTag59);
+      }
+
+      // Update Bank Name in Tag 29/30/51
+      if (this.editBankName) {
+        if (this.headerInfo.tag29Nested?.['02']) {
+          const oldTag = '02' + String(this.headerInfo.tag29Nested['02'].length).padStart(2, '0') + this.headerInfo.tag29Nested['02'].value;
+          const newTag = '02' + String(this.editBankName.length).padStart(2, '0') + this.editBankName;
+          updatedResult = updatedResult.replace(oldTag, newTag);
+        } else if (this.headerInfo.tag30Nested?.['02']) {
+          const oldTag = '02' + String(this.headerInfo.tag30Nested['02'].length).padStart(2, '0') + this.headerInfo.tag30Nested['02'].value;
+          const newTag = '02' + String(this.editBankName.length).padStart(2, '0') + this.editBankName;
+          updatedResult = updatedResult.replace(oldTag, newTag);
+        } else if (this.headerInfo.bankInfoNested?.['02']) {
+          const oldTag = '02' + String(this.headerInfo.bankInfoNested['02'].length).padStart(2, '0') + this.headerInfo.bankInfoNested['02'].value;
+          const newTag = '02' + String(this.editBankName.length).padStart(2, '0') + this.editBankName;
+          updatedResult = updatedResult.replace(oldTag, newTag);
+        }
+      }
+
+      // Remove old checksum (Tag 63)
+      updatedResult = updatedResult.replace(/63\d{2}[A-F0-9a-f]{4}$/, '');
+
+      // Calculate and add new checksum
+      const newChecksum = this.calculateCRC16(updatedResult);
+      updatedResult = updatedResult + '63' + '04' + newChecksum;
+
+      this.manualQRInput = updatedResult;
+      this.processQRResult(updatedResult);
+      this.editMode = false;
     },
 
     getMerchantTypeDescription(code) {
@@ -940,22 +1084,64 @@ export default {
   letter-spacing: 0px;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-panel {
+  background: #f5f5f5;
+  border: 2px solid #000000;
+  border-radius: 0px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+.edit-field {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-field label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #000000;
+}
+
+.edit-input,
+.edit-select {
+  padding: 0.6rem;
+  border: 1px solid #000000;
+  border-radius: 0px;
+  font-size: 16px;
+  font-family: inherit;
+  color: #000000;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.edit-input:focus,
+.edit-select:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.edit-input::placeholder {
+  color: #999999;
+}
+
+.edit-active {
+  background: #ff6b6b !important;
+  color: white !important;
+}
+
 .checksum-valid {
   background: #f0fdf4;
   border-left-color: #22c55e !important;
-}
-
-.checksum-invalid {
-  background: #fef2f2;
-  border-left-color: #ef4444 !important;
-}
-
-.checksum-status {
-  margin-left: auto;
-  font-weight: 600;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 2px;
 }
 
 .copy-btn {
