@@ -18,287 +18,225 @@
 
       <!-- Decode Tab -->
       <div v-show="activeTab === 'decode'" class="tab-content">
-        <label class="upload-zone">
-          <input type="file" @change="decodeQR" accept="image/*" class="file-input" />
-          <div class="upload-content">
-            <span class="upload-icon">📷</span>
-            <span class="upload-text">Upload image</span>
-            <span class="upload-hint">PNG, JPG, GIF</span>
+        <div class="input-area">
+          <label class="upload-zone">
+            <input type="file" @change="decodeQR" accept="image/*" class="file-input" />
+            <div class="upload-content">
+              <span class="upload-icon">📷</span>
+              <span class="upload-text">Upload image</span>
+              <span class="upload-hint">PNG, JPG, GIF</span>
+            </div>
+          </label>
+
+          <div class="divider">
+            <span>or paste</span>
           </div>
-        </label>
 
-        <div class="divider">
-          <span>or paste</span>
-        </div>
+          <textarea v-model="manualQRInput" placeholder="Paste QR code data..." class="input-field"></textarea>
 
-        <textarea v-model="manualQRInput" placeholder="Paste QR code data..." class="input-field"></textarea>
-
-        <div class="action-buttons">
-          <button @click="decodeManualQR" class="btn btn-primary">
-            Decode
-          </button>
-          <button @click="clearData" class="btn btn-secondary">
-            Clear
-          </button>
+          <div class="action-buttons">
+            <button @click="decodeManualQR" class="btn btn-primary">
+              Decode
+            </button>
+            <button @click="clearData" class="btn btn-secondary">
+              Clear
+            </button>
+          </div>
         </div>
       </div>
 
+      <!-- Results - TLV Tree Structure -->
       <div v-if="qrResult && activeTab === 'decode'" class="result-section">
         <div class="result-header">
-          <h2>Result</h2>
+          <h2>TLV Structure</h2>
           <button @click="copyToClipboard" class="copy-btn">
             📋 {{ copyText }}
           </button>
         </div>
 
-        <!-- Format Information -->
-        <div class="header-info">
-          <h3 class="data-label">Format Information</h3>
-          <div class="format-grid">
-            <div class="format-card" v-if="headerInfo.payloadIndicator">
-              <div class="format-label">Payload Format Indicator</div>
-              <div class="format-code">{{ headerInfo.payloadIndicator.code }}</div>
-              <div class="format-desc">= {{ headerInfo.payloadIndicator.fullDescription }}</div>
-            </div>
-            <div class="format-card" v-if="headerInfo.initiationMethod">
-              <div class="format-label">Point Of Initiation Method</div>
-              <div class="format-code">{{ headerInfo.initiationMethod.code }}</div>
-              <div class="format-desc">= {{ headerInfo.initiationMethod.type }} ({{
-                headerInfo.initiationMethod.fullDescription }})</div>
-            </div>
-            <div class="format-card" v-if="headerInfo.merchantType">
-              <div class="format-label">Merchant Type</div>
-              <div class="format-code">{{ headerInfo.merchantType.code }}</div>
-              <div class="format-desc">= {{ headerInfo.merchantType.fullDescription }}</div>
-            </div>
+        <div class="tlv-tree">
+          <!-- Root tags -->
+          <div class="tree-item" v-if="parsedTLV['00']">
+            <span class="tree-tag">{{ parsedTLV['00'].tag }}</span>
+            <span class="tree-length">{{ parsedTLV['00'].length }}</span>
+            <span class="tree-data">{{ parsedTLV['00'].value }}</span>
+            <span class="tree-meaning">= Version</span>
           </div>
 
-          <!-- TLV Information -->
-          <div class="tlv-section">
-            <h3 class="data-label" style="margin-top: 1.5rem;">TLV Information</h3>
-            <div class="format-grid">
-              <!-- Tag 51: Bank Info -->
-              <div class="format-card format-card-nested" v-if="headerInfo.bankInfoTag">
-                <div class="tag-header">
-                  <span class="tag-number">51</span>
-                  <span class="tag-subtitle">Bank Info</span>
-                </div>
+          <div class="tree-item" v-if="parsedTLV['01']">
+            <span class="tree-tag">{{ parsedTLV['01'].tag }}</span>
+            <span class="tree-length">{{ parsedTLV['01'].length }}</span>
+            <span class="tree-data">{{ parsedTLV['01'].value }}</span>
+            <span class="tree-meaning">= Dynamic</span>
+          </div>
 
-                <!-- Nested sub-tags for Tag 51 -->
-                <div class="nested-tags" v-if="headerInfo.bankInfoNested">
-                  <div class="sub-tag" v-if="headerInfo.bankInfoNested['00']">
-                    <div class="sub-tag-header">
-                      <span class="sub-tag-number">00</span>
-                      <span class="sub-tag-label">Bakong ID</span>
-                    </div>
-                    <div class="sub-tag-value">{{ headerInfo.bankInfoNested['00'].value }}</div>
-                  </div>
+          <div class="tree-item" v-if="parsedTLV['30']">
+            <span class="tree-tag">{{ parsedTLV['30'].tag }}</span>
+            <span class="tree-length">{{ parsedTLV['30'].length }}</span>
+            <span class="tree-data">{{ parsedTLV['30'].value }}</span>
+            <span class="tree-meaning">= Merchant</span>
+          </div>
 
-                  <div class="sub-tag" v-if="headerInfo.bankInfoNested['01']">
-                    <div class="sub-tag-header">
-                      <span class="sub-tag-number">01</span>
-                      <span class="sub-tag-label">Merchant ID</span>
-                    </div>
-                    <div class="sub-tag-value">{{ headerInfo.bankInfoNested['01'].value }}</div>
-                  </div>
+          <!-- Tag 51: Bank Info (nested) -->
+          <div class="tree-item tree-parent" v-if="headerInfo.bankInfoTag">
+            <span class="tree-tag">51</span>
+            <span class="tree-length">{{ headerInfo.bankInfoTag.length }}</span>
+            <span class="tree-meaning">= Bank Info</span>
 
-                  <div class="sub-tag" v-if="headerInfo.bankInfoNested['02']">
-                    <div class="sub-tag-header">
-                      <span class="sub-tag-number">02</span>
-                      <span class="sub-tag-label">Bank Name</span>
-                    </div>
-                    <div class="sub-tag-value">{{ headerInfo.bankInfoNested['02'].value }}</div>
-                  </div>
-                </div>
+            <!-- Sub-layer for Tag 51 -->
+            <div class="tree-sublayer" v-if="Object.keys(headerInfo.bankInfoNested).length > 0">
+              <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['00']">
+                <span class="tree-tag">00</span>
+                <span class="tree-length">{{ headerInfo.bankInfoNested['00'].length }}</span>
+                <span class="tree-data">{{ headerInfo.bankInfoNested['00'].value }}</span>
+                <span class="tree-meaning">= Bakong ID</span>
               </div>
-
-              <!-- Tag 52: Merchant Category Code -->
-              <div class="format-card" v-if="headerInfo.merchantCategoryTag">
-                <div class="tag-header">
-                  <span class="tag-number">52</span>
-                  <span class="tag-subtitle">Merchant Category Code</span>
-                </div>
-                <div class="tag-meta">
-                  <div class="meta-item">
-                    <span class="meta-label">Val</span>
-                    <span class="meta-value">{{ headerInfo.merchantCategoryTag.value }}</span>
-                  </div>
-                </div>
-                <div class="tag-description">
-                  {{ getMerchantCategoryDescription(headerInfo.merchantCategoryTag.value) }}
-                </div>
+              <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['01']">
+                <span class="tree-tag">01</span>
+                <span class="tree-length">{{ headerInfo.bankInfoNested['01'].length }}</span>
+                <span class="tree-data">{{ headerInfo.bankInfoNested['01'].value }}</span>
+                <span class="tree-meaning">= Merchant ID</span>
               </div>
-
-              <!-- Tag 53: Transaction Currency -->
-              <div class="format-card" v-if="headerInfo.currencyTag">
-                <div class="tag-header">
-                  <span class="tag-number">53</span>
-                  <span class="tag-subtitle">Transaction Currency</span>
-                </div>
-                <div class="tag-meta">
-                  <div class="meta-item">
-                    <span class="meta-label">Val</span>
-                    <span class="meta-value">{{ headerInfo.currencyTag.value }}</span>
-                  </div>
-                  <div class="tag-description">
-                    {{ getCurrencyDescription(headerInfo.currencyTag.value) }}
-                  </div>
-                </div>
-
-                <!-- Tag 54: Transaction Amount -->
-                <div class="format-card" v-if="headerInfo.amountTag">
-                  <div class="tag-header">
-                    <span class="tag-number">54</span>
-                    <span class="tag-subtitle">Transaction Amount</span>
-                  </div>
-                  <div class="tag-meta">
-                    <div class="meta-item">
-                      <span class="meta-label">Val</span>
-                      <span class="meta-value">{{ headerInfo.amountTag.value }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Tag 58: Country Code -->
-                <div class="format-card" v-if="headerInfo.countryTag">
-                  <div class="tag-header">
-                    <span class="tag-number">58</span>
-                    <span class="tag-subtitle">Country Code</span>
-                  </div>
-                  <div class="tag-meta">
-                    <div class="meta-item">
-                      <span class="meta-label">Val</span>
-                      <span class="meta-value">{{ headerInfo.countryTag.value }}</span>
-                    </div>
-                  </div>
-                  <div class="tag-description">
-                    {{ getCountryDescription(headerInfo.countryTag.value) }}
-                  </div>
-                </div>
-
-                <!-- Tag 59: Merchant Name -->
-                <div class="format-card" v-if="headerInfo.merchantNameTag">
-                  <div class="tag-header">
-                    <span class="tag-number">59</span>
-                    <span class="tag-subtitle">Merchant Name</span>
-                  </div>
-                  <div class="tag-meta">
-                    <div class="meta-item">
-                      <span class="meta-label">Val</span>
-                      <span class="meta-value">{{ headerInfo.merchantNameTag.value }}</span>
-                    </div>
-                  </div>
-                  <div class="tag-description">Merchant Name</div>
-                </div>
-
-                <!-- Tag 60: Merchant City -->
-                <div class="format-card" v-if="headerInfo.merchantCityTag">
-                  <div class="tag-header">
-                    <span class="tag-number">60</span>
-                    <span class="tag-subtitle">Merchant City</span>
-                  </div>
-                  <div class="tag-meta">
-                    <div class="meta-item">
-                      <span class="meta-label">Val</span>
-                      <span class="meta-value">{{ headerInfo.merchantCityTag.value }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Tag 63: Encryption -->
-                <div class="format-card" v-if="headerInfo.encryptionTag">
-                  <div class="tag-header">
-                    <span class="tag-number">63</span>
-                    <span class="tag-subtitle">Encryption</span>
-                  </div>
-                  <div class="tag-meta">
-                    <div class="meta-item">
-                      <span class="meta-label">Val</span>
-                      <span class="meta-value">{{ headerInfo.encryptionTag.value }}</span>
-                    </div>
-                  </div>
-                  <div class="tag-description">
-                    {{ getEncryptionDescription(headerInfo.encryptionTag.value) }}
-                  </div>
-                </div>
-
-                <!-- Tag 99: Timestamp -->
-                <div class="format-card format-card-nested" v-if="headerInfo.timestampTag">
-                  <div class="tag-header">
-                    <span class="tag-number">99</span>
-                    <span class="tag-subtitle">Timestamp</span>
-                  </div>
-                  <div class="tag-meta">
-                    <div class="meta-item">
-                      <span class="meta-label">Len</span>
-                      <span class="meta-value">{{ headerInfo.timestampTag.length }}</span>
-                    </div>
-                  </div>
-
-                  <div class="nested-tags" v-if="headerInfo.timestampNested">
-                    <div class="sub-tag" v-if="headerInfo.timestampNested['00']">
-                      <div class="sub-tag-header">
-                        <span class="sub-tag-number">00</span>
-                        <span class="sub-tag-label">Create Time</span>
-                      </div>
-                      <div class="sub-tag-value">{{ headerInfo.timestampNested['00'].value }}</div>
-                      <div class="sub-tag-converted">{{ getTimestampReadable(headerInfo.timestampNested['00'].value) }}
-                      </div>
-                      <div class="sub-tag-note">13 digits (UNIX timestamp ms)</div>
-                    </div>
-
-                    <div class="sub-tag" v-if="headerInfo.timestampNested['01']">
-                      <div class="sub-tag-header">
-                        <span class="sub-tag-number">01</span>
-                        <span class="sub-tag-label">Expiry Time</span>
-                      </div>
-                      <div class="sub-tag-value">{{ headerInfo.timestampNested['01'].value }}</div>
-                      <div class="sub-tag-converted">{{ getTimestampReadable(headerInfo.timestampNested['01'].value) }}
-                      </div>
-                      <div class="sub-tag-note">13 digits (UNIX timestamp ms)</div>
-                    </div>
-                  </div>
-                </div>
+              <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['02']">
+                <span class="tree-tag">02</span>
+                <span class="tree-length">{{ headerInfo.bankInfoNested['02'].length }}</span>
+                <span class="tree-data">{{ headerInfo.bankInfoNested['02'].value }}</span>
+                <span class="tree-meaning">= Bank Name</span>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="raw-data" v-if="qrResult && activeTab === 'decode'">
-          <h3 class="data-label">Raw Data</h3>
-          <pre class="data-content">{{ qrResult }}</pre>
-        </div>
+          <!-- Tag 52: Merchant Category -->
+          <div class="tree-item" v-if="headerInfo.merchantCategoryTag">
+            <span class="tree-tag">52</span>
+            <span class="tree-length">{{ headerInfo.merchantCategoryTag.length }}</span>
+            <span class="tree-data">{{ headerInfo.merchantCategoryTag.value }}</span>
+            <span class="tree-meaning">= {{ getMerchantCategoryDescription(headerInfo.merchantCategoryTag.value)
+              }}</span>
+          </div>
 
-        <!-- Generate Tab -->
-        <div v-show="activeTab === 'generate'" class="tab-content">
-          <div class="input-area">
-            <textarea v-model="qrDataToGenerate" placeholder="Enter KHQR data to generate QR code..."
-              class="input-field" style="height: 150px;"></textarea>
+          <!-- Tag 53: Currency -->
+          <div class="tree-item" v-if="headerInfo.currencyTag">
+            <span class="tree-tag">53</span>
+            <span class="tree-length">{{ headerInfo.currencyTag.length }}</span>
+            <span class="tree-data">{{ headerInfo.currencyTag.value }}</span>
+            <span class="tree-meaning">= {{ getCurrencyDescription(headerInfo.currencyTag.value) }}</span>
+          </div>
 
-            <div class="action-buttons">
-              <button @click="generateQRCode" class="btn btn-primary">
-                ✨ Generate QR
-              </button>
-              <button @click="downloadQRCode" v-if="generatedQRImage" class="btn btn-primary">
-                ⬇️ Download
-              </button>
-              <button @click="clearGenerate" class="btn btn-secondary">
-                Clear
-              </button>
+          <!-- Tag 54: Amount -->
+          <div class="tree-item" v-if="headerInfo.amountTag">
+            <span class="tree-tag">54</span>
+            <span class="tree-length">{{ headerInfo.amountTag.length }}</span>
+            <span class="tree-data">{{ headerInfo.amountTag.value }}</span>
+            <span class="tree-meaning">= Amount</span>
+          </div>
+
+          <!-- Tag 58: Country -->
+          <div class="tree-item" v-if="headerInfo.countryTag">
+            <span class="tree-tag">58</span>
+            <span class="tree-length">{{ headerInfo.countryTag.length }}</span>
+            <span class="tree-data">{{ headerInfo.countryTag.value }}</span>
+            <span class="tree-meaning">= {{ getCountryDescription(headerInfo.countryTag.value) }}</span>
+          </div>
+
+          <!-- Tag 59: Merchant Name -->
+          <div class="tree-item" v-if="headerInfo.merchantNameTag">
+            <span class="tree-tag">59</span>
+            <span class="tree-length">{{ headerInfo.merchantNameTag.length }}</span>
+            <span class="tree-data">{{ headerInfo.merchantNameTag.value }}</span>
+            <span class="tree-meaning">= Merchant Name</span>
+          </div>
+
+          <!-- Tag 60: Merchant City -->
+          <div class="tree-item" v-if="headerInfo.merchantCityTag">
+            <span class="tree-tag">60</span>
+            <span class="tree-length">{{ headerInfo.merchantCityTag.length }}</span>
+            <span class="tree-data">{{ headerInfo.merchantCityTag.value }}</span>
+            <span class="tree-meaning">= Merchant City</span>
+          </div>
+
+          <!-- Tag 62: Additional Data -->
+          <div class="tree-item" v-if="parsedTLV['62']">
+            <span class="tree-tag">62</span>
+            <span class="tree-length">{{ parsedTLV['62'].length }}</span>
+            <span class="tree-data-long">{{ parsedTLV['62'].value }}</span>
+            <span class="tree-meaning">= Additional Data</span>
+          </div>
+
+          <!-- Tag 99: Timestamp (nested) -->
+          <div class="tree-item tree-parent" v-if="headerInfo.timestampTag">
+            <span class="tree-tag">99</span>
+            <span class="tree-length">{{ headerInfo.timestampTag.length }}</span>
+            <span class="tree-meaning">= Timestamp</span>
+
+            <!-- Sub-layer for Tag 99 -->
+            <div class="tree-sublayer" v-if="Object.keys(headerInfo.timestampNested).length > 0">
+              <div class="tree-subitem-line" v-if="headerInfo.timestampNested['00']">
+                <span class="tree-tag">00</span>
+                <span class="tree-length">{{ headerInfo.timestampNested['00'].length }}</span>
+                <span class="tree-data">{{ headerInfo.timestampNested['00'].value }}</span>
+                <span class="tree-meaning">= Create Time</span>
+              </div>
+              <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['00']">
+                <span class="tree-meaning">→ {{ getTimestampReadable(headerInfo.timestampNested['00'].value) }}</span>
+              </div>
+
+              <div class="tree-subitem-line" v-if="headerInfo.timestampNested['01']">
+                <span class="tree-tag">01</span>
+                <span class="tree-length">{{ headerInfo.timestampNested['01'].length }}</span>
+                <span class="tree-data">{{ headerInfo.timestampNested['01'].value }}</span>
+                <span class="tree-meaning">= Expiry Time</span>
+              </div>
+              <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['01']">
+                <span class="tree-meaning">→ {{ getTimestampReadable(headerInfo.timestampNested['01'].value) }}</span>
+              </div>
             </div>
           </div>
 
-          <div v-if="generatedQRImage" class="generate-result">
-            <h3 class="data-label">Generated QR Code</h3>
-            <div class="qr-display-container">
-              <img :src="generatedQRImage" alt="Generated QR Code" class="qr-image" />
-            </div>
-            <div class="qr-data-display">
-              <h4 class="data-label" style="margin-top: 1.5rem;">Data</h4>
-              <pre class="data-content">{{ qrDataToGenerate }}</pre>
-            </div>
+          <!-- Tag 63: Checksum -->
+          <div class="tree-item" v-if="parsedTLV['63']">
+            <span class="tree-tag">{{ parsedTLV['63'].tag }}</span>
+            <span class="tree-length">{{ parsedTLV['63'].length }}</span>
+            <span class="tree-data">{{ parsedTLV['63'].value }}</span>
+            <span class="tree-meaning">= Checksum</span>
           </div>
         </div>
+      </div>
+
+      <!-- Generate Tab -->
+      <div v-show="activeTab === 'generate'" class="tab-content">
+        <div class="input-area">
+          <textarea v-model="qrDataToGenerate" placeholder="Enter KHQR data to generate QR code..." class="input-field"
+            style="height: 150px;"></textarea>
+
+          <div class="action-buttons">
+            <button @click="generateQRCode" class="btn btn-primary">
+              ✨ Generate QR
+            </button>
+            <button @click="downloadQRCode" v-if="generatedQRImage" class="btn btn-primary">
+              ⬇️ Download
+            </button>
+            <button @click="clearGenerate" class="btn btn-secondary">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div v-if="generatedQRImage" class="generate-result">
+          <h3 class="data-label">Generated QR Code</h3>
+          <div class="qr-display-container">
+            <img :src="generatedQRImage" alt="Generated QR Code" class="qr-image" />
+          </div>
+          <div class="qr-data-display">
+            <h4 class="data-label" style="margin-top: 1rem;">Data</h4>
+            <pre class="data-content">{{ qrDataToGenerate }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="raw-data" v-if="qrResult && activeTab === 'decode'">
+        <h3 class="data-label">Raw Data</h3>
+        <pre class="data-content">{{ qrResult }}</pre>
       </div>
     </div>
   </div>
@@ -316,24 +254,16 @@ export default {
   data() {
     return {
       qrResult: '',
-      headerInfo: {},
+      headerInfo: {
+        bankInfoNested: {},
+        timestampNested: {},
+      },
+      parsedTLV: {},
       manualQRInput: '00020101021230510016abaakhppxxx@abaa01151211209110909710208ABA Bank52047392530384054041.895802KH5919Ousa Chea by O.CHEA6010PHNOM PENH626368590010PAYWAY@ABA01061894950208031956110619408730268109455322Q993400131764302681094011317643029810946304D962',
       copyText: 'Copy',
       activeTab: 'decode',
       generatedQRImage: null,
       qrDataToGenerate: '',
-      versionMap: {
-        '000201': 'KHQR Version 1',
-        '000202': 'KHQR Version 2',
-      },
-      initiationMap: {
-        '010211': 'Static QR',
-        '010212': 'Dynamic QR',
-      },
-      merchantTypeMap: {
-        '29': 'Remittance',
-        '30': 'Merchant',
-      },
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
         '116': 'Cambodian Riel (KHR)',
@@ -348,10 +278,6 @@ export default {
         '702': 'Singapore Dollar (SGD)',
         '764': 'Thai Baht (THB)',
         '704': 'Vietnamese Dong (VND)',
-      },
-      encryptionCodeMap: {
-        '098B': 'AES Encryption',
-        '0001': 'No Encryption',
       },
       merchantCategoryMap: {
         '7392': 'Money Transfer / Remittance',
@@ -384,7 +310,6 @@ export default {
     };
   },
   mounted() {
-    // Auto-decode sample data on load
     if (this.manualQRInput.trim()) {
       this.$nextTick(() => {
         this.decodeManualQR();
@@ -403,6 +328,7 @@ export default {
         } catch {
           this.qrResult = 'Could not decode QR code';
           this.headerInfo = {};
+          this.parsedTLV = {};
         }
       };
       reader.readAsDataURL(file);
@@ -416,28 +342,28 @@ export default {
 
     processQRResult(qrString) {
       this.qrResult = qrString;
+      this.parsedTLV = this.parseTLVStructure(qrString);
+      this.headerInfo = this.extractHeaderInfo(this.parsedTLV);
 
-      // Parse the entire TLV structure
-      const tlvData = this.parseTLVStructure(qrString);
-
-      // Extract header info from first tags
-      this.headerInfo = this.extractHeaderInfo(tlvData);
-
-      // Extract specific tags for display
-      if (tlvData['51']) {
-        this.headerInfo.bankInfoTag = tlvData['51'];
-        this.headerInfo.bankInfoNested = this.parseTLVStructure(tlvData['51'].value);
+      // Extract bank info
+      if (this.parsedTLV['51']) {
+        this.headerInfo.bankInfoTag = this.parsedTLV['51'];
+        this.headerInfo.bankInfoNested = this.parseTLVStructure(this.parsedTLV['51'].value);
       }
-      if (tlvData['52']) this.headerInfo.merchantCategoryTag = tlvData['52'];
-      if (tlvData['53']) this.headerInfo.currencyTag = tlvData['53'];
-      if (tlvData['54']) this.headerInfo.amountTag = tlvData['54'];
-      if (tlvData['58']) this.headerInfo.countryTag = tlvData['58'];
-      if (tlvData['59']) this.headerInfo.merchantNameTag = tlvData['59'];
-      if (tlvData['60']) this.headerInfo.merchantCityTag = tlvData['60'];
-      if (tlvData['63']) this.headerInfo.encryptionTag = tlvData['63'];
-      if (tlvData['99']) {
-        this.headerInfo.timestampTag = tlvData['99'];
-        this.headerInfo.timestampNested = this.parseTLVStructure(tlvData['99'].value);
+
+      // Extract other tags
+      if (this.parsedTLV['52']) this.headerInfo.merchantCategoryTag = this.parsedTLV['52'];
+      if (this.parsedTLV['53']) this.headerInfo.currencyTag = this.parsedTLV['53'];
+      if (this.parsedTLV['54']) this.headerInfo.amountTag = this.parsedTLV['54'];
+      if (this.parsedTLV['58']) this.headerInfo.countryTag = this.parsedTLV['58'];
+      if (this.parsedTLV['59']) this.headerInfo.merchantNameTag = this.parsedTLV['59'];
+      if (this.parsedTLV['60']) this.headerInfo.merchantCityTag = this.parsedTLV['60'];
+      if (this.parsedTLV['63']) this.headerInfo.encryptionTag = this.parsedTLV['63'];
+
+      // Extract timestamp
+      if (this.parsedTLV['99']) {
+        this.headerInfo.timestampTag = this.parsedTLV['99'];
+        this.headerInfo.timestampNested = this.parseTLVStructure(this.parsedTLV['99'].value);
       }
     },
 
@@ -446,27 +372,20 @@ export default {
       let position = 0;
 
       while (position < dataString.length - 1) {
-        // Read tag (2 characters)
         if (position + 2 > dataString.length) break;
         const tag = dataString.substring(position, position + 2);
         position += 2;
 
-        // Read length (2 characters)
         if (position + 2 > dataString.length) break;
         const lengthStr = dataString.substring(position, position + 2);
         const length = parseInt(lengthStr, 10);
         position += 2;
 
-        // Validate length
-        if (isNaN(length) || length < 0 || position + length > dataString.length) {
-          break;
-        }
+        if (isNaN(length) || length < 0 || position + length > dataString.length) break;
 
-        // Read value
         const value = dataString.substring(position, position + length);
         position += length;
 
-        // Store in result
         result[tag] = {
           tag,
           length,
@@ -480,45 +399,16 @@ export default {
     extractHeaderInfo(tlvData) {
       const info = {};
 
-      // Get payload indicator from tag 00
       if (tlvData['00']) {
-        const raw = tlvData['00'].value;
-        const versionKey = raw.substring(0, 6);
-        const description = this.versionMap[versionKey] || 'Unknown Version';
-        info.payloadIndicator = {
-          raw,
-          code: versionKey,
-          description: `${versionKey} = ${description}`,
-          fullDescription: description,
-        };
+        info.payloadIndicator = tlvData['00'];
       }
 
-      // Get initiation method from tag 01
       if (tlvData['01']) {
-        const raw = tlvData['01'].value;
-        const initiationKey = raw.substring(0, 6);
-        const initiationType = initiationKey === '010211' ? 'Static' : initiationKey === '010212' ? 'Dynamic' : 'Unknown';
-        const description = this.initiationMap[initiationKey] || 'Unknown Type';
-        info.initiationMethod = {
-          raw,
-          code: initiationKey,
-          type: initiationType,
-          description: `${initiationKey} = ${initiationType} (${description})`,
-          fullDescription: description,
-        };
+        info.initiationMethod = tlvData['01'];
       }
 
-      // Get merchant type from tag 30
       if (tlvData['30']) {
-        const raw = tlvData['30'].value;
-        const merchantTypeKey = raw.substring(0, 2);
-        const merchantDesc = this.merchantTypeMap[merchantTypeKey] || 'Unknown Type';
-        info.merchantType = {
-          raw,
-          code: merchantTypeKey,
-          description: `${merchantTypeKey} = ${merchantDesc}`,
-          fullDescription: merchantDesc,
-        };
+        info.merchantType = tlvData['30'];
       }
 
       return info;
@@ -527,6 +417,7 @@ export default {
     clearData() {
       this.qrResult = '';
       this.headerInfo = {};
+      this.parsedTLV = {};
       this.manualQRInput = '';
       this.copyText = 'Copy';
     },
@@ -549,12 +440,31 @@ export default {
       return this.currencyCodeMap[codeStr] || `Currency Code: ${code}`;
     },
 
-    getEncryptionDescription(code) {
-      return this.encryptionCodeMap[code] || `Encryption: ${code}`;
-    },
-
     getCountryDescription(code) {
       return this.countryCodeMap[code] || `Country: ${code}`;
+    },
+
+    getTimestampReadable(timestamp) {
+      if (!timestamp) return '';
+
+      let ms = parseInt(timestamp, 10);
+      if (isNaN(ms)) return '';
+
+      try {
+        const date = new Date(ms);
+        const options = {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'UTC'
+        };
+        return date.toLocaleString('en-US', options) + ' UTC';
+      } catch {
+        return '';
+      }
     },
 
     async generateQRCode() {
@@ -595,59 +505,6 @@ export default {
     clearGenerate() {
       this.qrDataToGenerate = '';
       this.generatedQRImage = null;
-    },
-
-    formatTimestamp(timestamp) {
-      if (!timestamp) return 'Invalid timestamp';
-
-      // Handle 13-digit millisecond timestamps
-      let ms = parseInt(timestamp, 10);
-      if (isNaN(ms)) return 'Invalid timestamp';
-
-      try {
-        const date = new Date(ms);
-        return date.toISOString().replace('T', ' ').slice(0, 19);
-      } catch {
-        return 'Invalid timestamp';
-      }
-    },
-
-    getTimestampReadable(timestamp) {
-      if (!timestamp) return '';
-
-      let ms = parseInt(timestamp, 10);
-      if (isNaN(ms)) return '';
-
-      try {
-        const date = new Date(ms);
-        const options = {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          timeZone: 'UTC'
-        };
-        return date.toLocaleString('en-US', options) + ' UTC';
-      } catch {
-        return '';
-      }
-    },
-
-    getTagDescription(tagNumber) {
-      const descriptions = {
-        '51': 'Bank Info',
-        '52': 'Merchant Category Code',
-        '53': 'Transaction Currency',
-        '54': 'Transaction Amount',
-        '58': 'Country Code',
-        '59': 'Merchant Name',
-        '60': 'Merchant City',
-        '63': 'Encryption',
-        '99': 'Timestamp',
-      };
-      return descriptions[tagNumber] || `Tag ${tagNumber}`;
     },
   },
 };
@@ -880,186 +737,6 @@ export default {
   background: white;
 }
 
-.header-info {
-  margin-bottom: 1.25rem;
-}
-
-.format-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin: 1rem 0 0 0;
-}
-
-.format-card {
-  border: 1px solid #000000;
-  padding: 1rem;
-  border-radius: 0px;
-  background: white;
-  transition: all 0.3s ease;
-}
-
-.format-card:hover {
-  border-color: #000000;
-  background: #f5f5f5;
-}
-
-.tag-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #000000;
-}
-
-.tag-number {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #000000;
-  font-family: 'Monaco', 'Courier New', monospace;
-  line-height: 1;
-}
-
-.tag-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.meta-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #666666;
-  letter-spacing: 0.4px;
-}
-
-.meta-value {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #000000;
-  font-family: 'Monaco', 'Courier New', monospace;
-  background: white;
-  padding: 0.35rem 0.5rem;
-  border-radius: 0px;
-  border-left: 2px solid #000000;
-}
-
-.tag-description {
-  font-size: 0.75rem;
-  color: #333333;
-  font-weight: 500;
-  line-height: 1.4;
-  margin-top: 0.5rem;
-}
-
-.tlv-section {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #000000;
-}
-
-.format-card-nested {
-  grid-column: span 3;
-}
-
-.tag-subtitle {
-  font-size: 0.65rem;
-  color: #666666;
-  font-weight: 600;
-  margin-left: 0.4rem;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.nested-tags {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #000000;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-}
-
-.sub-tag {
-  background: white;
-  border: 1px solid #000000;
-  border-radius: 0px;
-  padding: 0.75rem;
-  transition: all 0.3s ease;
-}
-
-.sub-tag:hover {
-  border-color: #000000;
-  background: #f5f5f5;
-}
-
-.sub-tag-header {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
-}
-
-.sub-tag-number {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #ffffff;
-  font-family: 'Monaco', 'Courier New', monospace;
-  background: #000000;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0px;
-  min-width: 1.8rem;
-  text-align: center;
-}
-
-.sub-tag-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #000000;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.sub-tag-value {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #000000;
-  font-family: 'Monaco', 'Courier New', monospace;
-  word-break: break-all;
-  margin-bottom: 0.3rem;
-  background: white;
-  padding: 0.35rem;
-  border-radius: 0px;
-  border-left: 2px solid #000000;
-}
-
-.sub-tag-converted {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #000000;
-  background: #f5f5f5;
-  padding: 0.4rem 0.35rem;
-  border-radius: 0px;
-  border-left: 2px solid #000000;
-  margin-bottom: 0.3rem;
-  word-break: break-all;
-}
-
-.sub-tag-note {
-  font-size: 0.65rem;
-  color: #666666;
-  font-style: italic;
-}
-
 .result-header {
   display: flex;
   justify-content: space-between;
@@ -1095,56 +772,154 @@ export default {
   color: white;
 }
 
-.raw-data {
-  margin-bottom: 1rem;
-  padding: 0 1.5rem;
-}
-
-.data-label {
-  font-size: 0.65rem;
-  font-weight: 700;
+/* TLV Tree Structure */
+.tlv-tree {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.8rem;
+  line-height: 1.8;
+  background: white;
   color: #000000;
-  margin: 0 0 0.75rem 0;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
 }
 
-.data-content {
+.tree-item {
+  padding: 0.4rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  border-left: 2px solid transparent;
+  padding-left: 1rem;
+}
+
+.tree-parent {
+  font-weight: 600;
+  border-left-color: #000000;
+}
+
+.tree-tag {
+  background: #e8e8e8;
+  color: #000000;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #000000;
+  font-weight: 700;
+  border-radius: 2px;
+}
+
+.tree-length {
+  background: #d0d0d0;
+  color: #000000;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #000000;
+  font-weight: 700;
+  border-radius: 2px;
+}
+
+.tree-data {
+  background: #b8b8b8;
+  color: #ffffff;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #000000;
+  font-weight: 600;
+  border-radius: 2px;
+  word-break: break-all;
+}
+
+.tree-meaning {
+  color: #333333;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+.tree-timestamp {
+  padding: 0.3rem 0;
+  padding-left: 3rem;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.tree-timestamp .tree-meaning {
+  color: #0066cc;
+  font-style: normal;
+  font-weight: 600;
+  margin-left: 0;
+}
+
+.tree-sublayer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  width: 100%;
+}
+
+.tree-subitem {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.4rem;
   background: white;
   border: 1px solid #000000;
-  border-radius: 0px;
-  padding: 0.75rem;
-  margin: 0;
-  font-size: 0.75rem;
-  overflow-x: auto;
+  border-radius: 2px;
+}
+
+.tree-subitem-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.4rem;
+  background: white;
+  border: 1px solid #000000;
+  border-radius: 2px;
+  width: 100%;
+}
+
+.tree-subitem-timestamp {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.7rem;
+}
+
+.tree-subitem-conversion {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.7rem;
+  padding-left: 2.5rem;
+}
+
+.tree-subitem-timestamp .tree-meaning {
+  color: #0066cc;
+  font-style: normal;
+  font-weight: 600;
+  margin-left: 0;
+}
+
+.tree-subitem-conversion .tree-meaning {
+  color: #0066cc;
+  font-style: normal;
+  font-weight: 600;
+  margin-left: 0;
+}
+
+.tree-data-long {
+  background: #b8b8b8;
+  color: #ffffff;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #000000;
+  font-weight: 600;
+  border-radius: 2px;
   word-break: break-all;
-  color: #000000;
-  font-family: 'Monaco', 'Courier New', monospace;
-  line-height: 1.4;
-  max-height: 250px;
-}
-
-.format-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #666666;
-  letter-spacing: 0.4px;
-  margin-bottom: 0.4rem;
-}
-
-.format-code {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #000000;
-  font-family: 'Monaco', 'Courier New', monospace;
-  margin-bottom: 0.4rem;
-}
-
-.format-desc {
-  font-size: 0.75rem;
-  color: #333333;
-  line-height: 1.3;
+  max-width: 100%;
 }
 
 .generate-result {
@@ -1175,17 +950,38 @@ export default {
   margin-top: 1rem;
 }
 
+.raw-data {
+  margin-bottom: 1rem;
+  padding: 0 1.5rem;
+}
+
+.data-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #000000;
+  margin: 0 0 0.75rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.data-content {
+  background: white;
+  border: 1px solid #000000;
+  border-radius: 0px;
+  padding: 0.75rem;
+  margin: 0;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  word-break: break-all;
+  color: #000000;
+  font-family: 'Monaco', 'Courier New', monospace;
+  line-height: 1.4;
+  max-height: 200px;
+}
+
 @media (max-width: 1200px) {
-  .format-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .format-card-nested {
-    grid-column: span 2;
-  }
-
-  .nested-tags {
-    grid-template-columns: 1fr;
+  .tlv-tree {
+    font-size: 0.75rem;
   }
 }
 
@@ -1217,47 +1013,28 @@ export default {
     padding: 1rem 1rem;
   }
 
-  .upload-zone {
-    padding: 1rem;
-  }
-
-  .upload-icon {
-    font-size: 1.5rem;
-  }
-
-  .upload-text {
-    font-size: 0.75rem;
-  }
-
   .result-section {
     padding: 1rem 1rem;
   }
 
-  .format-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+  .tlv-tree {
+    font-size: 0.7rem;
+    line-height: 1.5;
   }
 
-  .format-card-nested {
-    grid-column: span 1;
+  .tree-item {
+    padding: 0.35rem 0;
+    padding-left: 0.75rem;
   }
 
-  .nested-tags {
-    grid-template-columns: 1fr;
+  .tree-children {
+    margin-left: 1.5rem;
+    padding-left: 0.75rem;
   }
 
-  .action-buttons {
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-  }
-
-  .btn {
-    padding: 0.55rem 0.8rem;
-    font-size: 0.75rem;
-  }
-
-  .generate-result {
-    padding: 1rem 1rem;
+  .tree-code {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
   }
 }
 </style>
