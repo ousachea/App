@@ -49,8 +49,35 @@
       <div v-if="qrResult && activeTab === 'decode'" class="result-section">
         <div class="result-header">
           <h2>TLV Structure</h2>
-          <button @click="copyToClipboard" class="copy-btn">
-            📋 {{ copyText }}
+          <div class="header-buttons">
+            <button @click="toggleEditMode" class="copy-btn" :class="{ 'edit-active': editMode }">
+              {{ editMode ? '❌ Cancel' : '✏️ Edit' }}
+            </button>
+            <button @click="copyToClipboard" class="copy-btn">
+              📋 {{ copyText }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit Panel -->
+        <div class="edit-panel" v-if="editMode">
+          <div class="edit-field">
+            <label>Merchant Name:</label>
+            <input v-model="editMerchantName" type="text" class="edit-input" placeholder="Enter merchant name">
+          </div>
+          <div class="edit-field">
+            <label>Amount:</label>
+            <input v-model="editAmount" type="text" class="edit-input" placeholder="Enter amount">
+          </div>
+          <div class="edit-field">
+            <label>Currency:</label>
+            <select v-model="editCurrency" class="edit-select">
+              <option value="KHR">KHR (Cambodian Riel)</option>
+              <option value="USD">USD (US Dollar)</option>
+            </select>
+          </div>
+          <button @click="updateMerchantData" class="btn btn-primary" style="margin-top: 1rem;">
+            ✅ Update & Regenerate QR
           </button>
         </div>
 
@@ -234,11 +261,14 @@
           </div>
 
           <!-- Tag 63: Checksum -->
-          <div class="tree-item" v-if="parsedTLV['63']">
+          <div class="tree-item" v-if="parsedTLV['63']"
+            :class="{ 'checksum-valid': validateChecksum(qrResult), 'checksum-invalid': !validateChecksum(qrResult) }">
             <span class="tree-tag">{{ parsedTLV['63'].tag }}</span>
             <span class="tree-length">{{ formatLength(parsedTLV['63'].length) }}</span>
             <span class="tree-data">{{ parsedTLV['63'].value }}</span>
-            <span class="tree-meaning">= Checksum</span>
+            <span class="tree-meaning">= Checksum (CRC-16/IBM-3740)</span>
+            <span class="checksum-status" v-if="validateChecksum(qrResult)">✅ Valid</span>
+            <span class="checksum-status" v-else>⚠️ Invalid</span>
           </div>
         </div>
       </div>
@@ -306,6 +336,10 @@ export default {
       generatedQRImage: null,
       qrDataToGenerate: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304BCF6',
       hoveredTagData: null,
+      editMode: false,
+      editMerchantName: '',
+      editAmount: '',
+      editCurrency: 'KHR',
       currencyCodeMap: {
         '840': 'US Dollar (USD)',
         '116': 'Cambodian Riel (KHR)',
@@ -555,6 +589,87 @@ export default {
 
     escapeRegex(string) {
       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    },
+
+    toggleEditMode() {
+      this.editMode = !this.editMode;
+      if (this.editMode) {
+        this.editMerchantName = this.headerInfo.merchantNameTag?.value || '';
+        this.editAmount = this.headerInfo.amountTag?.value || '';
+        this.editCurrency = this.headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR';
+      }
+    },
+
+    updateMerchantData() {
+      if (!this.qrResult) return;
+
+      let updatedResult = this.qrResult;
+
+      // Update Merchant Name (Tag 59)
+      if (this.editMerchantName && this.headerInfo.merchantNameTag) {
+        const oldTag59 = '59' + String(this.headerInfo.merchantNameTag.length).padStart(2, '0') + this.headerInfo.merchantNameTag.value;
+        const newLength = String(this.editMerchantName.length).padStart(2, '0');
+        const newTag59 = '59' + newLength + this.editMerchantName;
+        updatedResult = updatedResult.replace(oldTag59, newTag59);
+      }
+
+      // Update Amount (Tag 54)
+      if (this.editAmount && this.headerInfo.amountTag) {
+        const oldTag54 = '54' + String(this.headerInfo.amountTag.length).padStart(2, '0') + this.headerInfo.amountTag.value;
+        const newLength = String(this.editAmount.length).padStart(2, '0');
+        const newTag54 = '54' + newLength + this.editAmount;
+        updatedResult = updatedResult.replace(oldTag54, newTag54);
+      }
+
+      // Update Currency (Tag 53)
+      if (this.headerInfo.currencyTag) {
+        const newCurrency = this.editCurrency === 'USD' ? '840' : '116';
+        const oldTag53 = '53' + String(this.headerInfo.currencyTag.length).padStart(2, '0') + this.headerInfo.currencyTag.value;
+        const newTag53 = '53' + '03' + newCurrency;
+        updatedResult = updatedResult.replace(oldTag53, newTag53);
+      }
+
+      // Remove old checksum (Tag 63)
+      updatedResult = updatedResult.replace(/63\d{2}[A-F0-9]{4}$/, '');
+
+      // Calculate and add new checksum
+      const newChecksum = this.calculateCRC16(updatedResult);
+      updatedResult = updatedResult + '63' + '04' + newChecksum;
+
+      this.manualQRInput = updatedResult;
+      this.processQRResult(updatedResult);
+      this.editMode = false;
+    },
+
+    calculateCRC16(data) {
+      let crc = 0x0000;
+
+      for (let i = 0; i < data.length; i++) {
+        const byte = data.charCodeAt(i);
+        crc ^= (byte << 8);
+
+        for (let j = 0; j < 8; j++) {
+          crc <<= 1;
+          if (crc & 0x10000) {
+            crc ^= 0x1021;
+          }
+          crc &= 0xFFFF;
+        }
+      }
+
+      return crc.toString(16).toUpperCase().padStart(4, '0');
+    },
+
+    validateChecksum(qrData) {
+      // Extract checksum tag
+      const checksumMatch = qrData.match(/63\d{2}([A-F0-9]{4})$/);
+      if (!checksumMatch) return false;
+
+      const providedChecksum = checksumMatch[1];
+      const dataWithoutChecksum = qrData.replace(/63\d{2}[A-F0-9]{4}$/, '');
+      const calculatedChecksum = this.calculateCRC16(dataWithoutChecksum);
+
+      return providedChecksum === calculatedChecksum;
     },
 
     async generateQRCode() {
@@ -869,6 +984,79 @@ export default {
   letter-spacing: 0px;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-panel {
+  background: #f5f5f5;
+  border: 2px solid #000000;
+  border-radius: 0px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+.edit-field {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-field label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #000000;
+}
+
+.edit-input,
+.edit-select {
+  padding: 0.6rem;
+  border: 1px solid #000000;
+  border-radius: 0px;
+  font-size: 16px;
+  font-family: inherit;
+  color: #000000;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.edit-input:focus,
+.edit-select:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.edit-input::placeholder {
+  color: #999999;
+}
+
+.edit-active {
+  background: #ff6b6b !important;
+  color: white !important;
+}
+
+.checksum-valid {
+  background: #f0fdf4;
+  border-left-color: #22c55e !important;
+}
+
+.checksum-invalid {
+  background: #fef2f2;
+  border-left-color: #ef4444 !important;
+}
+
+.checksum-status {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 2px;
+}
+
 .copy-btn {
   background: white;
   color: #000000;
@@ -1128,7 +1316,8 @@ export default {
 }
 
 .raw-data {
-  padding: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0 1.5rem;
   position: fixed;
   bottom: 0;
   left: 0;
