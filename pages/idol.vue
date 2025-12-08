@@ -9,7 +9,6 @@
       </div>
       <div class="btns">
         <button @click="autoFillImages" title="Auto-fill images">🖼️</button>
-        <button @click="openAddModal" title="Add item">➕</button>
       </div>
     </header>
 
@@ -22,71 +21,67 @@
       <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
     </div>
 
-    <!-- Progress -->
-    <div class="progress">
-      <div class="bar">
-        <div class="fill" style="width: 100%" />
-      </div>
-      <span>{{ totalCount }} works</span>
-    </div>
-
     <!-- Artists -->
     <div v-for="artist in filteredArtists" :key="artist.name" class="artist">
-      <div class="artist-info">
-        <h2>{{ artist.name }}</h2>
-        <p>{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
+      <div class="artist-info" @click="toggleArtist(artist)">
+        <div>
+          <h2>{{ artist.name }}</h2>
+          <p>{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
+        </div>
+        <button class="toggle-btn" @click.stop>{{ artist.collapsed ? '▶' : '▼' }}</button>
       </div>
 
-      <!-- Main Works -->
-      <div v-if="artist.mainWorks?.length">
-        <h3>📌 Main Works</h3>
-        <div class="grid">
-          <div v-for="work in artist.mainWorks" :key="work.code" class="card">
-            <div class="preview-gallery">
-              <div class="preview-item" @click="openSampleViewer(work, artist.name)">
-                <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
+      <div v-show="!artist.collapsed">
+
+        <!-- Main Works -->
+        <div v-if="artist.mainWorks?.length">
+          <h3>📌 Main Works</h3>
+          <div class="grid">
+            <div v-for="work in artist.mainWorks" :key="work.code" class="card">
+              <div class="preview-gallery">
+                <div class="preview-item">
+                  <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
+                </div>
+                <div v-for="i in 10" :key="i" class="preview-item">
+                  <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
+                </div>
               </div>
-              <div v-for="i in 10" :key="i" class="preview-item" @click="openSampleViewer(work, artist.name)">
-                <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
+              <div class="card-overlay">
+                <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
+                  title="Open in NJAV">🔗</button>
+
               </div>
-            </div>
-            <div class="card-overlay">
-              <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
-                title="Open in NJAV">🔗</button>
-              <button @click.stop="openEditModal(work, artist.name)" class="overlay-btn edit-btn"
-                title="Edit">✏️</button>
-            </div>
-            <div class="info">
-              <div>
-                <strong>{{ work.code }}</strong>
+              <div class="info">
+                <div>
+                  <strong>{{ work.code }}</strong>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Compilations -->
-      <div v-if="artist.compilations?.length">
-        <h3>📂 Compilations</h3>
-        <div class="grid">
-          <div v-for="work in artist.compilations" :key="work.code" class="card">
-            <div class="preview-gallery">
-              <div class="preview-item" @click="openSampleViewer(work, artist.name)">
-                <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
+        <!-- Compilations -->
+        <div v-if="artist.compilations?.length">
+          <h3>📂 Compilations</h3>
+          <div class="grid">
+            <div v-for="work in artist.compilations" :key="work.code" class="card">
+              <div class="preview-gallery">
+                <div class="preview-item">
+                  <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
+                </div>
+                <div v-for="i in 10" :key="i" class="preview-item">
+                  <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
+                </div>
               </div>
-              <div v-for="i in 10" :key="i" class="preview-item" @click="openSampleViewer(work, artist.name)">
-                <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
+              <div class="card-overlay">
+                <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
+                  title="Open in NJAV">🔗</button>
+
               </div>
-            </div>
-            <div class="card-overlay">
-              <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
-                title="Open in NJAV">🔗</button>
-              <button @click.stop="openEditModal(work, artist.name)" class="overlay-btn edit-btn"
-                title="Edit">✏️</button>
-            </div>
-            <div class="info">
-              <div>
-                <strong>{{ work.code }}</strong>
+              <div class="info">
+                <div>
+                  <strong>{{ work.code }}</strong>
+                </div>
               </div>
             </div>
           </div>
@@ -105,95 +100,6 @@
         {{ toast.message }}
       </div>
     </transition>
-
-    <!-- Add Modal -->
-    <div v-if="showAddModal" class="modal" @click="closeAddModal">
-      <div class="modal-box" @click.stop>
-        <h3>➕ Add Item</h3>
-        <label>
-          Artist
-          <select v-model="newItem.artist">
-            <option value="">Select Artist</option>
-            <option v-for="artist in artists" :key="artist.name" :value="artist.name">
-              {{ artist.name }}
-            </option>
-          </select>
-        </label>
-        <label>
-          Code
-          <input v-model="newItem.code" placeholder="e.g., SSIS-001" @keyup.enter="addNewItem" />
-        </label>
-        <label>
-          Image URL (optional)
-          <input v-model="newItem.imageUrl" type="url" placeholder="https://..." />
-        </label>
-        <label>
-          Type
-          <div class="radios">
-            <label><input v-model="newItem.type" type="radio" value="mainWorks" /> Main</label>
-            <label><input v-model="newItem.type" type="radio" value="compilations" /> Compilation</label>
-          </div>
-        </label>
-        <div class="modal-btns">
-          <button @click="closeAddModal" class="btn">Cancel</button>
-          <button @click="addNewItem" class="btn">Add</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit Modal -->
-    <div v-if="showEditModal" class="modal" @click="closeEditModal">
-      <div class="modal-box" @click.stop>
-        <h3>✏️ Edit Item</h3>
-        <label>
-          Code
-          <input v-model="editItem.code" disabled />
-        </label>
-        <label>
-          Image URL
-          <input v-model="editItem.imageUrl" type="url" placeholder="https://..." />
-        </label>
-        <button @click="autoGenerateEditImage" class="btn" style="width:100%;margin-bottom:15px">
-          🖼️ Auto-Generate
-        </button>
-        <div class="modal-btns">
-          <button @click="closeEditModal" class="btn">Cancel</button>
-          <button @click="saveEditedItem" class="btn">Save</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sample Viewer -->
-    <div v-if="showSampleModal" class="modal fullscreen" @click="closeSampleViewer">
-      <div class="slideshow" @click.stop>
-        <div class="slideshow-header">
-          <div>
-            <h3>📸 {{ currentSampleCode }}</h3>
-            <p>{{ currentSampleArtist }} ({{ currentSlideIndex + 1 }}/{{ sampleImages.length }})</p>
-          </div>
-          <button @click="closeSampleViewer">✕</button>
-        </div>
-
-        <div class="slideshow-main">
-          <button @click="prevSlide" class="nav prev">❮</button>
-          <div class="slides">
-            <div v-for="(sample, i) in sampleImages" :key="i" :class="['slide', { active: i === currentSlideIndex }]">
-              <img :src="sample.url" :alt="sample.label" />
-              <p>{{ sample.label }}</p>
-            </div>
-          </div>
-          <button @click="nextSlide" class="nav next">❯</button>
-        </div>
-
-        <div class="thumbs">
-          <div v-for="(sample, i) in sampleImages" :key="i" :class="['thumb', { active: i === currentSlideIndex }]"
-            @click="goToSlide(i)">
-            <img :src="sample.url" :alt="sample.label" />
-            <span>{{ i + 1 }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -203,203 +109,193 @@ export default {
   data() {
     return {
       searchQuery: '',
-      showAddModal: false,
-      showEditModal: false,
-      showSampleModal: false,
-      currentSampleCode: null,
-      currentSampleArtist: null,
-      sampleImages: [],
-      currentSlideIndex: 0,
-      newItem: { artist: '', code: '', name: '', type: 'mainWorks', imageUrl: '' },
-      editItem: { code: '', imageUrl: '', artist: '' },
-      editImageError: false,
       toast: { show: false, message: '', type: 'success' },
       artists: [
         {
           name: 'Minato Haru',
           period: '2019–2022',
           mainWorks: [
-            { code: 'SONE-978', name: '' },
-            { code: 'SONE-914', name: 'Minato Haru' },
-            { code: 'SONE-865', name: 'Minato Haru' },
-            { code: 'MIRD-259', name: 'Minato Haru' },
-            { code: 'OFES-013', name: 'Minato Haru' },
-            { code: 'SONE-776', name: 'Minato Haru' },
-            { code: 'SONE-508', name: 'Minato Haru' },
-            { code: 'FWAY-060', name: 'Minato Haru' },
-            { code: 'SONE-503', name: 'Minato Haru' },
-            { code: 'SONE-155', name: 'Minato Haru' },
-            { code: 'SONE-188', name: 'Minato Haru' },
-            { code: 'SONE-063', name: 'Minato Haru' },
-            { code: 'SONE-021', name: 'Minato Haru' },
-            { code: 'SSIS-978', name: 'Minato Haru' },
-            { code: 'FWAY-002', name: 'Minato Haru' },
-            { code: 'SSIS-945', name: 'Minato Haru' },
-            { code: 'SSIS-890', name: 'Minato Haru' },
-            { code: 'SSIS-889', name: 'Minato Haru' }
+            { code: 'SONE-978' },
+            { code: 'SONE-914' },
+            { code: 'SONE-865' },
+            { code: 'MIRD-259' },
+            { code: 'OFES-013' },
+            { code: 'SONE-776' },
+            { code: 'SONE-508' },
+            { code: 'FWAY-060' },
+            { code: 'SONE-503' },
+            { code: 'SONE-155' },
+            { code: 'SONE-188' },
+            { code: 'SONE-063' },
+            { code: 'SONE-021' },
+            { code: 'SSIS-978' },
+            { code: 'FWAY-002' },
+            { code: 'SSIS-945' },
+            { code: 'SSIS-890' },
+            { code: 'SSIS-889' }
           ]
         },
         {
           name: 'Moa Maeda',
           period: '2019–2022',
           mainWorks: [
-            { code: 'ADN-334', name: 'Moa Maeda' },
-            { code: 'MIMK-091', name: 'Moa Maeda' },
-            { code: 'JUFE-300', name: 'Moa Maeda' },
-            { code: 'WAAA-065', name: 'Moa Maeda' },
-            { code: 'HND-991', name: 'Moa Maeda' },
-            { code: 'PPPD-926', name: 'Moa Maeda' },
-            { code: 'MSFH-034', name: 'Moa Maeda' },
-            { code: 'MSFH-030', name: 'Moa Maeda' },
-            { code: 'MSFH-024', name: 'Moa Maeda' },
-            { code: 'MSFH-018', name: 'Moa Maeda' },
-            { code: 'MSFH-014', name: 'Moa Maeda' },
-            { code: 'MSFH-010', name: 'Moa Maeda' }
+            { code: 'ADN-334' },
+            { code: 'MIMK-091' },
+            { code: 'JUFE-300' },
+            { code: 'WAAA-065' },
+            { code: 'HND-991' },
+            { code: 'PPPD-926' },
+            { code: 'MSFH-034' },
+            { code: 'MSFH-030' },
+            { code: 'MSFH-024' },
+            { code: 'MSFH-018' },
+            { code: 'MSFH-014' },
+            { code: 'MSFH-010' }
           ]
         },
         {
           name: 'Mitsuki Momota',
           period: '2019–2022',
           mainWorks: [
-            { code: 'MIDA-424', name: 'Mitsuki Momota' },
-            { code: 'MIDA-026', name: 'Mitsuki Momota' },
-            { code: 'REBD-854', name: 'Mitsuki Momota' },
-            { code: 'OAE-253', name: 'Mitsuki Momota' },
-            { code: 'FWAY-047', name: 'Mitsuki Momota' },
-            { code: 'MIDV-869', name: 'Mitsuki Momota' },
-            { code: 'MIDV-569', name: 'Mitsuki Momota' },
-            { code: 'MIDA-346', name: 'Mitsuki Momota' },
-            { code: 'MIDV-668', name: 'Mitsuki Momota' },
-            { code: 'MIDV-831', name: 'Mitsuki Momota' },
-            { code: 'MIDV-574', name: 'Mitsuki Momota' },
-            { code: 'MIDV-577', name: 'Mitsuki Momota' },
-            { code: 'MIDA-102', name: 'Mitsuki Momota' },
-            { code: 'MIDA-190', name: 'Mitsuki Momota' },
-            { code: 'MIDV-985', name: 'Mitsuki Momota' },
-            { code: 'MIDV-637', name: 'Mitsuki Momota' },
-            { code: 'MIDA-305', name: 'Mitsuki Momota' },
-            { code: 'MIDA-139', name: 'Mitsuki Momota' },
-            { code: 'MIDA-258', name: 'Mitsuki Momota' },
-            { code: 'MIDV-769', name: 'Mitsuki Momota' },
-            { code: 'MDVR-325', name: 'Mitsuki Momota' },
-            { code: 'MIDV-905', name: 'Mitsuki Momota' },
-            { code: 'MIDV-804', name: 'Mitsuki Momota' },
-            { code: 'MIDA-214', name: 'Mitsuki Momota' },
-            { code: 'MIDA-064', name: 'Mitsuki Momota' },
-            { code: 'MDVR-317', name: 'Mitsuki Momota' },
-            { code: 'MDVR-288', name: 'Mitsuki Momota' },
-            { code: 'MIDA-385', name: 'Mitsuki Momota' },
-            { code: 'NAAC-032', name: 'Mitsuki Momota' },
-            { code: 'MIDV-698', name: 'Mitsuki Momota' }
+            { code: 'MIDA-424' },
+            { code: 'MIDA-026' },
+            { code: 'REBD-854' },
+            { code: 'OAE-253' },
+            { code: 'FWAY-047' },
+            { code: 'MIDV-869' },
+            { code: 'MIDV-569' },
+            { code: 'MIDA-346' },
+            { code: 'MIDV-668' },
+            { code: 'MIDV-831' },
+            { code: 'MIDV-574' },
+            { code: 'MIDV-577' },
+            { code: 'MIDA-102' },
+            { code: 'MIDA-190' },
+            { code: 'MIDV-985' },
+            { code: 'MIDV-637' },
+            { code: 'MIDA-305' },
+            { code: 'MIDA-139' },
+            { code: 'MIDA-258' },
+            { code: 'MIDV-769' },
+            { code: 'MDVR-325' },
+            { code: 'MIDV-905' },
+            { code: 'MIDV-804' },
+            { code: 'MIDA-214' },
+            { code: 'MIDA-064' },
+            { code: 'MDVR-317' },
+            { code: 'MDVR-288' },
+            { code: 'MIDA-385' },
+            { code: 'NAAC-032' },
+            { code: 'MIDV-698' }
           ],
           compilations: [
-            { code: 'OFJE-279', name: 'Anzai Rara' }
+            { code: 'OFJE-279' }
           ]
         },
         {
           name: 'Anzai Rara',
           period: '2019–2022',
           mainWorks: [
-            { code: 'SSIS-025', name: 'Anzai Rara' },
-            { code: 'SSIS-050', name: 'Anzai Rara' },
-            { code: 'SSIS-103', name: 'Anzai Rara' },
-            { code: 'SSIS-124', name: 'Anzai Rara' },
-            { code: 'SSIS-136', name: 'Anzai Rara' },
-            { code: 'SSIS-172', name: 'Anzai Rara' },
-            { code: 'SSIS-203', name: 'Anzai Rara' },
-            { code: 'SSIS-232', name: 'Anzai Rara' },
-            { code: 'SSIS-262', name: 'Anzai Rara' },
-            { code: 'SSIS-269', name: 'Anzai Rara' },
-            { code: 'SSIS-357', name: 'Anzai Rara' },
-            { code: 'SSNI-643', name: 'Anzai Rara' },
-            { code: 'SSNI-671', name: 'Anzai Rara' },
-            { code: 'SSNI-700', name: 'Anzai Rara' },
-            { code: 'SSNI-727', name: 'Anzai Rara' },
-            { code: 'SSNI-752', name: 'Anzai Rara' },
-            { code: 'SSNI-777', name: 'Anzai Rara' },
-            { code: 'SSNI-799', name: 'Anzai Rara' },
-            { code: 'SSNI-822', name: 'Anzai Rara' }
+            { code: 'SSIS-025' },
+            { code: 'SSIS-050' },
+            { code: 'SSIS-103' },
+            { code: 'SSIS-124' },
+            { code: 'SSIS-136' },
+            { code: 'SSIS-172' },
+            { code: 'SSIS-203' },
+            { code: 'SSIS-232' },
+            { code: 'SSIS-262' },
+            { code: 'SSIS-269' },
+            { code: 'SSIS-357' },
+            { code: 'SSNI-643' },
+            { code: 'SSNI-671' },
+            { code: 'SSNI-700' },
+            { code: 'SSNI-727' },
+            { code: 'SSNI-752' },
+            { code: 'SSNI-777' },
+            { code: 'SSNI-799' },
+            { code: 'SSNI-822' }
           ],
           compilations: [
-            { code: 'OFJE-279', name: 'Anzai Rara' },
-            { code: 'OFJE-288', name: 'Anzai Rara' },
-            { code: 'OFJE-354', name: 'Anzai Rara' },
-            { code: 'OFJE-410', name: 'Anzai Rara' }
+            { code: 'OFJE-279' },
+            { code: 'OFJE-288' },
+            { code: 'OFJE-354' },
+            { code: 'OFJE-410' }
           ]
         },
         {
           name: 'RION',
           period: '2015–2018',
           mainWorks: [
-            { code: 'SNIS-517', name: 'RION' },
-            { code: 'SNIS-539', name: 'RION' },
-            { code: 'SNIS-561', name: 'RION' },
-            { code: 'SNIS-594', name: 'RION' },
-            { code: 'SNIS-603', name: 'RION' },
-            { code: 'SNIS-623', name: 'RION' },
-            { code: 'SNIS-640', name: 'RION' },
-            { code: 'SNIS-656', name: 'RION' },
-            { code: 'SNIS-673', name: 'RION' },
-            { code: 'SNIS-692', name: 'RION' },
-            { code: 'SNIS-712', name: 'RION' },
-            { code: 'SNIS-731', name: 'RION' },
-            { code: 'SNIS-752', name: 'RION' },
-            { code: 'SNIS-774', name: 'RION' },
-            { code: 'SNIS-787', name: 'RION' },
-            { code: 'SNIS-811', name: 'RION' },
-            { code: 'SNIS-824', name: 'RION' },
-            { code: 'SNIS-895', name: 'RION' },
-            { code: 'SNIS-918', name: 'RION' },
-            { code: 'SNIS-939', name: 'RION' },
-            { code: 'SNIS-963', name: 'RION' },
-            { code: 'SNIS-985', name: 'RION' },
-            { code: 'SSNI-008', name: 'RION' },
-            { code: 'SSNI-029', name: 'RION' },
-            { code: 'SSNI-053', name: 'RION' },
-            { code: 'SSNI-100', name: 'RION' },
-            { code: 'SSNI-126', name: 'RION' },
-            { code: 'SSNI-151', name: 'RION' },
-            { code: 'SSNI-177', name: 'RION' },
-            { code: 'SSNI-204', name: 'RION' },
-            { code: 'SSNI-228', name: 'RION' },
-            { code: 'SSNI-241', name: 'RION' },
-            { code: 'SSNI-268', name: 'RION' },
-            { code: 'SSNI-290', name: 'RION' },
-            { code: 'EBOD-609', name: 'RION' }
+            { code: 'SNIS-517' },
+            { code: 'SNIS-539' },
+            { code: 'SNIS-561' },
+            { code: 'SNIS-594' },
+            { code: 'SNIS-603' },
+            { code: 'SNIS-623' },
+            { code: 'SNIS-640' },
+            { code: 'SNIS-656' },
+            { code: 'SNIS-673' },
+            { code: 'SNIS-692' },
+            { code: 'SNIS-712' },
+            { code: 'SNIS-731' },
+            { code: 'SNIS-752' },
+            { code: 'SNIS-774' },
+            { code: 'SNIS-787' },
+            { code: 'SNIS-811' },
+            { code: 'SNIS-824' },
+            { code: 'SNIS-895' },
+            { code: 'SNIS-918' },
+            { code: 'SNIS-939' },
+            { code: 'SNIS-963' },
+            { code: 'SNIS-985' },
+            { code: 'SSNI-008' },
+            { code: 'SSNI-029' },
+            { code: 'SSNI-053' },
+            { code: 'SSNI-100' },
+            { code: 'SSNI-126' },
+            { code: 'SSNI-151' },
+            { code: 'SSNI-177' },
+            { code: 'SSNI-204' },
+            { code: 'SSNI-228' },
+            { code: 'SSNI-241' },
+            { code: 'SSNI-268' },
+            { code: 'SSNI-290' },
+            { code: 'EBOD-609' }
           ],
           compilations: [
-            { code: 'OFJE-104', name: 'RION' },
-            { code: 'OFJE-144', name: 'RION' },
-            { code: 'OFJE-255', name: 'RION' }
+            { code: 'OFJE-104' },
+            { code: 'OFJE-144' },
+            { code: 'OFJE-255' }
           ]
         },
         {
           name: 'Utsunomiya Shion',
           period: '2013–2014',
           mainWorks: [
-            { code: 'SOE-992', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-009', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-027', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-048', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-070', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-091', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-110', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-129', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-147', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-166', name: 'Utsunomiya Shion' },
-            { code: 'AVOP-004', name: 'Utsunomiya Shion' },
-            { code: 'SNIS-205', name: 'Utsunomiya Shion' }
+            { code: 'SOE-992' },
+            { code: 'SNIS-009' },
+            { code: 'SNIS-027' },
+            { code: 'SNIS-048' },
+            { code: 'SNIS-070' },
+            { code: 'SNIS-091' },
+            { code: 'SNIS-110' },
+            { code: 'SNIS-129' },
+            { code: 'SNIS-147' },
+            { code: 'SNIS-166' },
+            { code: 'AVOP-004' },
+            { code: 'SNIS-205' }
           ],
           compilations: [
-            { code: 'ONSD-850', name: 'Utsunomiya Shion' },
-            { code: 'ONSD-899', name: 'Utsunomiya Shion' }
+            { code: 'ONSD-850' },
+            { code: 'ONSD-899' }
           ]
         },
         {
           name: 'Hitomi Tanaka',
           period: '2013–2014',
           mainWorks: [
-            { code: 'MIMK-007', name: 'Hitomi Tanaka' }
+            { code: 'MIMK-007' }
           ]
         }
       ]
@@ -434,6 +330,13 @@ export default {
         if (Array.isArray(parsed) && parsed.length) this.artists = parsed
       } catch (e) { }
 
+      // Initialize all artists as expanded (collapsed = false)
+      this.artists.forEach(artist => {
+        if (artist.collapsed === undefined) {
+          this.$set(artist, 'collapsed', false)
+        }
+      })
+
       window.addEventListener('keydown', this.handleModalKeydown)
     }
   },
@@ -441,6 +344,9 @@ export default {
     if (process.client) window.removeEventListener('keydown', this.handleModalKeydown)
   },
   methods: {
+    toggleArtist(artist) {
+      this.$set(artist, 'collapsed', !artist.collapsed)
+    },
     getImageUrl(work) {
       // Use 'pl' quality for card preview images
       return work.imageUrl || this.generateImageUrl(work.code, 'pl')
@@ -755,37 +661,6 @@ header p {
 }
 
 /* Progress */
-.progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: white;
-  border-radius: 8px;
-  margin-bottom: 15px;
-}
-
-.bar {
-  flex: 1;
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  background: linear-gradient(90deg, #2563eb, #16a34a);
-  transition: width 0.3s;
-}
-
-.progress span {
-  font-weight: 600;
-  color: #2563eb;
-  min-width: 45px;
-  text-align: right;
-}
-
 /* Artist */
 .artist {
   background: white;
@@ -796,9 +671,41 @@ header p {
 }
 
 .artist-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 12px;
-  padding-bottom: 12px;
+  padding: 12px;
   border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: 0.2s;
+  border-radius: 6px;
+}
+
+.artist-info:hover {
+  background: #f8f9fa;
+}
+
+.artist-info>div {
+  flex: 1;
+}
+
+.toggle-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-btn:hover {
+  background: #1d4ed8;
+  transform: scale(1.1);
 }
 
 .artist h2 {
@@ -869,13 +776,15 @@ header p {
 
 .preview-item {
   flex-shrink: 0;
-  width: 30vw;
+  width: auto;
   height: 20vw;
   border-radius: 8px;
   overflow: hidden;
   background: #e0e0e0;
   cursor: pointer;
   transition: 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .preview-item:hover {
@@ -884,9 +793,9 @@ header p {
 }
 
 .preview-item img {
-  width: 100%;
   height: 100%;
-  object-fit: cover;
+  width: auto;
+  object-fit: contain;
   display: block;
 }
 
@@ -1241,7 +1150,7 @@ header p {
   }
 
   .preview-item {
-    width: 60vw;
+    width: auto;
     height: 40vw;
   }
 
