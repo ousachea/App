@@ -1,6 +1,5 @@
 <template>
   <div class="container">
-    <PageSwitcher />
     <div class="scanner-card">
       <div class="header">
         <h1 class="title">KHQR Scanner</h1>
@@ -310,7 +309,12 @@
                 <span class="tree-meaning">= Create Time</span>
               </div>
               <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['00']">
-                <span class="tree-meaning">→ {{ getTimestampReadable(headerInfo.timestampNested['00'].value) }}</span>
+                <span class="tree-meaning">→ {{
+          getTimestampReadableWithoutExpired(headerInfo.timestampNested['00'].value) }}</span>
+              </div>
+              <div class="tree-subitem-conversion timestamp-expired"
+                v-if="headerInfo.timestampNested['00'] && isTimestampExpired(headerInfo.timestampNested['00'].value)">
+                <span class="tree-meaning">❌ Expired</span>
               </div>
 
               <div class="tree-subitem-line" v-if="headerInfo.timestampNested['01']">
@@ -320,7 +324,12 @@
                 <span class="tree-meaning">= Expiry Time</span>
               </div>
               <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['01']">
-                <span class="tree-meaning">→ {{ getTimestampReadable(headerInfo.timestampNested['01'].value) }}</span>
+                <span class="tree-meaning">→ {{
+          getTimestampReadableWithoutExpired(headerInfo.timestampNested['01'].value) }}</span>
+              </div>
+              <div class="tree-subitem-conversion timestamp-expired"
+                v-if="headerInfo.timestampNested['01'] && isTimestampExpired(headerInfo.timestampNested['01'].value)">
+                <span class="tree-meaning">❌ Expired</span>
               </div>
             </div>
           </div>
@@ -788,6 +797,37 @@ export default {
 
       try {
         const date = new Date(ms);
+        const now = new Date();
+        const isExpired = date < now;
+
+        const options = {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'Asia/Bangkok' // Cambodia uses Bangkok timezone (UTC+7)
+        };
+        const dateStr = date.toLocaleString('en-US', options) + ' ICT';
+
+        if (isExpired) {
+          return dateStr + ' ❌ Expired';
+        }
+        return dateStr;
+      } catch {
+        return '';
+      }
+    },
+
+    getTimestampReadableWithoutExpired(timestamp) {
+      if (!timestamp) return '';
+
+      let ms = parseInt(timestamp, 10);
+      if (isNaN(ms)) return '';
+
+      try {
+        const date = new Date(ms);
         const options = {
           year: 'numeric',
           month: 'short',
@@ -800,6 +840,21 @@ export default {
         return date.toLocaleString('en-US', options) + ' ICT';
       } catch {
         return '';
+      }
+    },
+
+    isTimestampExpired(timestamp) {
+      if (!timestamp) return false;
+
+      let ms = parseInt(timestamp, 10);
+      if (isNaN(ms)) return false;
+
+      try {
+        const date = new Date(ms);
+        const now = new Date();
+        return date < now;
+      } catch {
+        return false;
       }
     },
 
@@ -1536,6 +1591,18 @@ export default {
   margin-left: 0;
 }
 
+.timestamp-expired {
+  background: #fef2f2 !important;
+  border-color: #ef4444 !important;
+  width: 100%;
+}
+
+.timestamp-expired .tree-meaning {
+  color: #ef4444 !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .tree-data-long {
   background: #b8b8b8;
   color: #ffffff;
@@ -1617,8 +1684,7 @@ export default {
 }
 
 .raw-data {
-  margin-bottom: 1rem;
-  padding: 0 1.5rem;
+  padding: 1.5rem;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -1626,7 +1692,6 @@ export default {
   background: white;
   border-top: 2px solid #000000;
   z-index: 50;
-  max-height: 150px;
   overflow-y: auto;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
 }
