@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <PageSwitcher />
     <div class="scanner-card">
       <div class="header">
         <h1 class="title">KHQR Scanner</h1>
@@ -66,7 +67,7 @@
             <span class="tree-tag">{{ parsedTLV['01'].tag }}</span>
             <span class="tree-length">{{ String(parsedTLV['01'].length).padStart(2, '0') }}</span>
             <span class="tree-data">{{ parsedTLV['01'].value }}</span>
-            <span class="tree-meaning">= Dynamic</span>
+            <span class="tree-meaning">= {{ getInitiationMethodDescription(parsedTLV['01'].value) }}</span>
           </div>
 
           <!-- Tag 29: Remittance (nested) -->
@@ -94,6 +95,18 @@
                 <span class="tree-length">{{ formatLength(headerInfo.tag29Nested['02'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.tag29Nested['02'].value }}</span>
                 <span class="tree-meaning">= Bank Name</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['10']">
+                <span class="tree-tag">10</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag29Nested['10'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag29Nested['10'].value }}</span>
+                <span class="tree-meaning">= Account Number</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag29Nested['11']">
+                <span class="tree-tag">11</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag29Nested['11'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag29Nested['11'].value }}</span>
+                <span class="tree-meaning">= Reference Number</span>
               </div>
             </div>
           </div>
@@ -124,6 +137,18 @@
                 <span class="tree-data">{{ headerInfo.tag30Nested['02'].value }}</span>
                 <span class="tree-meaning">= Bank Name</span>
               </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag30Nested['10']">
+                <span class="tree-tag">10</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag30Nested['10'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag30Nested['10'].value }}</span>
+                <span class="tree-meaning">= Account Number</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.tag30Nested['11']">
+                <span class="tree-tag">11</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag30Nested['11'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag30Nested['11'].value }}</span>
+                <span class="tree-meaning">= Reference Number</span>
+              </div>
             </div>
           </div>
 
@@ -152,6 +177,18 @@
                 <span class="tree-length">{{ formatLength(headerInfo.bankInfoNested['02'].length) }}</span>
                 <span class="tree-data">{{ headerInfo.bankInfoNested['02'].value }}</span>
                 <span class="tree-meaning">= Bank Name</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['10']">
+                <span class="tree-tag">10</span>
+                <span class="tree-length">{{ formatLength(headerInfo.bankInfoNested['10'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.bankInfoNested['10'].value }}</span>
+                <span class="tree-meaning">= Account Number</span>
+              </div>
+              <div class="tree-subitem-line" v-if="headerInfo.bankInfoNested['11']">
+                <span class="tree-tag">11</span>
+                <span class="tree-length">{{ formatLength(headerInfo.bankInfoNested['11'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.bankInfoNested['11'].value }}</span>
+                <span class="tree-meaning">= Reference Number</span>
               </div>
             </div>
           </div>
@@ -506,6 +543,14 @@ export default {
 
     getMerchantCategoryDescription(code) {
       return this.merchantCategoryMap[code] || `Category: ${code}`;
+    },
+
+    getInitiationMethodDescription(code) {
+      const methodMap = {
+        '11': 'Static QR Code',
+        '12': 'Dynamic QR Code',
+      };
+      return methodMap[code] || `Initiation Method: ${code}`;
     },
 
     getMerchantTypeDescription(code) {
