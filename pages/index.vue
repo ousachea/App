@@ -1300,6 +1300,7 @@ export default {
   background: rgba(14, 165, 233, 0.06);
 }
 
+
 .tab-icon {
   font-size: 1.1rem;
 }
@@ -2002,14 +2003,260 @@ export default {
   }
 }
 
+/* Mobile Responsive - Tablet and Below */
 @media (max-width: 768px) {
-  .header {
-    padding: 1rem;
+  * {
+    touch-action: manipulation;
   }
 
-  .header-top {
+  .header {
+    padding: 1.5rem 1.2rem;
+    border-bottom: 3px solid #0284c7;
+  }
+
+  .title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+  }
+
+  .tab-navigation {
+    padding: 0 0.8rem;
+    gap: 0;
+    top: 5rem;
+  }
+
+  .tab-button {
+    padding: 1rem 1rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .tab-icon {
+    font-size: 1rem;
+  }
+
+  .input-area {
+    padding: 1.5rem 1.2rem;
+    gap: 1.2rem;
+  }
+
+  .sample-selector {
     flex-direction: column;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .sample-label {
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .sample-select {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 15px;
+  }
+
+  .input-field {
+    height: 120px;
+    padding: 1rem;
+    font-size: 16px;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+  }
+
+  .input-field::placeholder {
+    font-size: 14px;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 0.9rem 1.2rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  .btn-secondary {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    color: #0284c7;
+    border: 2px solid #7dd3fc;
+  }
+
+  .summary-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+  }
+
+  .summary-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(14, 165, 233, 0.1);
+  }
+
+  .summary-item:last-child {
+    border-bottom: none;
+  }
+
+  .summary-label {
+    font-size: 0.8rem;
+    font-weight: 900;
+  }
+
+  .summary-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .live-preview-toggle {
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    border-radius: 10px;
+  }
+
+  .toggle-text {
+    font-size: 0.9rem;
+  }
+
+  .result-section {
+    padding: 1.5rem 1.2rem;
+    padding-bottom: 200px;
+  }
+
+  .result-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .result-header h2 {
+    font-size: 1.3rem;
+    width: 100%;
+  }
+
+  .header-buttons {
+    width: 100%;
+    display: flex;
     gap: 0.8rem;
+  }
+
+  .copy-btn {
+    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    flex: 1;
+  }
+
+  .edit-panel {
+    padding: 1.5rem 1.2rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+  }
+
+  .edit-field {
+    margin-bottom: 1.5rem;
+    gap: 0.6rem;
+  }
+
+  .edit-field label {
+    font-size: 0.9rem;
+    font-weight: 900;
+  }
+
+  .edit-input,
+  .edit-select {
+    padding: 0.9rem;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  .edit-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+  }
+
+  .edit-update-btn,
+  .edit-cancel-btn {
+    width: 100%;
+    padding: 1rem 1.2rem;
+  }
+
+  .tree-item {
+    padding: 0.7rem 0;
+    gap: 0.4rem;
+  }
+
+  .tree-item:hover {
+    padding-left: 1rem;
+  }
+
+  .tree-tag,
+  .tree-length,
+  .tree-data {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .tree-meaning {
+    font-size: 0.7rem;
+    margin-left: 0.4rem;
+  }
+
+  .copy-item-btn {
+    opacity: 1;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .tlv-tree {
+    font-size: 0.8rem;
+  }
+
+  .live-preview-toggle {
+    flex-direction: column;
+    padding: 1.2rem;
+  }
+
+  .toggle-label {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .notification {
+    right: 15px;
+    top: 20px;
+    padding: 1rem 1.2rem;
+    font-size: 0.85rem;
+    border-radius: 10px;
+  }
+}
+
+/* Extra Small Phones - Below 480px */
+@media (max-width: 480px) {
+  .header {
+    padding: 1.2rem 1rem;
   }
 
   .title {
@@ -2021,107 +2268,85 @@ export default {
   }
 
   .tab-navigation {
-    padding: 0 1rem;
-    top: 5.5rem;
+    padding: 0 0.5rem;
   }
 
   .tab-button {
-    padding: 0.9rem 1.2rem;
-    font-size: 0.85rem;
-    gap: 0.4rem;
-  }
-
-  .tab-icon {
-    font-size: 0.95rem;
+    padding: 0.85rem 0.5rem;
+    font-size: 0.75rem;
   }
 
   .input-area {
     padding: 1.2rem 1rem;
   }
 
-  .summary-card {
-    grid-template-columns: 1fr;
-    gap: 0.8rem;
+  .sample-selector {
     padding: 1rem;
   }
 
-  .summary-item {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .search-input {
-    padding: 0.85rem 1rem 0.85rem 2.4rem;
-    font-size: 0.85rem;
+  .input-field {
+    height: 100px;
+    padding: 0.9rem;
   }
 
   .btn {
-    padding: 0.75rem 1.2rem;
-    font-size: 0.8rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
   }
 
-  .copy-btn {
-    padding: 0.6rem 0.8rem;
+  .summary-card {
+    padding: 1rem;
+    gap: 0.8rem;
+  }
+
+  .summary-label {
     font-size: 0.75rem;
   }
 
-  .control-btn {
-    padding: 0.5rem 0.6rem;
+  .summary-value {
+    font-size: 0.9rem;
+  }
+
+  .result-section {
+    padding: 1.2rem 1rem;
+  }
+
+  .result-header h2 {
+    font-size: 1.2rem;
   }
 
   .edit-panel {
-    padding: 1.2rem;
+    padding: 1.2rem 1rem;
   }
 
   .edit-input,
   .edit-select {
-    padding: 0.7rem;
+    padding: 0.8rem;
     font-size: 16px;
   }
 
-  .tree-item {
-    padding: 0.5rem 0;
+  .tree-tag,
+  .tree-length,
+  .tree-data {
+    font-size: 0.7rem;
   }
 
-  .tree-tag,
-  .tree-length {
-    font-size: 0.7rem;
-    padding: 0.3rem 0.4rem;
+  .tree-meaning {
+    font-size: 0.65rem;
+  }
+
+  .notification {
+    right: 10px;
+    top: 15px;
+    padding: 0.9rem 1rem;
+    font-size: 0.8rem;
   }
 
   .copy-item-btn {
-    opacity: 1;
     padding: 0.3rem 0.4rem;
+    font-size: 0.7rem;
   }
-
-  .result-section {
-    padding: 1rem;
-  }
-}
-
-.result-section {
-  padding: 1rem 1rem;
-}
-
-.tlv-tree {
-  font-size: 0.7rem;
-  line-height: 1.5;
-}
-
-.tree-item {
-  padding: 0.35rem 0;
-  padding-left: 0.75rem;
-}
-
-.tree-children {
-  margin-left: 1.5rem;
-  padding-left: 0.75rem;
-}
-
-.tree-code {
-  padding: 0.15rem 0.4rem;
-  font-size: 0.7rem;
 }
 
 .notification {
