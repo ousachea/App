@@ -260,6 +260,36 @@ const DEFAULT_ARTISTS = [
   {
     name: 'Yuri Oshikawa',
     mainWorks: [{ code: 'PPPD-666' }]
+  },
+  {
+    name: 'Collection',
+    mainWorks: [
+      { code: 'ABP-447' }, { code: 'ARA-412' }, { code: 'NNPJ-514' }, { code: 'BONY-007' },
+      { code: 'MFC-117' }, { code: 'IND-063' }, { code: 'MFC-169' }, { code: 'MAAN-632' },
+      { code: 'SUKE-053' }, { code: 'FC2-PPV-2864495' }, { code: 'ECB-109' }, { code: 'JUFE-028' },
+      { code: 'GES-038' }, { code: 'XVSR-487081019_881' }, { code: 'VGD-192' }, { code: 'NITR-209' },
+      { code: 'CLUB-855' }, { code: 'SUKE-043' }, { code: 'HAWA-325' }, { code: 'DLDSS-362' },
+      { code: 'BDST-027' }, { code: 'MAAN-982' }, { code: 'DDHP-044' }, { code: 'GANA-2100' },
+      { code: 'GANA-2858' }, { code: 'GANA-1026' }, { code: 'GANA-1996732' }, { code: 'TOUKA-01' },
+      { code: 'MAAN-387' }, { code: 'NHMSG-031' }, { code: 'ADN-630' }, { code: 'PRED-685' },
+      { code: 'APAA-387' }, { code: 'NTK-391' }, { code: 'MIUM-811' }, { code: 'MIUM-681' },
+      { code: 'MIUM-742' }, { code: 'BSY-022' }, { code: 'KTB-018' }, { code: 'NGOD-113' },
+      { code: 'PPPD-666' }, { code: 'VEC-340' }, { code: 'SIRO-3954' }, { code: 'GANA-2156' },
+      { code: 'STCV-240' }, { code: 'NTK-637' }, { code: 'AKDL-247' }, { code: '259LUXU-1511' },
+      { code: '259LUXU-1518' }, { code: '259LUXU-743' }, { code: '259LUXU-688' }, { code: '259LUXU-1571' },
+      { code: '259LUXU-1631' }, { code: '259LUXU-1618' }, { code: '259LUXU-1621' }, { code: '259LUXU-1610' },
+      { code: 'SRTD-349' }, { code: 'ORECO-079' }, { code: 'MIUM-908' }, { code: 'ION-162' },
+      { code: 'MAAN-836' }, { code: 'MIUM-865' }, { code: 'SIRO-4820' }, { code: 'FLC-004' },
+      { code: 'PKPD-217' }, { code: 'JAC-175' }, { code: 'MIUM-862' }, { code: 'SRTD-345' },
+      { code: 'AKDL-213' }, { code: 'AKDL-193' }, { code: 'HMT-018' }, { code: 'MAAN-955' },
+      { code: 'GERK-350' }, { code: 'SPAY-241' }, { code: 'LUXU-1572' }, { code: 'SUN-071' },
+      { code: 'GANA-2705' }, { code: 'HAWA-287' }, { code: 'MRPA-006' }, { code: 'UZU-004' },
+      { code: 'ZOZO-165' }, { code: 'GVH-477' }, { code: 'BARE-009' }, { code: 'DFDM-041' },
+      { code: 'FC2-PPV-1046522' }, { code: 'SSNI-362' }, { code: 'SSNI-318' }, { code: 'MIUM-801' },
+      { code: 'KTKC-074' }, { code: 'IND-022' }, { code: 'MIUM-495' }, { code: 'SUKE-062' },
+      { code: 'MAAN-842' }, { code: 'JUL-442' }, { code: 'JUL-546' }, { code: 'JUL-872' },
+      { code: 'ORECS-132' }
+    ]
   }
 ]
 
