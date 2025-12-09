@@ -7,8 +7,12 @@
         <h1>🎬 Works Tracker</h1>
         <p>{{ totalCount }} total works</p>
       </div>
+      <div class="search-box">
+        <input v-model="globalSearch" type="text" placeholder="🔍 Search all works..." class="global-search" />
+        <span v-if="globalSearch" class="search-results">{{ searchResults.length }} found</span>
+      </div>
       <div class="btns">
-        <button @click="autoFillImages" title="Auto-fill images">🖼️</button>
+        <button @click="autoFillImages" title="Auto-fetch posters">🖼️</button>
         <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
         <button @click="handleImportClick" class="btn-icon" title="Import">📤</button>
         <button @click="toggleDarkMode" class="btn-icon" title="Toggle dark mode">{{ darkMode ? '☀️' : '🌙' }}</button>
@@ -18,10 +22,24 @@
       </div>
     </header>
 
+    <!-- Global Search Results -->
+    <div v-if="globalSearch && searchResults.length" class="search-results-container">
+      <div v-for="result in searchResults" :key="`${result.artistName}-${result.work.code}`" class="search-result-item">
+        <strong>{{ result.artistName }}</strong> - {{ result.work.code }}
+        <button @click="activeTab = result.artistName" class="goto-btn">View →</button>
+      </div>
+    </div>
+
     <!-- Artist Grid -->
     <div class="artist-grid">
       <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
         :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
+        <div v-if="artist.photo" class="artist-photo-small">
+          <img :src="artist.photo" :alt="artist.name" />
+        </div>
+        <div v-else class="artist-photo-small empty">
+          <span>📷</span>
+        </div>
         <div class="card-content">
           <h3>{{ artist.name }}</h3>
           <p class="work-count">{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
@@ -29,6 +47,7 @@
             <span v-if="artist.mainWorks?.length" class="main">📌 {{ artist.mainWorks.length }}</span>
             <span v-if="artist.compilations?.length" class="comp">📂 {{ artist.compilations.length }}</span>
           </div>
+          <div v-if="artist.studio" class="studio-tag">📦 {{ artist.studio }}</div>
         </div>
       </button>
     </div>
@@ -36,14 +55,21 @@
     <!-- Artist Content -->
     <div v-if="currentArtist" class="artist-content">
       <div class="artist-header">
-        <div>
-          <h2>{{ currentArtist.name }}</h2>
-          <p>{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }} works</p>
+        <div class="artist-info">
+          <div v-if="currentArtist.photo" class="artist-photo-large">
+            <img :src="currentArtist.photo" :alt="currentArtist.name" />
+          </div>
+          <div>
+            <h2>{{ currentArtist.name }}</h2>
+            <p>{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }} works</p>
+            <p v-if="currentArtist.studio" class="studio-info">📦 Studio: {{ currentArtist.studio }}</p>
+          </div>
         </div>
         <div class="header-actions">
           <select v-model="sortBy" class="sort-select" title="Sort works">
             <option value="code">Code (A-Z)</option>
             <option value="code-desc">Code (Z-A)</option>
+            <option value="date">Release Date</option>
             <option value="added">Recently Added</option>
           </select>
           <button @click="openAddWorkModal" class="add-work-btn" title="Add new work">➕</button>
@@ -64,15 +90,27 @@
               </div>
             </div>
             <div class="card-overlay">
-              <button @click.stop="copyToClipboard(work.code)" class="overlay-btn copy-btn"
-                title="Copy code">📋</button>
-              <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
-                title="Open in NJAV">🔗</button>
+
+              <div class="link-dropdown">
+                <button class="overlay-btn link-btn" title="Open links">🔗</button>
+                <div class="dropdown-menu">
+                  <button @click.stop="openExternalLink(work.code, 'njav')" class="dropdown-item">NJAV</button>
+
+                </div>
+              </div>
+              <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn" title="Edit code">✏️</button>
             </div>
             <div class="info">
               <div>
                 <strong>{{ work.code }}</strong>
                 <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
+                <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+                <div class="link-buttons">
+                  <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
+                    title="Open on NJAV">NJAV</button>
+                  <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
+                    title="Open on Missav">Missav</button>
+                </div>
               </div>
             </div>
           </div>
@@ -93,18 +131,49 @@
               </div>
             </div>
             <div class="card-overlay">
-              <button @click.stop="copyToClipboard(work.code)" class="overlay-btn copy-btn"
-                title="Copy code">📋</button>
-              <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
-                title="Open in NJAV">🔗</button>
+
+              <div class="link-dropdown">
+                <button class="overlay-btn link-btn" title="Open links">🔗</button>
+                <div class="dropdown-menu">
+                  <button @click.stop="openExternalLink(work.code, 'njav')" class="dropdown-item">NJAV</button>
+
+                </div>
+              </div>
+              <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn" title="Edit code">✏️</button>
             </div>
             <div class="info">
               <div>
                 <strong>{{ work.code }}</strong>
                 <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
+                <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+                <div class="link-buttons">
+                  <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
+                    title="Open on NJAV">NJAV</button>
+                  <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
+                    title="Open on Missav">Missav</button>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Work Modal -->
+    <div v-if="showEditWorkModal" class="modal" @click.self="closeEditWorkModal">
+      <div class="modal-box">
+        <h3>Edit Work Code</h3>
+        <label>
+          Code
+          <input v-model="editingWork.newCode" type="text" placeholder="e.g., SONE-978" />
+        </label>
+        <label>
+          Release Date (optional)
+          <input v-model="editingWork.releaseDate" type="date" />
+        </label>
+        <div class="modal-btns">
+          <button @click="saveEditWork" class="btn">Save</button>
+          <button @click="closeEditWorkModal" class="btn" style="background: #666">Cancel</button>
         </div>
       </div>
     </div>
@@ -123,6 +192,10 @@
         <label>
           Work Code
           <input v-model="newWork.code" type="text" placeholder="e.g., SONE-978" />
+        </label>
+        <label>
+          Release Date (optional)
+          <input v-model="newWork.releaseDate" type="date" />
         </label>
         <label>
           Type
@@ -152,6 +225,14 @@
           Artist Name
           <input v-model="newArtist.name" type="text" placeholder="e.g., Jane Doe" />
         </label>
+        <label>
+          Studio (optional)
+          <input v-model="newArtist.studio" type="text" placeholder="e.g., S1" />
+        </label>
+        <label>
+          Photo URL (optional)
+          <input v-model="newArtist.photo" type="text" placeholder="https://..." />
+        </label>
         <div class="modal-btns">
           <button @click="addNewArtist" class="btn">Add</button>
           <button @click="closeAddArtistModal" class="btn" style="background: #666">Cancel</button>
@@ -170,125 +251,50 @@
 
 <script>
 const DEFAULT_ARTISTS = [
-  {
-    name: 'Minato Haru',
-    mainWorks: [
-      { code: 'SONE-978' }, { code: 'SONE-914' }, { code: 'SONE-865' }, { code: 'MIRD-259' },
-      { code: 'OFES-013' }, { code: 'SONE-776' }, { code: 'SONE-508' }, { code: 'FWAY-060' },
-      { code: 'SONE-503' }, { code: 'SONE-155' }, { code: 'SONE-188' }, { code: 'SONE-063' },
-      { code: 'SONE-021' }, { code: 'SSIS-978' }, { code: 'FWAY-002' }, { code: 'SSIS-945' },
-      { code: 'SSIS-890' }, { code: 'SSIS-889' }
-    ]
-  },
-  {
-    name: 'Moa Maeda',
-    mainWorks: [
-      { code: 'ADN-334' }, { code: 'MIMK-091' }, { code: 'JUFE-300' }, { code: 'WAAA-065' },
-      { code: 'HND-991' }, { code: 'PPPD-926' }, { code: 'MSFH-034' }, { code: 'MSFH-030' },
-      { code: 'MSFH-024' }, { code: 'MSFH-018' }, { code: 'MSFH-014' }, { code: 'MSFH-010' }
-    ]
-  },
-  {
-    name: 'Mitsuki Momota',
-    mainWorks: [
-      { code: 'MIDA-424' }, { code: 'MIDA-026' }, { code: 'REBD-854' }, { code: 'OAE-253' },
-      { code: 'FWAY-047' }, { code: 'MIDV-869' }, { code: 'MIDV-569' }, { code: 'MIDA-346' },
-      { code: 'MIDV-668' }, { code: 'MIDV-831' }, { code: 'MIDV-574' }, { code: 'MIDV-577' },
-      { code: 'MIDA-102' }, { code: 'MIDA-190' }, { code: 'MIDV-985' }, { code: 'MIDV-637' },
-      { code: 'MIDA-305' }, { code: 'MIDA-139' }, { code: 'MIDA-258' }, { code: 'MIDV-769' },
-      { code: 'MDVR-325' }, { code: 'MIDV-905' }, { code: 'MIDV-804' }, { code: 'MIDA-214' },
-      { code: 'MIDA-064' }, { code: 'MDVR-317' }, { code: 'MDVR-288' }, { code: 'MIDA-385' },
-      { code: 'NAAC-032' }, { code: 'MIDV-698' }
-    ],
-    compilations: [{ code: 'OFJE-279' }]
-  },
-  {
-    name: 'Anzai Rara',
-    mainWorks: [
-      { code: 'SSIS-025' }, { code: 'SSIS-050' }, { code: 'SSIS-103' }, { code: 'SSIS-124' },
-      { code: 'SSIS-136' }, { code: 'SSIS-172' }, { code: 'SSIS-203' }, { code: 'SSIS-232' },
-      { code: 'SSIS-262' }, { code: 'SSIS-269' }, { code: 'SSIS-357' }, { code: 'SSNI-643' },
-      { code: 'SSNI-671' }, { code: 'SSNI-700' }, { code: 'SSNI-727' }, { code: 'SSNI-752' },
-      { code: 'SSNI-777' }, { code: 'SSNI-799' }, { code: 'SSNI-822' }
-    ],
-    compilations: [
-      { code: 'OFJE-279' }, { code: 'OFJE-288' }, { code: 'OFJE-354' }, { code: 'OFJE-410' }
-    ]
-  },
-  {
-    name: 'RION',
-    mainWorks: [
-      { code: 'SNIS-517' }, { code: 'SNIS-539' }, { code: 'SNIS-561' }, { code: 'SNIS-594' },
-      { code: 'SNIS-603' }, { code: 'SNIS-623' }, { code: 'SNIS-640' }, { code: 'SNIS-656' },
-      { code: 'SNIS-673' }, { code: 'SNIS-692' }, { code: 'SNIS-712' }, { code: 'SNIS-731' },
-      { code: 'SNIS-752' }, { code: 'SNIS-774' }, { code: 'SNIS-787' }, { code: 'SNIS-811' },
-      { code: 'SNIS-824' }, { code: 'SNIS-895' }, { code: 'SNIS-918' }, { code: 'SNIS-939' },
-      { code: 'SNIS-963' }, { code: 'SNIS-985' }, { code: 'SSNI-008' }, { code: 'SSNI-029' },
-      { code: 'SSNI-053' }, { code: 'SSNI-100' }, { code: 'SSNI-126' }, { code: 'SSNI-151' },
-      { code: 'SSNI-177' }, { code: 'SSNI-204' }, { code: 'SSNI-228' }, { code: 'SSNI-241' },
-      { code: 'SSNI-268' }, { code: 'SSNI-290' }, { code: 'EBOD-609' }
-    ],
-    compilations: [
-      { code: 'OFJE-104' }, { code: 'OFJE-144' }, { code: 'OFJE-255' }
-    ]
-  },
-  {
-    name: 'Utsunomiya Shion',
-    mainWorks: [
-      { code: 'SOE-992' }, { code: 'SNIS-009' }, { code: 'SNIS-027' }, { code: 'SNIS-048' },
-      { code: 'SNIS-070' }, { code: 'SNIS-091' }, { code: 'SNIS-110' }, { code: 'SNIS-129' },
-      { code: 'SNIS-147' }, { code: 'SNIS-166' }, { code: 'AVOP-004' }, { code: 'SNIS-205' }
-    ],
-    compilations: [{ code: 'ONSD-850' }, { code: 'ONSD-899' }]
-  },
-  {
-    name: 'Hitomi Tanaka',
-    mainWorks: [{ code: 'MIMK-007' }]
-  },
-  {
-    name: 'Ai Samaya',
-    mainWorks: [{ code: 'JUFE-101' }]
-  },
-  {
-    name: 'Touka Rinne',
-    mainWorks: [{ code: 'KTB-303' }]
-  },
-  {
-    name: 'Sakura Kirishima',
-    mainWorks: [{ code: 'MKMP-001' }]
-  },
-  {
-    name: 'Yuri Oshikawa',
-    mainWorks: [{ code: 'PPPD-666' }]
-  },
+  { name: 'Minato Haru', mainWorks: [{ code: 'SONE-978' }, { code: 'SONE-914' }, { code: 'SONE-865' }, { code: 'MIRD-259' }, { code: 'OFES-013' }, { code: 'SONE-776' }, { code: 'SONE-508' }, { code: 'FWAY-060' }, { code: 'SONE-503' }, { code: 'SONE-155' }, { code: 'SONE-188' }, { code: 'SONE-063' }, { code: 'SONE-021' }, { code: 'SSIS-978' }, { code: 'FWAY-002' }, { code: 'SSIS-945' }, { code: 'SSIS-890' }, { code: 'SSIS-889' }], photo: 'https://via.placeholder.com/150?text=Minato+Haru' },
+  { name: 'Moa Maeda', mainWorks: [{ code: 'ADN-334' }, { code: 'MIMK-091' }, { code: 'JUFE-300' }, { code: 'WAAA-065' }, { code: 'HND-991' }, { code: 'PPPD-926' }, { code: 'MSFH-034' }, { code: 'MSFH-030' }, { code: 'MSFH-024' }, { code: 'MSFH-018' }, { code: 'MSFH-014' }, { code: 'MSFH-010' }], photo: 'https://via.placeholder.com/150?text=Moa+Maeda' },
+  { name: 'Mitsuki Momota', mainWorks: [{ code: 'MIDA-424' }, { code: 'MIDA-026' }, { code: 'REBD-854' }, { code: 'OAE-253' }, { code: 'FWAY-047' }, { code: 'MIDV-869' }, { code: 'MIDV-569' }, { code: 'MIDA-346' }, { code: 'MIDV-668' }, { code: 'MIDV-831' }, { code: 'MIDV-574' }, { code: 'MIDV-577' }, { code: 'MIDA-102' }, { code: 'MIDA-190' }, { code: 'MIDV-985' }, { code: 'MIDV-637' }, { code: 'MIDA-305' }, { code: 'MIDA-139' }, { code: 'MIDA-258' }, { code: 'MIDV-769' }, { code: 'MDVR-325' }, { code: 'MIDV-905' }, { code: 'MIDV-804' }, { code: 'MIDA-214' }, { code: 'MIDA-064' }, { code: 'MDVR-317' }, { code: 'MDVR-288' }, { code: 'MIDA-385' }, { code: 'NAAC-032' }, { code: 'MIDV-698' }], compilations: [{ code: 'OFJE-279' }], photo: 'https://via.placeholder.com/150?text=Mitsuki' },
+  { name: 'Anzai Rara', mainWorks: [{ code: 'SSIS-025' }, { code: 'SSIS-050' }, { code: 'SSIS-103' }, { code: 'SSIS-124' }, { code: 'SSIS-136' }, { code: 'SSIS-172' }, { code: 'SSIS-203' }, { code: 'SSIS-232' }, { code: 'SSIS-262' }, { code: 'SSIS-269' }, { code: 'SSIS-357' }, { code: 'SSNI-643' }, { code: 'SSNI-671' }, { code: 'SSNI-700' }, { code: 'SSNI-727' }, { code: 'SSNI-752' }, { code: 'SSNI-777' }, { code: 'SSNI-799' }, { code: 'SSNI-822' }], compilations: [{ code: 'OFJE-288' }, { code: 'OFJE-354' }, { code: 'OFJE-410' }], photo: 'https://via.placeholder.com/150?text=Anzai+Rara' },
+  { name: 'RION', mainWorks: [{ code: 'SNIS-517' }, { code: 'SNIS-539' }, { code: 'SNIS-561' }, { code: 'SNIS-594' }, { code: 'SNIS-603' }, { code: 'SNIS-623' }, { code: 'SNIS-640' }, { code: 'SNIS-656' }, { code: 'SNIS-673' }, { code: 'SNIS-692' }, { code: 'SNIS-712' }, { code: 'SNIS-731' }, { code: 'SNIS-752' }, { code: 'SNIS-774' }, { code: 'SNIS-787' }, { code: 'SNIS-811' }, { code: 'SNIS-824' }, { code: 'SNIS-895' }, { code: 'SNIS-918' }, { code: 'SNIS-939' }, { code: 'SNIS-963' }, { code: 'SNIS-985' }, { code: 'SSNI-008' }, { code: 'SSNI-029' }, { code: 'SSNI-053' }, { code: 'SSNI-100' }, { code: 'SSNI-126' }, { code: 'SSNI-151' }, { code: 'SSNI-177' }, { code: 'SSNI-204' }, { code: 'SSNI-228' }, { code: 'SSNI-241' }, { code: 'SSNI-268' }, { code: 'SSNI-290' }, { code: 'EBOD-609' }], compilations: [{ code: 'OFJE-104' }, { code: 'OFJE-144' }, { code: 'OFJE-255' }], photo: 'https://via.placeholder.com/150?text=RION' },
+  { name: 'Utsunomiya Shion', mainWorks: [{ code: 'SOE-992' }, { code: 'SNIS-009' }, { code: 'SNIS-027' }, { code: 'SNIS-048' }, { code: 'SNIS-070' }, { code: 'SNIS-091' }, { code: 'SNIS-110' }, { code: 'SNIS-129' }, { code: 'SNIS-147' }, { code: 'SNIS-166' }, { code: 'AVOP-004' }, { code: 'SNIS-205' }], compilations: [{ code: 'ONSD-850' }, { code: 'ONSD-899' }], photo: 'https://via.placeholder.com/150?text=Shion' },
+  { name: 'Hitomi Tanaka', mainWorks: [{ code: 'MIMK-007' }], photo: 'https://via.placeholder.com/150?text=Hitomi' },
+  { name: 'Ai Samaya', mainWorks: [{ code: 'JUFE-101' }], photo: 'https://via.placeholder.com/150?text=Ai+Samaya' },
+  { name: 'Touka Rinne', mainWorks: [{ code: 'KTB-303' }], photo: 'https://via.placeholder.com/150?text=Touka' },
+  { name: 'Sakura Kirishima', mainWorks: [{ code: 'MKMP-001' }], photo: 'https://via.placeholder.com/150?text=Sakura' },
+  { name: 'Yuri Oshikawa', mainWorks: [{ code: 'PPPD-666' }], photo: 'https://via.placeholder.com/150?text=Yuri' },
+  { name: 'Satomi Mioka', mainWorks: [{ code: 'BARE-009' }], photo: 'https://via.placeholder.com/150?text=Satomi' },
+  { name: 'Mizuno Asai', mainWorks: [{ code: 'JUL-546' }], photo: 'https://via.placeholder.com/150?text=Mizuno' },
+  { name: 'Ayami Shunka', mainWorks: [{ code: 'SSNI-318' }], photo: 'https://via.placeholder.com/150?text=Ayami' },
+  { name: 'Miu Shiramine', mainWorks: [{ code: 'PRED-685' }], photo: 'https://via.placeholder.com/150?text=Miu' },
+  { name: 'Miina Wakatsuki', mainWorks: [{ code: 'NGOD-113' }], photo: 'https://via.placeholder.com/150?text=Miina' },
+  { name: 'Meguri', mainWorks: [{ code: 'JUR-531' }], photo: 'https://via.placeholder.com/150?text=Meguri' },
+  { name: 'Koibuchi Momona', mainWorks: [{ code: 'START-168' }], photo: 'https://via.placeholder.com/150?text=Koibuchi' },
   {
     name: 'Collection',
     mainWorks: [
       { code: 'ABP-447' }, { code: 'ARA-412' }, { code: 'NNPJ-514' }, { code: 'BONY-007' },
       { code: 'MFC-117' }, { code: 'IND-063' }, { code: 'MFC-169' }, { code: 'MAAN-632' },
       { code: 'SUKE-053' }, { code: 'FC2-PPV-2864495' }, { code: 'ECB-109' }, { code: 'JUFE-028' },
-      { code: 'GES-038' }, { code: 'XVSR-487081019_881' }, { code: 'VGD-192' }, { code: 'NITR-209' },
+      { code: 'GES-038' }, { code: 'XVSR-487' }, { code: 'VGD-192' }, { code: 'NITR-209' },
       { code: 'CLUB-855' }, { code: 'SUKE-043' }, { code: 'HAWA-325' }, { code: 'DLDSS-362' },
       { code: 'BDST-027' }, { code: 'MAAN-982' }, { code: 'DDHP-044' }, { code: 'GANA-2100' },
-      { code: 'GANA-2858' }, { code: 'GANA-1026' }, { code: 'GANA-1996732' }, { code: 'TOUKA-01' },
-      { code: 'MAAN-387' }, { code: 'NHMSG-031' }, { code: 'ADN-630' }, { code: 'PRED-685' },
-      { code: 'APAA-387' }, { code: 'NTK-391' }, { code: 'MIUM-811' }, { code: 'MIUM-681' },
-      { code: 'MIUM-742' }, { code: 'BSY-022' }, { code: 'KTB-018' }, { code: 'NGOD-113' },
-      { code: 'PPPD-666' }, { code: 'VEC-340' }, { code: 'SIRO-3954' }, { code: 'GANA-2156' },
-      { code: 'STCV-240' }, { code: 'NTK-637' }, { code: 'AKDL-247' }, { code: '259LUXU-1511' },
-      { code: '259LUXU-1518' }, { code: '259LUXU-743' }, { code: '259LUXU-688' }, { code: '259LUXU-1571' },
-      { code: '259LUXU-1631' }, { code: '259LUXU-1618' }, { code: '259LUXU-1621' }, { code: '259LUXU-1610' },
-      { code: 'SRTD-349' }, { code: 'ORECO-079' }, { code: 'MIUM-908' }, { code: 'ION-162' },
-      { code: 'MAAN-836' }, { code: 'MIUM-865' }, { code: 'SIRO-4820' }, { code: 'FLC-004' },
-      { code: 'PKPD-217' }, { code: 'JAC-175' }, { code: 'MIUM-862' }, { code: 'SRTD-345' },
-      { code: 'AKDL-213' }, { code: 'AKDL-193' }, { code: 'HMT-018' }, { code: 'MAAN-955' },
-      { code: 'GERK-350' }, { code: 'SPAY-241' }, { code: 'LUXU-1572' }, { code: 'SUN-071' },
-      { code: 'GANA-2705' }, { code: 'HAWA-287' }, { code: 'MRPA-006' }, { code: 'UZU-004' },
-      { code: 'ZOZO-165' }, { code: 'GVH-477' }, { code: 'BARE-009' }, { code: 'DFDM-041' },
-      { code: 'FC2-PPV-1046522' }, { code: 'SSNI-362' }, { code: 'SSNI-318' }, { code: 'MIUM-801' },
+      { code: 'GANA-2858' }, { code: 'GANA-1026' }, { code: 'GANA-1996' }, { code: 'TOUKA-01' },
+      { code: 'MAAN-387' }, { code: 'NHMSG-031' }, { code: 'ADN-630' }, { code: 'APAA-387' },
+      { code: 'NTK-391' }, { code: 'MIUM-811' }, { code: 'MIUM-681' }, { code: 'MIUM-742' },
+      { code: 'BSY-022' }, { code: 'KTB-018' }, { code: 'VEC-340' }, { code: 'SIRO-3954' },
+      { code: 'GANA-2156' }, { code: 'STCV-240' }, { code: 'NTK-637' }, { code: 'AKDL-247' },
+      { code: '259LUXU-1511' }, { code: '259LUXU-1518' }, { code: '259LUXU-743' }, { code: '259LUXU-688' },
+      { code: '259LUXU-1571' }, { code: '259LUXU-1631' }, { code: '259LUXU-1618' }, { code: '259LUXU-1621' },
+      { code: '259LUXU-1610' }, { code: 'SRTD-349' }, { code: 'ORECO-079' }, { code: 'MIUM-908' },
+      { code: 'ION-162' }, { code: 'MAAN-836' }, { code: 'MIUM-865' }, { code: 'SIRO-4820' },
+      { code: 'FLC-004' }, { code: 'PKPD-217' }, { code: 'JAC-175' }, { code: 'MIUM-862' },
+      { code: 'SRTD-345' }, { code: 'AKDL-213' }, { code: 'AKDL-193' }, { code: 'HMT-018' },
+      { code: 'MAAN-955' }, { code: 'GERK-350' }, { code: 'SPAY-241' }, { code: 'LUXU-1572' },
+      { code: 'SUN-071' }, { code: 'GANA-2705' }, { code: 'HAWA-287' }, { code: 'MRPA-006' },
+      { code: 'UZU-004' }, { code: 'ZOZO-165' }, { code: 'GVH-477' }, { code: 'BARE-009' },
+      { code: 'DFDM-041' }, { code: 'FC2-PPV-1046522' }, { code: 'SSNI-362' }, { code: 'MIUM-801' },
       { code: 'KTKC-074' }, { code: 'IND-022' }, { code: 'MIUM-495' }, { code: 'SUKE-062' },
-      { code: 'MAAN-842' }, { code: 'JUL-442' }, { code: 'JUL-546' }, { code: 'JUL-872' },
-      { code: 'ORECS-132' }
+      { code: 'MAAN-842' }, { code: 'JUL-442' }, { code: 'JUL-872' }, { code: 'ORECS-132' }
     ]
   }
 ]
@@ -300,18 +306,20 @@ export default {
       activeTab: '',
       sortBy: 'code',
       darkMode: false,
+      globalSearch: '',
       toast: { show: false, message: '', type: 'success' },
       showAddWorkModal: false,
       showAddArtistModal: false,
-      newWork: { artist: '', code: '', type: 'mainWorks' },
-      newArtist: { name: '' },
+      showEditWorkModal: false,
+      editingWork: null,
+      newWork: { artist: '', code: '', type: 'mainWorks', releaseDate: '' },
+      newArtist: { name: '', studio: '', photo: '' },
       artists: JSON.parse(JSON.stringify(DEFAULT_ARTISTS))
     }
   },
   computed: {
     totalCount() {
-      return this.artists.reduce((sum, a) =>
-        sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
+      return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
     },
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
@@ -334,6 +342,19 @@ export default {
         const countB = (b.mainWorks?.length || 0) + (b.compilations?.length || 0)
         return countB - countA
       })
+    },
+    searchResults() {
+      if (!this.globalSearch) return []
+      const q = this.globalSearch.toLowerCase()
+      const results = []
+      this.artists.forEach(artist => {
+        [...(artist.mainWorks || []), ...(artist.compilations || [])].forEach(work => {
+          if (work.code.toLowerCase().includes(q)) {
+            results.push({ artistName: artist.name, work })
+          }
+        })
+      })
+      return results
     }
   },
   watch: {
@@ -376,10 +397,39 @@ export default {
     }
   },
   methods: {
+    formatDate(date) {
+      if (!date) return ''
+      return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    },
     resetToDefaults() {
       this.artists = JSON.parse(JSON.stringify(DEFAULT_ARTISTS))
       this.activeTab = this.artists[0].name
       this.showToast('✅ Reset to default data', 'success')
+    },
+    openEditWorkModal(work) {
+      this.editingWork = { code: work.code, newCode: work.code, releaseDate: work.releaseDate || '' }
+      this.showEditWorkModal = true
+    },
+    closeEditWorkModal() {
+      this.showEditWorkModal = false
+      this.editingWork = null
+    },
+    saveEditWork() {
+      if (!this.editingWork.newCode.trim()) return this.showToast('Code required', 'error')
+      const newCode = this.editingWork.newCode.toUpperCase()
+      if (newCode !== this.editingWork.code && this.artists.some(a => a.mainWorks?.some(w => w.code === newCode) || a.compilations?.some(w => w.code === newCode))) {
+        return this.showToast('Code already exists', 'error')
+      }
+      const artist = this.artists.find(a => a.name === this.activeTab)
+      if (!artist) return
+      let work = artist.mainWorks?.find(w => w.code === this.editingWork.code) || artist.compilations?.find(w => w.code === this.editingWork.code)
+      if (work) {
+        work.code = newCode
+        work.releaseDate = this.editingWork.releaseDate
+        this.artists = [...this.artists]
+        this.closeEditWorkModal()
+        this.showToast(`✅ Updated to ${newCode}`, 'success')
+      }
     },
     getSortedWorks(works) {
       const sorted = [...works]
@@ -387,6 +437,12 @@ export default {
         return sorted.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
       } else if (this.sortBy === 'code-desc') {
         return sorted.sort((a, b) => b.code.localeCompare(a.code, undefined, { numeric: true }))
+      } else if (this.sortBy === 'date') {
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.releaseDate || '9999-12-31')
+          const dateB = new Date(b.releaseDate || '9999-12-31')
+          return dateB - dateA
+        })
       }
       return sorted.reverse()
     },
@@ -414,7 +470,7 @@ export default {
     },
     async autoFillImages() {
       let updated = 0, failed = 0
-      this.showToast('Checking images...', 'info')
+      this.showToast('Auto-fetching posters...', 'info')
       for (const artist of this.artists) {
         for (const work of [...(artist.mainWorks || []), ...(artist.compilations || [])]) {
           if (!work.imageUrl) {
@@ -427,7 +483,7 @@ export default {
         }
       }
       this.artists = [...this.artists]
-      this.showToast(updated ? `✅ ${updated} images${failed ? ` (${failed} failed)` : ''}` : 'No missing images', updated ? 'success' : 'info')
+      this.showToast(updated ? `✅ ${updated} posters${failed ? ` (${failed} failed)` : ''}` : 'No missing posters', updated ? 'success' : 'info')
     },
     copyToClipboard(code) {
       navigator.clipboard.writeText(code).then(() => {
@@ -437,10 +493,7 @@ export default {
       })
     },
     hasSimilarCode(code) {
-      const allCodes = this.artists.flatMap(a => [
-        ...(a.mainWorks || []).map(w => w.code),
-        ...(a.compilations || []).map(w => w.code)
-      ])
+      const allCodes = this.artists.flatMap(a => [...(a.mainWorks || []).map(w => w.code), ...(a.compilations || []).map(w => w.code)])
       const similar = allCodes.filter(c => {
         if (c === code) return false
         const codeMatch = code.match(/^([A-Z]+)-?(\d+)$/)
@@ -454,10 +507,16 @@ export default {
       })
       return similar.length > 0
     },
-    openExternalLink(code) {
+    openExternalLink(code, type = 'njav') {
       if (!code) return
       const formattedCode = code.toLowerCase().replace(/-/g, '-')
-      window.open(`https://www.njav.com/en/xvideos/${formattedCode}`, '_blank', 'noopener,noreferrer')
+      let url
+      if (type === 'missav') {
+        url = `https://missav.ws/en/${formattedCode}`
+      } else {
+        url = `https://www.njav.com/en/xvideos/${formattedCode}`
+      }
+      window.open(url, '_blank', 'noopener,noreferrer')
     },
     toggleDarkMode() {
       this.darkMode = !this.darkMode
@@ -473,7 +532,7 @@ export default {
     handleExport() {
       try {
         const date = new Date().toISOString().split('T')[0]
-        const data = { timestamp: new Date().toISOString(), version: '1.0', totalWorks: this.totalCount, artists: this.artists }
+        const data = { timestamp: new Date().toISOString(), version: '2.0', totalWorks: this.totalCount, artists: this.artists }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -504,6 +563,8 @@ export default {
           if (!data.artists || !Array.isArray(data.artists)) throw new Error('Invalid file format')
           const validArtists = data.artists.filter(a => typeof a.name === 'string' && a.name.trim()).map(a => ({
             name: a.name.trim(),
+            studio: a.studio || '',
+            photo: a.photo || '',
             mainWorks: Array.isArray(a.mainWorks) ? a.mainWorks.filter(w => w && w.code) : [],
             compilations: Array.isArray(a.compilations) ? a.compilations.filter(w => w && w.code) : []
           }))
@@ -521,12 +582,12 @@ export default {
       e.target.value = ''
     },
     openAddWorkModal() {
-      this.newWork = { artist: '', code: '', type: 'mainWorks' }
+      this.newWork = { artist: this.activeTab || '', code: '', type: 'mainWorks', releaseDate: '' }
       this.showAddWorkModal = true
     },
     closeAddWorkModal() { this.showAddWorkModal = false },
     openAddArtistModal() {
-      this.newArtist = { name: '' }
+      this.newArtist = { name: '', studio: '', photo: '' }
       this.showAddArtistModal = true
     },
     closeAddArtistModal() { this.showAddArtistModal = false },
@@ -539,7 +600,7 @@ export default {
       const artist = this.artists.find(a => a.name === this.newWork.artist)
       if (!artist) return this.showToast('Artist not found', 'error')
       if (!artist[this.newWork.type]) artist[this.newWork.type] = []
-      artist[this.newWork.type].push({ code })
+      artist[this.newWork.type].push({ code, releaseDate: this.newWork.releaseDate })
       this.artists = [...this.artists]
       this.closeAddWorkModal()
       this.showToast(`✅ Added ${code}`, 'success')
@@ -547,7 +608,7 @@ export default {
     addNewArtist() {
       if (!this.newArtist.name.trim()) return this.showToast('Artist name required', 'error')
       if (this.artists.some(a => a.name === this.newArtist.name)) return this.showToast('Artist already exists', 'error')
-      const newArtist = { name: this.newArtist.name.trim(), mainWorks: [], compilations: [] }
+      const newArtist = { name: this.newArtist.name.trim(), studio: this.newArtist.studio || '', photo: this.newArtist.photo || '', mainWorks: [], compilations: [] }
       this.artists.push(newArtist)
       this.artists = [...this.artists]
       this.activeTab = newArtist.name
@@ -581,6 +642,8 @@ header {
   border-radius: 10px;
   margin-bottom: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 header h1 {
@@ -592,6 +655,60 @@ header h1 {
 header p {
   color: #666;
   font-size: 0.85em;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.global-search {
+  width: 100%;
+  padding: 10px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-results {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.search-results-container {
+  background: white;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goto-btn {
+  padding: 4px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .btns {
@@ -666,6 +783,62 @@ header p {
   color: #2563eb;
 }
 
+.artist-photo {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  background: #e0e0e0;
+}
+
+.artist-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artist-photo-small {
+  width: 100%;
+  height: 120px;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+}
+
+.artist-photo-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artist-photo-small.empty {
+  background: #f0f0f0;
+  color: #999;
+}
+
+.artist-photo-large {
+  width: 120px;
+  height: 120px;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+
+.artist-photo-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .card-content {
   display: flex;
   flex-direction: column;
@@ -719,6 +892,15 @@ header p {
   color: #0c4a6e;
 }
 
+.studio-tag {
+  font-size: 0.8em;
+  color: #666;
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
 .artist-card.active .breakdown span {
   background: rgba(37, 99, 235, 0.1);
   color: #2563eb;
@@ -737,7 +919,30 @@ header p {
   border-bottom: 2px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.artist-info {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+}
+
+.artist-photo-large {
+  width: 120px;
+  height: 120px;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+
+.artist-photo-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .artist-header h2 {
@@ -749,6 +954,11 @@ header p {
 .artist-header p {
   color: #666;
   font-size: 14px;
+}
+
+.studio-info {
+  margin-top: 5px;
+  font-weight: 600;
 }
 
 .header-actions {
@@ -917,14 +1127,18 @@ header p {
   transform: scale(1.1);
 }
 
+
+
+
 .info {
   display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: space-between;
   padding: 8px;
 }
 
-.info div {
+.info div:first-child {
   flex: 1;
   min-width: 0;
 }
@@ -936,10 +1150,40 @@ header p {
   font-weight: 700;
 }
 
+.link-buttons {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.link-btn-small {
+  padding: 6px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.link-btn-small:hover {
+  background: #1d4ed8;
+  transform: scale(1.05);
+}
+
 .typo-warning {
   display: inline-block;
   margin-left: 8px;
   font-size: 14px;
+}
+
+.release-date {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
 }
 
 .modal {
@@ -1052,8 +1296,7 @@ header p {
   transform: translateX(20px);
 }
 
-/* Dark Mode */
-.container.dark-mode {
+.dark-mode {
   background: #1a1a1a;
   color: #e0e0e0;
 }
@@ -1064,13 +1307,15 @@ header p {
   color: #e0e0e0;
 }
 
-.dark-mode .artist-card {
+.dark-mode .global-search {
   background: #1e1e1e;
+  color: #e0e0e0;
   border-color: #404040;
 }
 
-.dark-mode .artist-card:hover {
-  border-color: #3b82f6;
+.dark-mode .artist-card {
+  background: #1e1e1e;
+  border-color: #404040;
 }
 
 .dark-mode .artist-card.active {
@@ -1100,6 +1345,19 @@ header p {
   border-color: #404040;
 }
 
+.dark-mode .search-result-item {
+  background: #3a3a3a;
+}
+
+.dark-mode .link-btn-small {
+  background: #3b82f6;
+  color: white;
+}
+
+.dark-mode .link-btn-small:hover {
+  background: #2563eb;
+}
+
 @media (max-width: 768px) {
   header {
     flex-direction: column;
@@ -1109,6 +1367,10 @@ header p {
   .artist-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
+  }
+
+  .artist-header {
+    flex-direction: column;
   }
 
   .preview-item {
