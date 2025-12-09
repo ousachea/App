@@ -11,6 +11,15 @@
         <input v-model="globalSearch" type="text" placeholder="🔍 Search all works..." class="global-search" />
         <span v-if="globalSearch" class="search-results">{{ searchResults.length }} found</span>
       </div>
+      <div class="image-source-toggle">
+        <label class="toggle-label">
+          <select v-model="imageSource" class="image-select">
+            <option value="dmm">🖼️ DMM</option>
+            <option value="fourhoi">🖼️ Fourhoi</option>
+            <option value="mgstage">🖼️ MgStage</option>
+          </select>
+        </label>
+      </div>
       <div class="btns">
         <button @click="autoFillImages" title="Auto-fetch posters">🖼️</button>
         <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
@@ -35,7 +44,8 @@
       <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
         :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
         <div class="artist-photo-small">
-          <img v-if="getRandomArtistWork(artist)" :src="generateImageUrl(getRandomArtistWork(artist).code, 'pl')"
+          <img v-if="getRandomArtistWork(artist)"
+            :src="generateImageUrl(getRandomArtistWork(artist).code, 'pl', getRandomArtistWork(artist).imageSource)"
             :alt="artist.name" @error="handleImageError" @load="handleImageLoad" class="artist-image" />
           <span v-else class="photo-placeholder">📷</span>
         </div>
@@ -82,7 +92,7 @@
           <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="card">
             <div class="preview-gallery">
               <div class="preview-item">
-                <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
+                <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" :alt="`${work.code} cover`" />
               </div>
               <div v-for="i in 20" :key="i" class="preview-item">
                 <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
@@ -106,6 +116,14 @@
                 <strong>{{ work.code }}</strong>
                 <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
                 <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+              </div>
+              <div class="work-controls">
+                <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
+                  class="work-image-select" title="Choose image source">
+                  <option value="dmm">DMM</option>
+                  <option value="fourhoi">Fourhoi</option>
+                  <option value="mgstage">MgStage</option>
+                </select>
                 <div class="link-buttons">
                   <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
                     title="Open on NJAV">NJAV</button>
@@ -125,7 +143,7 @@
           <div v-for="work in sortedFilteredCompilations" :key="work.code" class="card">
             <div class="preview-gallery">
               <div class="preview-item">
-                <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
+                <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" :alt="`${work.code} cover`" />
               </div>
               <div v-for="i in 20" :key="i" class="preview-item">
                 <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
@@ -149,6 +167,14 @@
                 <strong>{{ work.code }}</strong>
                 <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
                 <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+              </div>
+              <div class="work-controls">
+                <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
+                  class="work-image-select" title="Choose image source">
+                  <option value="dmm">DMM</option>
+                  <option value="fourhoi">Fourhoi</option>
+                  <option value="mgstage">MgStage</option>
+                </select>
                 <div class="link-buttons">
                   <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
                     title="Open on NJAV">NJAV</button>
@@ -329,6 +355,7 @@ export default {
       activeTab: '',
       sortBy: 'code',
       darkMode: false,
+      imageSource: 'dmm',
       globalSearch: '',
       toast: { show: false, message: '', type: 'success' },
       showAddWorkModal: false,
@@ -363,9 +390,11 @@ export default {
     },
     sortedArtistsByWorkCount() {
       return [...this.artists].sort((a, b) => {
-        const countA = (a.mainWorks?.length || 0) + (a.compilations?.length || 0)
-        const countB = (b.mainWorks?.length || 0) + (b.compilations?.length || 0)
-        return countB - countA
+        // Collection always goes last
+        if (a.name === 'Collection') return 1
+        if (b.name === 'Collection') return -1
+        // Sort rest alphabetically
+        return a.name.localeCompare(b.name)
       })
     },
     searchResults() {
@@ -480,6 +509,10 @@ export default {
       this.closeMoveWorkModal()
       this.showToast(`✅ Moved ${this.moveWorkData.code} to ${this.moveWorkData.targetArtist}`, 'success')
     },
+    setWorkImageSource(work, event) {
+      work.imageSource = event.target.value
+      this.artists = [...this.artists]
+    },
     saveEditWork() {
       if (!this.editingWork.newCode.trim()) return this.showToast('Code required', 'error')
       const newCode = this.editingWork.newCode.toUpperCase()
@@ -546,18 +579,76 @@ export default {
     handleImageLoad(e) {
       e.target.style.opacity = '1'
     },
-    generateImageUrl(code, quality = 'pl') {
+    generateImageUrl(code, quality = 'pl', workImageSource = null) {
       if (!code) return null
+
+      // Use work-specific source if provided, otherwise use global setting
+      const source = workImageSource || this.imageSource
+
       const upper = code.toUpperCase()
-      const match = upper.match(/^([A-Z]+)-?(\d+)$/)
-      if (!match) {
-        const clean = code.toLowerCase().replace(/-/g, '')
+      const match = upper.match(/^([A-Z0-9]+)-?(\d+)$/)
+
+      if (source === 'mgstage') {
+        // MgStage pattern
+        if (!match) {
+          return null
+        }
+        const prefix = match[1].toLowerCase()
+        const number = match[2]
+        const code_lower = code.toLowerCase()
+
+        let frame = '0'
+        if (quality === 'jp-1') frame = '2'
+        else if (quality === 'jp-2') frame = '3'
+        else if (quality === 'jp-3') frame = '4'
+        else if (quality === 'jp-4') frame = '5'
+        else if (quality === 'jp-5') frame = '6'
+        else if (quality.startsWith('jp-')) {
+          const num = parseInt(quality.split('-')[1])
+          frame = Math.min(num + 1, 9).toString()
+        }
+
+        const studioMap = {
+          'luxu': '259luxu', 'sone': 'sone', 'ssni': 'ssni', 'ssis': 'ssis',
+          'midv': 'midv', 'mida': 'mida', 'jufe': 'jufe', 'adn': 'adn'
+        }
+        const studio = studioMap[prefix.slice(0, 4)] || prefix
+
+        return `https://image.mgstage.com/images/luxutv/${studio}/${number}/cap_e_${frame}_${code_lower}.jpg`
+      } else if (source === 'fourhoi') {
+        // Fourhoi pattern
+        if (!match) {
+          const clean = code.toLowerCase().replace(/-/g, '')
+          return `https://fourhoi.com/${clean}/cover-n.jpg`
+        }
+        const prefix = match[1].toLowerCase()
+        const number = match[2]
+        const clean = prefix + '-' + number
+
+        let suffix = 'cover-n'
+        if (quality === 'jp-1') suffix = 'cover-a'
+        else if (quality === 'jp-2') suffix = 'cover-b'
+        else if (quality === 'jp-3') suffix = 'cover-c'
+        else if (quality === 'jp-4') suffix = 'cover-d'
+        else if (quality === 'jp-5') suffix = 'cover-e'
+        else if (quality.startsWith('jp-')) {
+          const num = parseInt(quality.split('-')[1])
+          const suffixes = ['cover-a', 'cover-b', 'cover-c', 'cover-d', 'cover-e', 'cover-f', 'cover-g', 'cover-h']
+          suffix = suffixes[Math.min(num - 1, suffixes.length - 1)]
+        }
+
+        return `https://fourhoi.com/${clean}/${suffix}.jpg`
+      } else {
+        // DMM pattern (default)
+        if (!match) {
+          const clean = code.toLowerCase().replace(/-/g, '')
+          return `https://pics.dmm.co.jp/digital/video/${clean}/${clean}${quality}.jpg`
+        }
+        const prefix = match[1].toLowerCase()
+        const number = match[2].padStart(5, '0')
+        const clean = prefix + number
         return `https://pics.dmm.co.jp/digital/video/${clean}/${clean}${quality}.jpg`
       }
-      const prefix = match[1].toLowerCase()
-      const number = match[2].padStart(5, '0')
-      const clean = prefix + number
-      return `https://pics.dmm.co.jp/digital/video/${clean}/${clean}${quality}.jpg`
     },
     async validateImageUrl(url) {
       return new Promise(r => {
@@ -761,6 +852,39 @@ header p {
   flex: 1;
   min-width: 200px;
   position: relative;
+}
+
+.image-source-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.image-select {
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.image-select:hover {
+  background: #e0e0e0;
 }
 
 .global-search {
@@ -1279,6 +1403,29 @@ header p {
   font-weight: 700;
 }
 
+.work-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.work-image-select {
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.work-image-select:hover {
+  background: #f5f5f5;
+  border-color: #2563eb;
+}
+
 .link-buttons {
   display: flex;
   gap: 6px;
@@ -1476,6 +1623,17 @@ header p {
 .dark-mode .modal-box {
   background: #2d2d2d;
   color: #3b82f6;
+}
+
+.dark-mode .work-image-select {
+  background: #2d2d2d;
+  color: #e0e0e0;
+  border-color: #404040;
+}
+
+.dark-mode .work-image-select:hover {
+  background: #3a3a3a;
+  border-color: #3b82f6;
 }
 
 @media (max-width: 768px) {
