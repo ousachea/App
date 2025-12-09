@@ -1,17 +1,29 @@
 <template>
   <div class="container">
-    <div class="scanner-card">
+    <PageSwitcher />
+    <div class="scanner-card" :class="{ 'dark-mode': darkMode }">
       <div class="header">
-        <h1 class="title">KHQR Scanner</h1>
-        <p class="subtitle">Decode and analyze QR codes</p>
+        <div class="header-content">
+          <div class="header-top">
+            <h1 class="title">🇰🇭 KHQR Scanner</h1>
+            <div class="header-controls">
+              <button @click="darkMode = !darkMode" class="control-btn" title="Toggle dark mode">
+                {{ darkMode ? '☀️' : '🌙' }}
+              </button>
+            </div>
+          </div>
+          <p class="subtitle">Decode and generate Cambodian payment QR codes</p>
+        </div>
       </div>
 
       <div class="tab-navigation">
         <button @click="activeTab = 'decode'" :class="['tab-button', { active: activeTab === 'decode' }]">
-          🔍 Decode
+          <span class="tab-icon">🔍</span>
+          <span class="tab-text">Decode</span>
         </button>
         <button @click="activeTab = 'generate'" :class="['tab-button', { active: activeTab === 'generate' }]">
-          ✨ Generate
+          <span class="tab-icon">✨</span>
+          <span class="tab-text">Generate</span>
         </button>
       </div>
 
@@ -53,6 +65,23 @@
 
       <!-- Results - TLV Tree Structure -->
       <div v-if="qrResult && activeTab === 'decode'" class="result-section">
+        <!-- Data Summary Card -->
+        <div class="summary-card">
+          <div class="summary-item">
+            <span class="summary-label">Merchant:</span>
+            <span class="summary-value">{{ headerInfo.merchantNameTag?.value || 'N/A' }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Amount:</span>
+            <span class="summary-value">{{ headerInfo.amountTag?.value ? headerInfo.amountTag.value + ' ' +
+      (headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR') : 'N/A' }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Data:</span>
+            <span class="summary-value">{{ qrResult.length }} bytes / {{ Object.keys(parsedTLV).length }} tags</span>
+          </div>
+        </div>
+
         <div class="result-header">
           <h2>TLV Structure</h2>
           <div class="header-buttons">
@@ -286,12 +315,51 @@
             <span class="tree-meaning">= Merchant City</span>
           </div>
 
-          <!-- Tag 62: Additional Data -->
-          <div class="tree-item" v-if="parsedTLV['62']">
+          <!-- Tag 62: Additional Data (nested) -->
+          <div class="tree-item tree-parent" v-if="parsedTLV['62']">
             <span class="tree-tag">62</span>
             <span class="tree-length">{{ formatLength(parsedTLV['62'].length) }}</span>
-            <span class="tree-data-long">{{ parsedTLV['62'].value }}</span>
             <span class="tree-meaning">= Additional Data</span>
+
+            <!-- Sub-layer for Tag 62 -->
+            <div class="tree-sublayer" v-if="Object.keys(headerInfo.tag62Nested).length > 0">
+              <div class="tree-subitem-line" v-if="headerInfo.tag62Nested['01']">
+                <span class="tree-tag">01</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag62Nested['01'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag62Nested['01'].value }}</span>
+                <span class="tree-meaning">= Bill Number</span>
+              </div>
+
+              <div class="tree-subitem-line" v-if="headerInfo.tag62Nested['02']">
+                <span class="tree-tag">02</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag62Nested['02'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag62Nested['02'].value }}</span>
+                <span class="tree-meaning">= Mobile Number</span>
+              </div>
+
+              <div class="tree-subitem-line" v-if="headerInfo.tag62Nested['03']">
+                <span class="tree-tag">03</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag62Nested['03'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag62Nested['03'].value }}</span>
+                <span class="tree-meaning">= Store Label</span>
+              </div>
+
+              <div class="tree-subitem-line" v-if="headerInfo.tag62Nested['07']">
+                <span class="tree-tag">07</span>
+                <span class="tree-length">{{ formatLength(headerInfo.tag62Nested['07'].length) }}</span>
+                <span class="tree-data">{{ headerInfo.tag62Nested['07'].value }}</span>
+                <span class="tree-meaning">= Terminal Number</span>
+              </div>
+
+              <!-- Display any other subtags not covered above -->
+              <div class="tree-subitem-line" v-for="(subtagData, subtag) in headerInfo.tag62Nested"
+                :key="'tag62-' + subtag" v-if="!['01', '02', '03', '07'].includes(subtag)">
+                <span class="tree-tag">{{ subtag }}</span>
+                <span class="tree-length">{{ formatLength(subtagData.length) }}</span>
+                <span class="tree-data">{{ subtagData.value }}</span>
+                <span class="tree-meaning">= Additional Info</span>
+              </div>
+            </div>
           </div>
 
           <!-- Tag 99: Timestamp (nested) -->
@@ -308,13 +376,10 @@
                 <span class="tree-data">{{ headerInfo.timestampNested['00'].value }}</span>
                 <span class="tree-meaning">= Create Time</span>
               </div>
-              <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['00']">
+              <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['00']"
+                :class="{ 'timestamp-expired': isTimestampExpired(headerInfo.timestampNested['00'].value) }">
                 <span class="tree-meaning">→ {{
-          getTimestampReadableWithoutExpired(headerInfo.timestampNested['00'].value) }}</span>
-              </div>
-              <div class="tree-subitem-conversion timestamp-expired"
-                v-if="headerInfo.timestampNested['00'] && isTimestampExpired(headerInfo.timestampNested['00'].value)">
-                <span class="tree-meaning">❌ Expired</span>
+      getTimestampReadableWithoutExpired(headerInfo.timestampNested['00'].value) }}</span>
               </div>
 
               <div class="tree-subitem-line" v-if="headerInfo.timestampNested['01']">
@@ -323,13 +388,10 @@
                 <span class="tree-data">{{ headerInfo.timestampNested['01'].value }}</span>
                 <span class="tree-meaning">= Expiry Time</span>
               </div>
-              <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['01']">
+              <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['01']"
+                :class="{ 'timestamp-expired': isTimestampExpired(headerInfo.timestampNested['01'].value) }">
                 <span class="tree-meaning">→ {{
-          getTimestampReadableWithoutExpired(headerInfo.timestampNested['01'].value) }}</span>
-              </div>
-              <div class="tree-subitem-conversion timestamp-expired"
-                v-if="headerInfo.timestampNested['01'] && isTimestampExpired(headerInfo.timestampNested['01'].value)">
-                <span class="tree-meaning">❌ Expired</span>
+      getTimestampReadableWithoutExpired(headerInfo.timestampNested['01'].value) }}</span>
               </div>
             </div>
           </div>
@@ -351,11 +413,19 @@
       <!-- Generate Tab -->
       <div v-show="activeTab === 'generate'" class="tab-content">
         <div class="input-area">
+          <div class="live-preview-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" v-model="livePreview" class="toggle-checkbox">
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Live Preview</span>
+            </label>
+          </div>
+
           <textarea v-model="qrDataToGenerate" placeholder="Enter KHQR data to generate QR code..." class="input-field"
             style="height: 150px;"></textarea>
 
           <div class="action-buttons">
-            <button @click="generateQRCode" class="btn btn-primary">
+            <button @click="generateQRCode" class="btn btn-primary" v-if="!livePreview">
               ✨ Generate QR
             </button>
             <button @click="downloadQRCode" v-if="generatedQRImage" class="btn btn-primary">
@@ -391,11 +461,6 @@
           </div>
         </div>
       </div>
-
-      <div class="raw-data" v-if="qrResult && activeTab === 'decode'">
-        <h3 class="data-label">Raw Data</h3>
-        <pre class="data-content">{{ qrResult }}</pre>
-      </div>
     </div>
   </div>
 </template>
@@ -417,6 +482,7 @@ export default {
         timestampNested: {},
         tag29Nested: {},
         tag30Nested: {},
+        tag62Nested: {},
       },
       parsedTLV: {},
       manualQRInput: '00020101021229530016cadikhppxxx@cadi011300100053357230212Canadia Bank52040000530384054031.05802KH5911SAT SOVANDY6010Phnom Penh993400131765174265143011317652606651436304F3F6',
@@ -434,17 +500,13 @@ export default {
       cambodianBanks: [
         'ABA Bank',
         'Canadia Bank',
-        'Chip Mong Bank',
         'ACLEDA Bank',
+        'Chip Mong Bank',
         'Phnom Penh Commercial Bank',
-        'CPB Bank',
-        'Maybank',
-        'Vattanac Bank',
-        'Hattha Bank',
-        'Cambodia Post Bank',
-        'KBC Bank',
-        'Kambodian Bank for Development',
       ],
+      darkMode: false,
+      copiedItemId: null,
+      livePreview: true,
       sampleDataOptions: [
         {
           name: 'Static Merchant',
@@ -531,7 +593,9 @@ export default {
 
     qrDataToGenerate(newValue) {
       if (newValue.trim()) {
-        this.generateQRCode();
+        if (this.livePreview) {
+          this.generateQRPreview();
+        }
       }
     },
   },
@@ -572,7 +636,16 @@ export default {
     processQRResult(qrString) {
       this.qrResult = qrString;
       this.parsedTLV = this.parseTLVStructure(qrString);
-      this.headerInfo = this.extractHeaderInfo(this.parsedTLV);
+
+      // Reset nested objects
+      this.headerInfo.tag29Nested = {};
+      this.headerInfo.tag30Nested = {};
+      this.headerInfo.bankInfoNested = {};
+      this.headerInfo.tag62Nested = {};
+      this.headerInfo.timestampNested = {};
+
+      const baseInfo = this.extractHeaderInfo(this.parsedTLV);
+      this.headerInfo = { ...this.headerInfo, ...baseInfo };
 
       // Extract tag 29 (Merchant Type with nested info)
       if (this.parsedTLV['29']) {
@@ -599,6 +672,10 @@ export default {
       if (this.parsedTLV['58']) this.headerInfo.countryTag = this.parsedTLV['58'];
       if (this.parsedTLV['59']) this.headerInfo.merchantNameTag = this.parsedTLV['59'];
       if (this.parsedTLV['60']) this.headerInfo.merchantCityTag = this.parsedTLV['60'];
+      if (this.parsedTLV['62']) {
+        this.headerInfo.additionalDataTag = this.parsedTLV['62'];
+        this.headerInfo.tag62Nested = this.parseTLVStructure(this.parsedTLV['62'].value);
+      }
       if (this.parsedTLV['63']) this.headerInfo.encryptionTag = this.parsedTLV['63'];
 
       // Extract timestamp
@@ -622,7 +699,34 @@ export default {
         const length = parseInt(lengthStr, 10);
         position += 2;
 
-        if (isNaN(length) || length < 0 || position + length > dataString.length) break;
+        if (isNaN(length) || length < 0) break;
+
+        // If length exceeds remaining data, try to find next tag
+        if (position + length > dataString.length) {
+          // Look for next potential tag by scanning ahead
+          let found = false;
+          for (let i = position; i < Math.min(position + length + 10, dataString.length - 4); i++) {
+            const nextTag = dataString.substring(i, i + 2);
+            const nextLenStr = dataString.substring(i + 2, i + 4);
+            const nextLen = parseInt(nextLenStr, 10);
+
+            // Check if this looks like a valid tag/length pair
+            if (/^\d{2}$/.test(nextTag) && !isNaN(nextLen) && nextLen > 0 && nextLen < 255 &&
+              i + 4 + nextLen <= dataString.length) {
+              // Looks like a valid tag, use current position + truncated length
+              const truncatedLength = i - position;
+              if (truncatedLength > 0) {
+                const value = dataString.substring(position, position + truncatedLength);
+                result[tag] = { tag, length, value };
+              }
+              position = i;
+              found = true;
+              break;
+            }
+          }
+          if (!found) break;
+          continue;
+        }
 
         const value = dataString.substring(position, position + length);
         position += length;
@@ -670,6 +774,21 @@ export default {
           this.copyText = 'Copy';
         }, 2000);
       });
+    },
+
+    copyItemValue(value, itemId) {
+      navigator.clipboard.writeText(value).then(() => {
+        this.copiedItemId = itemId;
+        setTimeout(() => {
+          this.copiedItemId = null;
+        }, 1500);
+      });
+    },
+
+    generateQRPreview() {
+      if (this.livePreview && this.qrDataToGenerate.trim()) {
+        this.generateQRCode();
+      }
     },
 
     getMerchantCategoryDescription(code) {
@@ -1008,65 +1127,239 @@ export default {
   border-radius: 0;
   box-shadow: none;
   margin: 0;
+  transition: background-color 0.3s ease;
+}
+
+.scanner-card.dark-mode {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.scanner-card.dark-mode .header {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+}
+
+.scanner-card.dark-mode .result-section,
+.scanner-card.dark-mode .input-area {
+  background: linear-gradient(to bottom, #1a1a1a, #242424);
+}
+
+.scanner-card.dark-mode .summary-card,
+.scanner-card.dark-mode .tree-item,
+.scanner-card.dark-mode textarea,
+.scanner-card.dark-mode input,
+.scanner-card.dark-mode select {
+  background: #2a2a2a;
+  color: #ffffff;
+  border-color: #444444;
+}
+
+.scanner-card.dark-mode .tree-tag {
+  background: #1e3a5f;
+  color: #7dd3fc;
+  border-color: #0284c7;
+}
+
+.scanner-card.dark-mode .tree-length {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border-color: #3b82f6;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-controls {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.summary-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #0c4a6e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0284c7;
+  word-break: break-word;
+}
+
+.live-preview-toggle {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 10px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  cursor: pointer;
+}
+
+.toggle-checkbox {
+  display: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 52px;
+  height: 28px;
+  background: #d0d0d0;
+  border-radius: 14px;
+  transition: background-color 0.3s ease;
+  border: 2px solid #7dd3fc;
+}
+
+.toggle-checkbox:checked+.toggle-switch {
+  background: #06b6d4;
+  border-color: #0284c7;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  top: 1px;
+  left: 1px;
+  transition: left 0.3s ease;
+}
+
+.toggle-checkbox:checked+.toggle-switch::after {
+  left: 25px;
+}
+
+.toggle-text {
+  font-weight: 800;
+  color: #0c4a6e;
+  font-size: 0.95rem;
 }
 
 .header {
-  background: #000000;
-  border-bottom: none;
-  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
+  border-bottom: 3px solid #0284c7;
+  padding: 1.5rem;
   text-align: left;
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+}
+
+.header-content {
+  max-width: 100%;
 }
 
 .title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  margin: 0 0 0.1rem 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
   color: #ffffff;
-  letter-spacing: 0px;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .subtitle {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-  font-weight: 400;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0.4rem 0 0 0;
+  font-weight: 500;
 }
 
 .tab-navigation {
   display: flex;
-  gap: 0.5rem;
+  gap: 0;
   padding: 0 1.5rem;
-  background: white;
-  border-bottom: 1px solid #000000;
+  background: linear-gradient(to right, #f8fafc, #ffffff);
+  border-bottom: 3px solid #e2e8f0;
   position: sticky;
-  top: 3.5rem;
+  top: 4.2rem;
   z-index: 9;
 }
 
 .tab-button {
-  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.1rem 1.8rem;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
-  color: #666666;
-  font-weight: 600;
-  font-size: 0.8rem;
+  border-bottom: 3px solid transparent;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   letter-spacing: 0px;
 }
 
 .tab-button:hover {
-  color: #000000;
+  color: #1e40af;
+  background: rgba(30, 64, 175, 0.03);
 }
 
 .tab-button.active {
-  color: #000000;
-  border-bottom-color: #000000;
-  animation: slideInDown 0.3s ease;
+  color: #0ea5e9;
+  border-bottom-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.tab-icon {
+  font-size: 1.1rem;
+}
+
+.tab-text {
+  font-weight: 700;
 }
 
 @keyframes slideInDown {
@@ -1088,9 +1381,58 @@ export default {
 }
 
 .input-area {
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem;
   flex-shrink: 0;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-bottom: 3px solid #bae6fd;
+}
+
+.sample-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+}
+
+.sample-selector:hover {
+  border-color: #0284c7;
+  background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 100%);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+.sample-label {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #0c4a6e;
+  white-space: nowrap;
+}
+
+.sample-select {
+  flex: 1;
+  padding: 0.85rem;
+  border: 2px solid #7dd3fc;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0c4a6e;
   background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.sample-select:hover,
+.sample-select:focus {
+  border-color: #0284c7;
+  outline: none;
+  background: #f0f9ff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
 
 .sample-selector {
@@ -1137,18 +1479,21 @@ export default {
 
 .upload-zone {
   display: block;
-  border: 1px solid #000000;
-  border-radius: 0px;
-  padding: 1.25rem;
+  border: 2px dashed #06b6d4;
+  border-radius: 14px;
+  padding: 2.2rem 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: #ffffff;
+  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
 }
 
 .upload-zone:hover {
-  border-color: #000000;
-  background: #f5f5f5;
+  border-color: #0891b2;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.2);
 }
 
 .file-input {
@@ -1158,35 +1503,35 @@ export default {
 .upload-content {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.8rem;
 }
 
 .upload-icon {
-  font-size: 2rem;
+  font-size: 3rem;
   line-height: 1;
 }
 
 .upload-text {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #000000;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0c4a6e;
   letter-spacing: 0px;
 }
 
 .upload-hint {
-  font-size: 0.7rem;
-  color: #666666;
-  font-weight: 400;
+  font-size: 0.8rem;
+  color: #0284c7;
+  font-weight: 600;
 }
 
 .divider {
   display: flex;
   align-items: center;
   gap: 1.2rem;
-  margin: 1rem 0;
-  color: #999999;
-  font-size: 0.75rem;
-  font-weight: 500;
+  margin: 1.5rem 0;
+  color: #0284c7;
+  font-size: 0.8rem;
+  font-weight: 700;
   letter-spacing: 0px;
 }
 
@@ -1194,53 +1539,67 @@ export default {
 .divider::after {
   content: '';
   flex: 1;
-  height: 1px;
-  background: #000000;
+  height: 2px;
+  background: linear-gradient(to right, #7dd3fc, transparent);
+}
+
+.divider::after {
+  background: linear-gradient(to left, #7dd3fc, transparent);
 }
 
 .input-field {
   width: 100%;
-  height: 80px;
-  padding: 0.75rem;
-  border: 1px solid #000000;
-  border-radius: 0px;
+  height: 100px;
+  padding: 1rem;
+  border: 2px solid #7dd3fc;
+  border-radius: 10px;
   font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 16px;
+  font-size: 14px;
   resize: vertical;
   transition: all 0.3s ease;
-  color: #000000;
-  background: white;
+  color: #0c4a6e;
+  background: linear-gradient(to bottom, #ffffff, #f0f9ff);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.input-field:hover {
+  border-color: #06b6d4;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
 }
 
 .input-field:focus {
   outline: none;
-  border-color: #000000;
-  box-shadow: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.input-field::placeholder {
+  color: #7dd3fc;
 }
 
 .action-buttons {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 1rem;
+  margin-top: 0;
 }
 
 .btn {
-  flex: 1;
-  padding: 0.65rem 1rem;
+  padding: 0.9rem 1.8rem;
   border: none;
-  border-radius: 0px;
-  font-weight: 600;
-  font-size: 0.8rem;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   background: white;
-  color: #000000;
+  color: #0c4a6e;
   letter-spacing: 0px;
 }
 
 .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.2);
 }
 
 .btn:active {
@@ -1248,128 +1607,145 @@ export default {
 }
 
 .btn-primary {
-  background: #000000;
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
   color: white;
-  box-shadow: none;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  font-weight: 800;
 }
 
 .btn-primary:hover {
-  background: #333333;
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 20px rgba(14, 165, 233, 0.4);
 }
 
 .btn-secondary {
-  background: #ffffff;
-  color: #000000;
-  border: 1px solid #000000;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  color: #0284c7;
+  border: 2px solid #7dd3fc;
+  font-weight: 800;
 }
 
 .btn-secondary:hover {
-  background: #f5f5f5;
-  border-color: #333333;
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  border-color: #0284c7;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
 }
 
 .result-section {
-  padding: 1.25rem 1.5rem;
-  padding-bottom: 170px;
-  border-top: none;
+  padding: 1.5rem;
+  padding-bottom: 180px;
+  border-top: 3px solid #bae6fd;
   overflow-y: auto;
-  background: white;
+  background: linear-gradient(to bottom, #f0f9ff, #ffffff);
 }
 
 .result-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #000000;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 3px solid #7dd3fc;
 }
 
 .result-header h2 {
-  font-size: 1rem;
+  font-size: 1.3rem;
   margin: 0;
-  color: #000000;
-  font-weight: 700;
-  letter-spacing: 0px;
+  color: #0c4a6e;
+  font-weight: 900;
+  letter-spacing: -0.5px;
 }
 
 .header-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.8rem;
 }
 
 .edit-panel {
-  background: #f5f5f5;
-  border: 2px solid #000000;
-  border-radius: 0px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
   animation: slideDown 0.3s ease;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
 }
 
 .edit-field {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .edit-field label {
-  font-weight: 600;
+  font-weight: 800;
   font-size: 0.85rem;
-  color: #000000;
+  color: #0c4a6e;
 }
 
 .edit-input,
 .edit-select {
-  padding: 0.6rem;
-  border: 1px solid #000000;
-  border-radius: 0px;
-  font-size: 16px;
+  padding: 0.85rem;
+  border: 2px solid #7dd3fc;
+  border-radius: 8px;
+  font-size: 14px;
   font-family: inherit;
-  color: #000000;
+  color: #0c4a6e;
   background: white;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.edit-input:hover,
+.edit-select:hover {
+  border-color: #06b6d4;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
 }
 
 .edit-input:focus,
 .edit-select:focus {
   outline: none;
-  border-color: #000000;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
 }
 
 .edit-input::placeholder {
-  color: #999999;
+  color: #7dd3fc;
 }
 
 .edit-active {
-  background: #ff6b6b !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
   color: white !important;
+  border-color: #dc2626 !important;
 }
 
 .checksum-valid {
-  background: #f0fdf4;
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   border-left-color: #22c55e !important;
 }
 
 .copy-btn {
-  background: white;
-  color: #000000;
-  border: 1px solid #000000;
-  padding: 0.5rem 0.8rem;
-  border-radius: 0px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  color: #0284c7;
+  border: 2px solid #7dd3fc;
+  padding: 0.75rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.3s ease;
   letter-spacing: 0px;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.15);
 }
 
 .copy-btn:hover {
-  background: #000000;
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
   color: white;
+  border-color: #0284c7;
+  box-shadow: 0 6px 12px rgba(14, 165, 233, 0.3);
+  transform: translateY(-2px);
 }
 
 .crc-link {
@@ -1400,101 +1776,136 @@ export default {
 }
 
 .tree-item {
-  padding: 0.4rem 0;
+  padding: 0.6rem 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: 0.5rem;
   align-items: center;
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   padding-left: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 2px;
+  transition: all 0.3s ease;
+  border-radius: 4px;
   cursor: pointer;
 }
 
 .tree-item:hover {
-  background-color: #f0f0f0;
-  border-left-color: #ff6b6b;
+  background-color: #f0f9ff;
+  border-left-color: #06b6d4;
   padding-left: 1.2rem;
   transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
 }
 
 .tree-tag {
-  background: #e8e8e8;
-  color: #000000;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #000000;
-  font-weight: 700;
-  border-radius: 2px;
+  background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%);
+  color: #0c4a6e;
+  padding: 0.35rem 0.6rem;
+  border: 2px solid #06b6d4;
+  font-weight: 800;
+  border-radius: 4px;
   transition: all 0.2s ease;
+  font-size: 0.8rem;
 }
 
 .tree-item:hover .tree-tag {
-  background: #d0d0d0;
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #7dd3fc 0%, #06b6d4 100%);
+  color: white;
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+}
+
+.copy-item-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #06b6d4;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.tree-item:hover .copy-item-btn {
+  opacity: 1;
+}
+
+.copy-item-btn:hover {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.copy-item-btn.copied {
+  color: #16a34a;
 }
 
 .tree-length {
-  background: #d0d0d0;
-  color: #000000;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #000000;
-  font-weight: 700;
-  border-radius: 2px;
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+  color: #0c4a6e;
+  padding: 0.35rem 0.6rem;
+  border: 2px solid #3b82f6;
+  font-weight: 800;
+  border-radius: 4px;
   transition: all 0.2s ease;
+  font-size: 0.8rem;
 }
 
 .tree-item:hover .tree-length {
-  background: #b8b8b8;
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  color: white;
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .tree-data {
-  background: #b8b8b8;
+  background: linear-gradient(135deg, #86efac 0%, #4ade80 100%);
   color: #ffffff;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #000000;
-  font-weight: 600;
-  border-radius: 2px;
+  padding: 0.35rem 0.6rem;
+  border: 2px solid #22c55e;
+  font-weight: 700;
+  border-radius: 4px;
   word-break: break-all;
   transition: all 0.2s ease;
+  font-size: 0.8rem;
 }
 
 .tree-item:hover .tree-data {
-  background: #9a9a9a;
+  background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
   transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 }
 
 .tree-meaning {
-  color: #333333;
-  font-size: 0.75rem;
-  font-weight: 500;
+  color: #0284c7;
+  font-size: 0.8rem;
+  font-weight: 700;
   font-style: italic;
-  margin-left: 0.5rem;
+  margin-left: 0.8rem;
 }
 
 .tree-timestamp {
-  padding: 0.3rem 0;
+  padding: 0.5rem 0;
   padding-left: 3rem;
   display: flex;
-  gap: 0.3rem;
+  gap: 0.5rem;
 }
 
 .tree-timestamp .tree-meaning {
-  color: #0066cc;
+  color: #06b6d4;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 800;
   margin-left: 0;
 }
 
 .tree-sublayer {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.5rem;
   margin-top: 0.8rem;
-  padding: 0.75rem;
-  background: #f5f5f5;
-  border: 2px solid #000000;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
   border-radius: 0px;
   width: 100%;
   margin-left: 0.5rem;
@@ -1594,13 +2005,10 @@ export default {
 .timestamp-expired {
   background: #fef2f2 !important;
   border-color: #ef4444 !important;
-  width: 100%;
 }
 
 .timestamp-expired .tree-meaning {
   color: #ef4444 !important;
-  font-size: 0.75rem;
-  font-weight: 600;
 }
 
 .tree-data-long {
@@ -1683,19 +2091,6 @@ export default {
   margin-top: 1rem;
 }
 
-.raw-data {
-  padding: 1.5rem;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  border-top: 2px solid #000000;
-  z-index: 50;
-  overflow-y: auto;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .data-label {
   font-size: 0.65rem;
   font-weight: 700;
@@ -1729,54 +2124,123 @@ export default {
 
 @media (max-width: 768px) {
   .header {
-    padding: 0.8rem 1rem;
+    padding: 1rem;
+  }
+
+  .header-top {
+    flex-direction: column;
+    gap: 0.8rem;
   }
 
   .title {
-    font-size: 1.1rem;
-    margin-bottom: 0.05rem;
+    font-size: 1.4rem;
   }
 
   .subtitle {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .tab-navigation {
     padding: 0 1rem;
-    top: 3rem;
+    top: 5.5rem;
   }
 
   .tab-button {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.75rem;
+    padding: 0.9rem 1.2rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+  }
+
+  .tab-icon {
+    font-size: 0.95rem;
   }
 
   .input-area {
-    padding: 1rem 1rem;
+    padding: 1.2rem 1rem;
   }
 
-  .result-section {
-    padding: 1rem 1rem;
+  .summary-card {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    padding: 1rem;
   }
 
-  .tlv-tree {
-    font-size: 0.7rem;
-    line-height: 1.5;
+  .summary-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .search-input {
+    padding: 0.85rem 1rem 0.85rem 2.4rem;
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    padding: 0.75rem 1.2rem;
+    font-size: 0.8rem;
+  }
+
+  .copy-btn {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .control-btn {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .edit-panel {
+    padding: 1.2rem;
+  }
+
+  .edit-input,
+  .edit-select {
+    padding: 0.7rem;
+    font-size: 16px;
   }
 
   .tree-item {
-    padding: 0.35rem 0;
-    padding-left: 0.75rem;
+    padding: 0.5rem 0;
   }
 
-  .tree-children {
-    margin-left: 1.5rem;
-    padding-left: 0.75rem;
-  }
-
-  .tree-code {
-    padding: 0.15rem 0.4rem;
+  .tree-tag,
+  .tree-length {
     font-size: 0.7rem;
+    padding: 0.3rem 0.4rem;
   }
+
+  .copy-item-btn {
+    opacity: 1;
+    padding: 0.3rem 0.4rem;
+  }
+
+  .result-section {
+    padding: 1rem;
+  }
+}
+
+.result-section {
+  padding: 1rem 1rem;
+}
+
+.tlv-tree {
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.tree-item {
+  padding: 0.35rem 0;
+  padding-left: 0.75rem;
+}
+
+.tree-children {
+  margin-left: 1.5rem;
+  padding-left: 0.75rem;
+}
+
+.tree-code {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
 }
 </style>
