@@ -34,11 +34,10 @@
     <div class="artist-grid">
       <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
         :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
-        <div v-if="artist.photo" class="artist-photo-small">
-          <img :src="artist.photo" :alt="artist.name" />
-        </div>
-        <div v-else class="artist-photo-small empty">
-          <span>📷</span>
+        <div class="artist-photo-small">
+          <img v-if="getRandomArtistWork(artist)" :src="generateImageUrl(getRandomArtistWork(artist).code, 'jp-1')"
+            :alt="artist.name" />
+          <span v-else>📷</span>
         </div>
         <div class="card-content">
           <h3>{{ artist.name }}</h3>
@@ -251,24 +250,24 @@
 
 <script>
 const DEFAULT_ARTISTS = [
-  { name: 'Minato Haru', mainWorks: [{ code: 'SONE-978' }, { code: 'SONE-914' }, { code: 'SONE-865' }, { code: 'MIRD-259' }, { code: 'OFES-013' }, { code: 'SONE-776' }, { code: 'SONE-508' }, { code: 'FWAY-060' }, { code: 'SONE-503' }, { code: 'SONE-155' }, { code: 'SONE-188' }, { code: 'SONE-063' }, { code: 'SONE-021' }, { code: 'SSIS-978' }, { code: 'FWAY-002' }, { code: 'SSIS-945' }, { code: 'SSIS-890' }, { code: 'SSIS-889' }], photo: 'https://via.placeholder.com/150?text=Minato+Haru' },
-  { name: 'Moa Maeda', mainWorks: [{ code: 'ADN-334' }, { code: 'MIMK-091' }, { code: 'JUFE-300' }, { code: 'WAAA-065' }, { code: 'HND-991' }, { code: 'PPPD-926' }, { code: 'MSFH-034' }, { code: 'MSFH-030' }, { code: 'MSFH-024' }, { code: 'MSFH-018' }, { code: 'MSFH-014' }, { code: 'MSFH-010' }], photo: 'https://via.placeholder.com/150?text=Moa+Maeda' },
-  { name: 'Mitsuki Momota', mainWorks: [{ code: 'MIDA-424' }, { code: 'MIDA-026' }, { code: 'REBD-854' }, { code: 'OAE-253' }, { code: 'FWAY-047' }, { code: 'MIDV-869' }, { code: 'MIDV-569' }, { code: 'MIDA-346' }, { code: 'MIDV-668' }, { code: 'MIDV-831' }, { code: 'MIDV-574' }, { code: 'MIDV-577' }, { code: 'MIDA-102' }, { code: 'MIDA-190' }, { code: 'MIDV-985' }, { code: 'MIDV-637' }, { code: 'MIDA-305' }, { code: 'MIDA-139' }, { code: 'MIDA-258' }, { code: 'MIDV-769' }, { code: 'MDVR-325' }, { code: 'MIDV-905' }, { code: 'MIDV-804' }, { code: 'MIDA-214' }, { code: 'MIDA-064' }, { code: 'MDVR-317' }, { code: 'MDVR-288' }, { code: 'MIDA-385' }, { code: 'NAAC-032' }, { code: 'MIDV-698' }], compilations: [{ code: 'OFJE-279' }], photo: 'https://via.placeholder.com/150?text=Mitsuki' },
-  { name: 'Anzai Rara', mainWorks: [{ code: 'SSIS-025' }, { code: 'SSIS-050' }, { code: 'SSIS-103' }, { code: 'SSIS-124' }, { code: 'SSIS-136' }, { code: 'SSIS-172' }, { code: 'SSIS-203' }, { code: 'SSIS-232' }, { code: 'SSIS-262' }, { code: 'SSIS-269' }, { code: 'SSIS-357' }, { code: 'SSNI-643' }, { code: 'SSNI-671' }, { code: 'SSNI-700' }, { code: 'SSNI-727' }, { code: 'SSNI-752' }, { code: 'SSNI-777' }, { code: 'SSNI-799' }, { code: 'SSNI-822' }], compilations: [{ code: 'OFJE-288' }, { code: 'OFJE-354' }, { code: 'OFJE-410' }], photo: 'https://via.placeholder.com/150?text=Anzai+Rara' },
-  { name: 'RION', mainWorks: [{ code: 'SNIS-517' }, { code: 'SNIS-539' }, { code: 'SNIS-561' }, { code: 'SNIS-594' }, { code: 'SNIS-603' }, { code: 'SNIS-623' }, { code: 'SNIS-640' }, { code: 'SNIS-656' }, { code: 'SNIS-673' }, { code: 'SNIS-692' }, { code: 'SNIS-712' }, { code: 'SNIS-731' }, { code: 'SNIS-752' }, { code: 'SNIS-774' }, { code: 'SNIS-787' }, { code: 'SNIS-811' }, { code: 'SNIS-824' }, { code: 'SNIS-895' }, { code: 'SNIS-918' }, { code: 'SNIS-939' }, { code: 'SNIS-963' }, { code: 'SNIS-985' }, { code: 'SSNI-008' }, { code: 'SSNI-029' }, { code: 'SSNI-053' }, { code: 'SSNI-100' }, { code: 'SSNI-126' }, { code: 'SSNI-151' }, { code: 'SSNI-177' }, { code: 'SSNI-204' }, { code: 'SSNI-228' }, { code: 'SSNI-241' }, { code: 'SSNI-268' }, { code: 'SSNI-290' }, { code: 'EBOD-609' }], compilations: [{ code: 'OFJE-104' }, { code: 'OFJE-144' }, { code: 'OFJE-255' }], photo: 'https://via.placeholder.com/150?text=RION' },
-  { name: 'Utsunomiya Shion', mainWorks: [{ code: 'SOE-992' }, { code: 'SNIS-009' }, { code: 'SNIS-027' }, { code: 'SNIS-048' }, { code: 'SNIS-070' }, { code: 'SNIS-091' }, { code: 'SNIS-110' }, { code: 'SNIS-129' }, { code: 'SNIS-147' }, { code: 'SNIS-166' }, { code: 'AVOP-004' }, { code: 'SNIS-205' }], compilations: [{ code: 'ONSD-850' }, { code: 'ONSD-899' }], photo: 'https://via.placeholder.com/150?text=Shion' },
-  { name: 'Hitomi Tanaka', mainWorks: [{ code: 'MIMK-007' }], photo: 'https://via.placeholder.com/150?text=Hitomi' },
-  { name: 'Ai Samaya', mainWorks: [{ code: 'JUFE-101' }], photo: 'https://via.placeholder.com/150?text=Ai+Samaya' },
-  { name: 'Touka Rinne', mainWorks: [{ code: 'KTB-303' }], photo: 'https://via.placeholder.com/150?text=Touka' },
-  { name: 'Sakura Kirishima', mainWorks: [{ code: 'MKMP-001' }], photo: 'https://via.placeholder.com/150?text=Sakura' },
-  { name: 'Yuri Oshikawa', mainWorks: [{ code: 'PPPD-666' }], photo: 'https://via.placeholder.com/150?text=Yuri' },
-  { name: 'Satomi Mioka', mainWorks: [{ code: 'BARE-009' }], photo: 'https://via.placeholder.com/150?text=Satomi' },
-  { name: 'Mizuno Asai', mainWorks: [{ code: 'JUL-546' }], photo: 'https://via.placeholder.com/150?text=Mizuno' },
-  { name: 'Ayami Shunka', mainWorks: [{ code: 'SSNI-318' }], photo: 'https://via.placeholder.com/150?text=Ayami' },
-  { name: 'Miu Shiramine', mainWorks: [{ code: 'PRED-685' }], photo: 'https://via.placeholder.com/150?text=Miu' },
-  { name: 'Miina Wakatsuki', mainWorks: [{ code: 'NGOD-113' }], photo: 'https://via.placeholder.com/150?text=Miina' },
-  { name: 'Meguri', mainWorks: [{ code: 'JUR-531' }], photo: 'https://via.placeholder.com/150?text=Meguri' },
-  { name: 'Koibuchi Momona', mainWorks: [{ code: 'START-168' }], photo: 'https://via.placeholder.com/150?text=Koibuchi' },
+  { name: 'Minato Haru', mainWorks: [{ code: 'SONE-978' }, { code: 'SONE-914' }, { code: 'SONE-865' }, { code: 'MIRD-259' }, { code: 'OFES-013' }, { code: 'SONE-776' }, { code: 'SONE-508' }, { code: 'FWAY-060' }, { code: 'SONE-503' }, { code: 'SONE-155' }, { code: 'SONE-188' }, { code: 'SONE-063' }, { code: 'SONE-021' }, { code: 'SSIS-978' }, { code: 'FWAY-002' }, { code: 'SSIS-945' }, { code: 'SSIS-890' }, { code: 'SSIS-889' }] },
+  { name: 'Moa Maeda', mainWorks: [{ code: 'ADN-334' }, { code: 'MIMK-091' }, { code: 'JUFE-300' }, { code: 'WAAA-065' }, { code: 'HND-991' }, { code: 'PPPD-926' }, { code: 'MSFH-034' }, { code: 'MSFH-030' }, { code: 'MSFH-024' }, { code: 'MSFH-018' }, { code: 'MSFH-014' }, { code: 'MSFH-010' }] },
+  { name: 'Mitsuki Momota', mainWorks: [{ code: 'MIDA-424' }, { code: 'MIDA-026' }, { code: 'REBD-854' }, { code: 'OAE-253' }, { code: 'FWAY-047' }, { code: 'MIDV-869' }, { code: 'MIDV-569' }, { code: 'MIDA-346' }, { code: 'MIDV-668' }, { code: 'MIDV-831' }, { code: 'MIDV-574' }, { code: 'MIDV-577' }, { code: 'MIDA-102' }, { code: 'MIDA-190' }, { code: 'MIDV-985' }, { code: 'MIDV-637' }, { code: 'MIDA-305' }, { code: 'MIDA-139' }, { code: 'MIDA-258' }, { code: 'MIDV-769' }, { code: 'MDVR-325' }, { code: 'MIDV-905' }, { code: 'MIDV-804' }, { code: 'MIDA-214' }, { code: 'MIDA-064' }, { code: 'MDVR-317' }, { code: 'MDVR-288' }, { code: 'MIDA-385' }, { code: 'NAAC-032' }, { code: 'MIDV-698' }], compilations: [{ code: 'OFJE-279' }] },
+  { name: 'Anzai Rara', mainWorks: [{ code: 'SSIS-025' }, { code: 'SSIS-050' }, { code: 'SSIS-103' }, { code: 'SSIS-124' }, { code: 'SSIS-136' }, { code: 'SSIS-172' }, { code: 'SSIS-203' }, { code: 'SSIS-232' }, { code: 'SSIS-262' }, { code: 'SSIS-269' }, { code: 'SSIS-357' }, { code: 'SSNI-643' }, { code: 'SSNI-671' }, { code: 'SSNI-700' }, { code: 'SSNI-727' }, { code: 'SSNI-752' }, { code: 'SSNI-777' }, { code: 'SSNI-799' }, { code: 'SSNI-822' }], compilations: [{ code: 'OFJE-288' }, { code: 'OFJE-354' }, { code: 'OFJE-410' }] },
+  { name: 'RION', mainWorks: [{ code: 'SNIS-517' }, { code: 'SNIS-539' }, { code: 'SNIS-561' }, { code: 'SNIS-594' }, { code: 'SNIS-603' }, { code: 'SNIS-623' }, { code: 'SNIS-640' }, { code: 'SNIS-656' }, { code: 'SNIS-673' }, { code: 'SNIS-692' }, { code: 'SNIS-712' }, { code: 'SNIS-731' }, { code: 'SNIS-752' }, { code: 'SNIS-774' }, { code: 'SNIS-787' }, { code: 'SNIS-811' }, { code: 'SNIS-824' }, { code: 'SNIS-895' }, { code: 'SNIS-918' }, { code: 'SNIS-939' }, { code: 'SNIS-963' }, { code: 'SNIS-985' }, { code: 'SSNI-008' }, { code: 'SSNI-029' }, { code: 'SSNI-053' }, { code: 'SSNI-100' }, { code: 'SSNI-126' }, { code: 'SSNI-151' }, { code: 'SSNI-177' }, { code: 'SSNI-204' }, { code: 'SSNI-228' }, { code: 'SSNI-241' }, { code: 'SSNI-268' }, { code: 'SSNI-290' }, { code: 'EBOD-609' }], compilations: [{ code: 'OFJE-104' }, { code: 'OFJE-144' }, { code: 'OFJE-255' }] },
+  { name: 'Utsunomiya Shion', mainWorks: [{ code: 'SOE-992' }, { code: 'SNIS-009' }, { code: 'SNIS-027' }, { code: 'SNIS-048' }, { code: 'SNIS-070' }, { code: 'SNIS-091' }, { code: 'SNIS-110' }, { code: 'SNIS-129' }, { code: 'SNIS-147' }, { code: 'SNIS-166' }, { code: 'AVOP-004' }, { code: 'SNIS-205' }], compilations: [{ code: 'ONSD-850' }, { code: 'ONSD-899' }] },
+  { name: 'Hitomi Tanaka', mainWorks: [{ code: 'MIMK-007' }] },
+  { name: 'Ai Samaya', mainWorks: [{ code: 'JUFE-101' }] },
+  { name: 'Touka Rinne', mainWorks: [{ code: 'KTB-303' }] },
+  { name: 'Sakura Kirishima', mainWorks: [{ code: 'MKMP-001' }] },
+  { name: 'Yuri Oshikawa', mainWorks: [{ code: 'PPPD-666' }] },
+  { name: 'Satomi Mioka', mainWorks: [{ code: 'BARE-009' }] },
+  { name: 'Mizuno Asai', mainWorks: [{ code: 'JUL-546' }] },
+  { name: 'Ayami Shunka', mainWorks: [{ code: 'SSNI-318' }] },
+  { name: 'Miu Shiramine', mainWorks: [{ code: 'PRED-685' }] },
+  { name: 'Miina Wakatsuki', mainWorks: [{ code: 'NGOD-113' }] },
+  { name: 'Meguri', mainWorks: [{ code: 'JUR-531' }] },
+  { name: 'Koibuchi Momona', mainWorks: [{ code: 'START-168' }] },
   {
     name: 'Collection',
     mainWorks: [
@@ -445,6 +444,11 @@ export default {
         })
       }
       return sorted.reverse()
+    },
+    getRandomArtistWork(artist) {
+      const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
+      if (allWorks.length === 0) return null
+      return allWorks[Math.floor(Math.random() * allWorks.length)]
     },
     generateImageUrl(code, quality = 'pl') {
       if (!code) return null
