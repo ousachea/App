@@ -1,17 +1,10 @@
 <template>
   <div class="container">
     <PageSwitcher />
-    <div class="scanner-card" :class="{ 'dark-mode': darkMode }">
+    <div class="scanner-card">
       <div class="header">
         <div class="header-content">
-          <div class="header-top">
-            <h1 class="title">🇰🇭 KHQR Scanner</h1>
-            <div class="header-controls">
-              <button @click="darkMode = !darkMode" class="control-btn" title="Toggle dark mode">
-                {{ darkMode ? '☀️' : '🌙' }}
-              </button>
-            </div>
-          </div>
+          <h1 class="title">🇰🇭 KHQR Scanner</h1>
           <p class="subtitle">Decode and generate Cambodian payment QR codes</p>
         </div>
       </div>
@@ -74,7 +67,7 @@
           <div class="summary-item">
             <span class="summary-label">Amount:</span>
             <span class="summary-value">{{ headerInfo.amountTag?.value ? headerInfo.amountTag.value + ' ' +
-      (headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR') : 'N/A' }}</span>
+          (headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR') : 'N/A' }}</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Data:</span>
@@ -379,7 +372,7 @@
               <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['00']"
                 :class="{ 'timestamp-expired': isTimestampExpired(headerInfo.timestampNested['00'].value) }">
                 <span class="tree-meaning">→ {{
-      getTimestampReadableWithoutExpired(headerInfo.timestampNested['00'].value) }}</span>
+          getTimestampReadableWithoutExpired(headerInfo.timestampNested['00'].value) }}</span>
               </div>
 
               <div class="tree-subitem-line" v-if="headerInfo.timestampNested['01']">
@@ -391,7 +384,7 @@
               <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['01']"
                 :class="{ 'timestamp-expired': isTimestampExpired(headerInfo.timestampNested['01'].value) }">
                 <span class="tree-meaning">→ {{
-      getTimestampReadableWithoutExpired(headerInfo.timestampNested['01'].value) }}</span>
+          getTimestampReadableWithoutExpired(headerInfo.timestampNested['01'].value) }}</span>
               </div>
             </div>
           </div>
@@ -504,7 +497,6 @@ export default {
         'Chip Mong Bank',
         'Phnom Penh Commercial Bank',
       ],
-      darkMode: false,
       copiedItemId: null,
       livePreview: true,
       sampleDataOptions: [
@@ -1112,7 +1104,7 @@ export default {
 .container {
   display: flex;
   min-height: 100vh;
-  background: #ffffff;
+  background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
   width: 100vw;
   margin: 0;
   padding: 0;
@@ -1125,56 +1117,16 @@ export default {
   display: flex;
   flex-direction: column;
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.1);
   margin: 0;
-  transition: background-color 0.3s ease;
-}
-
-.scanner-card.dark-mode {
-  background: #1a1a1a;
-  color: #ffffff;
-}
-
-.scanner-card.dark-mode .header {
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-}
-
-.scanner-card.dark-mode .result-section,
-.scanner-card.dark-mode .input-area {
-  background: linear-gradient(to bottom, #1a1a1a, #242424);
-}
-
-.scanner-card.dark-mode .summary-card,
-.scanner-card.dark-mode .tree-item,
-.scanner-card.dark-mode textarea,
-.scanner-card.dark-mode input,
-.scanner-card.dark-mode select {
-  background: #2a2a2a;
-  color: #ffffff;
-  border-color: #444444;
-}
-
-.scanner-card.dark-mode .tree-tag {
-  background: #1e3a5f;
-  color: #7dd3fc;
-  border-color: #0284c7;
-}
-
-.scanner-card.dark-mode .tree-length {
-  background: #1e3a5f;
-  color: #93c5fd;
-  border-color: #3b82f6;
 }
 
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: none;
 }
 
 .header-controls {
-  display: flex;
-  gap: 0.8rem;
+  display: none;
 }
 
 .control-btn {
@@ -1196,33 +1148,33 @@ export default {
 
 .summary-card {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  padding: 1.2rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.3rem;
+  padding: 1.8rem;
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border: 2px solid #7dd3fc;
-  border-radius: 12px;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+  border-radius: 14px;
+  margin-bottom: 2rem;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.18);
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.6rem;
 }
 
 .summary-label {
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.85rem;
+  font-weight: 900;
   color: #0c4a6e;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
 }
 
 .summary-value {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   color: #0284c7;
   word-break: break-word;
 }
@@ -1230,11 +1182,12 @@ export default {
 .live-preview-toggle {
   display: flex;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.4rem;
   background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
   border: 2px solid #7dd3fc;
-  border-radius: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.12);
 }
 
 .toggle-label {
@@ -1287,13 +1240,13 @@ export default {
 
 .header {
   background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
-  border-bottom: 3px solid #0284c7;
-  padding: 1.5rem;
+  border-bottom: 4px solid #0284c7;
+  padding: 3rem 2.5rem;
   text-align: left;
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+  box-shadow: 0 8px 24px rgba(30, 64, 175, 0.3);
 }
 
 .header-content {
@@ -1301,57 +1254,58 @@ export default {
 }
 
 .title {
-  font-size: 1.8rem;
-  font-weight: 800;
+  font-size: 2.2rem;
+  font-weight: 900;
   margin: 0;
   color: #ffffff;
-  letter-spacing: -0.5px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: -1px;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 .subtitle {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.95);
-  margin: 0.4rem 0 0 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0.8rem 0 0 0;
   font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .tab-navigation {
   display: flex;
   gap: 0;
-  padding: 0 1.5rem;
-  background: linear-gradient(to right, #f8fafc, #ffffff);
-  border-bottom: 3px solid #e2e8f0;
+  padding: 0 2.5rem;
+  background: linear-gradient(to right, #ffffff, #f8fafc);
+  border-bottom: 3px solid #dbeafe;
   position: sticky;
-  top: 4.2rem;
+  top: 6.2rem;
   z-index: 9;
 }
 
 .tab-button {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 1.1rem 1.8rem;
+  gap: 0.8rem;
+  padding: 1.5rem 2.2rem;
   background: none;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-bottom: 4px solid transparent;
   color: #64748b;
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: 800;
+  font-size: 1.05rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  letter-spacing: 0px;
+  letter-spacing: 0.3px;
 }
 
 .tab-button:hover {
   color: #1e40af;
-  background: rgba(30, 64, 175, 0.03);
+  background: rgba(30, 64, 175, 0.04);
 }
 
 .tab-button.active {
   color: #0ea5e9;
   border-bottom-color: #0ea5e9;
-  background: rgba(14, 165, 233, 0.05);
+  background: rgba(14, 165, 233, 0.06);
 }
 
 .tab-icon {
@@ -1381,7 +1335,7 @@ export default {
 }
 
 .input-area {
-  padding: 1.5rem;
+  padding: 2.8rem 2.5rem;
   flex-shrink: 0;
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border-bottom: 3px solid #bae6fd;
@@ -1390,41 +1344,43 @@ export default {
 .sample-selector {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1.2rem;
+  gap: 1.5rem;
+  margin-bottom: 2.2rem;
+  padding: 1.8rem;
   background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
   border: 2px solid #7dd3fc;
-  border-radius: 10px;
+  border-radius: 14px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
 }
 
 .sample-selector:hover {
   border-color: #0284c7;
   background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 100%);
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);
+  transform: translateY(-2px);
 }
 
 .sample-label {
-  font-size: 0.9rem;
-  font-weight: 800;
+  font-size: 0.95rem;
+  font-weight: 900;
   color: #0c4a6e;
   white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .sample-select {
   flex: 1;
-  padding: 0.85rem;
+  padding: 1.1rem;
   border: 2px solid #7dd3fc;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 15px;
   font-family: inherit;
   color: #0c4a6e;
   background: white;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .sample-select:hover,
@@ -1432,43 +1388,7 @@ export default {
   border-color: #0284c7;
   outline: none;
   background: #f0f9ff;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-}
-
-.sample-selector {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-  padding: 0.75rem;
-  background: #f5f5f5;
-  border: 1px solid #000000;
-  border-radius: 0px;
-}
-
-.sample-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #000000;
-  white-space: nowrap;
-}
-
-.sample-select {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #000000;
-  border-radius: 0px;
-  font-size: 14px;
-  font-family: inherit;
-  color: #000000;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.sample-select:hover {
-  border-color: #000000;
-  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
 }
 
 .sample-select:focus {
@@ -1479,21 +1399,22 @@ export default {
 
 .upload-zone {
   display: block;
-  border: 2px dashed #06b6d4;
-  border-radius: 14px;
-  padding: 2.2rem 1.5rem;
+  border: 3px dashed #06b6d4;
+  border-radius: 18px;
+  padding: 3.5rem 2.5rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
   background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
+  margin-bottom: 2.2rem;
+  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.18);
 }
 
 .upload-zone:hover {
   border-color: #0891b2;
   background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 10px 24px rgba(6, 182, 212, 0.3);
+  transform: translateY(-3px);
 }
 
 .file-input {
@@ -1503,36 +1424,36 @@ export default {
 .upload-content {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1.1rem;
 }
 
 .upload-icon {
-  font-size: 3rem;
+  font-size: 3.8rem;
   line-height: 1;
 }
 
 .upload-text {
-  font-size: 1rem;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 900;
   color: #0c4a6e;
-  letter-spacing: 0px;
+  letter-spacing: -0.3px;
 }
 
 .upload-hint {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: #0284c7;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .divider {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
-  margin: 1.5rem 0;
+  gap: 1.5rem;
+  margin: 2rem 0;
   color: #0284c7;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 .divider::before,
@@ -1549,47 +1470,48 @@ export default {
 
 .input-field {
   width: 100%;
-  height: 100px;
-  padding: 1rem;
+  height: 120px;
+  padding: 1.2rem;
   border: 2px solid #7dd3fc;
-  border-radius: 10px;
+  border-radius: 12px;
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 14px;
   resize: vertical;
   transition: all 0.3s ease;
   color: #0c4a6e;
   background: linear-gradient(to bottom, #ffffff, #f0f9ff);
-  margin-bottom: 1rem;
-  font-weight: 500;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
 }
 
 .input-field:hover {
   border-color: #06b6d4;
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15);
 }
 
 .input-field:focus {
   outline: none;
   border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18);
 }
 
 .input-field::placeholder {
   color: #7dd3fc;
+  font-weight: 500;
 }
 
 .action-buttons {
   display: flex;
-  gap: 1rem;
+  gap: 1.2rem;
   margin-top: 0;
 }
 
 .btn {
-  padding: 0.9rem 1.8rem;
+  padding: 1rem 2.2rem;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s ease;
   background: white;
@@ -1598,8 +1520,8 @@ export default {
 }
 
 .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(14, 165, 233, 0.25);
 }
 
 .btn:active {
@@ -1633,8 +1555,8 @@ export default {
 }
 
 .result-section {
-  padding: 1.5rem;
-  padding-bottom: 180px;
+  padding: 2.8rem 2.5rem;
+  padding-bottom: 220px;
   border-top: 3px solid #bae6fd;
   overflow-y: auto;
   background: linear-gradient(to bottom, #f0f9ff, #ffffff);
@@ -1644,71 +1566,72 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin-bottom: 2.2rem;
+  padding-bottom: 1.4rem;
   border-bottom: 3px solid #7dd3fc;
 }
 
 .result-header h2 {
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   margin: 0;
   color: #0c4a6e;
   font-weight: 900;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
 }
 
 .header-buttons {
   display: flex;
-  gap: 0.8rem;
+  gap: 1rem;
 }
 
 .edit-panel {
   background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
   border: 2px solid #7dd3fc;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  border-radius: 16px;
+  padding: 2.4rem;
+  margin-bottom: 2.2rem;
   animation: slideDown 0.3s ease;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.2);
 }
 
 .edit-field {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.8rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.8rem;
 }
 
 .edit-field label {
-  font-weight: 800;
-  font-size: 0.85rem;
+  font-weight: 900;
+  font-size: 0.9rem;
   color: #0c4a6e;
+  letter-spacing: 0.2px;
 }
 
 .edit-input,
 .edit-select {
-  padding: 0.85rem;
+  padding: 1rem;
   border: 2px solid #7dd3fc;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 15px;
   font-family: inherit;
   color: #0c4a6e;
   background: white;
   transition: all 0.3s ease;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .edit-input:hover,
 .edit-select:hover {
   border-color: #06b6d4;
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15);
 }
 
 .edit-input:focus,
 .edit-select:focus {
   outline: none;
   border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2);
 }
 
 .edit-input::placeholder {
