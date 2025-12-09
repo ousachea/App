@@ -35,9 +35,9 @@
       <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
         :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
         <div class="artist-photo-small">
-          <img v-if="getRandomArtistWork(artist)" :src="generateImageUrl(getRandomArtistWork(artist).code, 'jp-1')"
-            :alt="artist.name" />
-          <span v-else>📷</span>
+          <img v-if="getRandomArtistWork(artist)" :src="generateImageUrl(getRandomArtistWork(artist).code, 'pl')"
+            :alt="artist.name" @error="handleImageError" @load="handleImageLoad" class="artist-image" />
+          <span v-else class="photo-placeholder">📷</span>
         </div>
         <div class="card-content">
           <h3>{{ artist.name }}</h3>
@@ -98,6 +98,8 @@
                 </div>
               </div>
               <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn" title="Edit code">✏️</button>
+              <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
+                title="Move to another artist">➡️</button>
             </div>
             <div class="info">
               <div>
@@ -139,6 +141,8 @@
                 </div>
               </div>
               <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn" title="Edit code">✏️</button>
+              <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
+                title="Move to another artist">➡️</button>
             </div>
             <div class="info">
               <div>
@@ -154,6 +158,26 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Move Work Modal -->
+    <div v-if="showMoveWorkModal" class="modal" @click.self="closeMoveWorkModal">
+      <div class="modal-box">
+        <h3>Move Work to Another Artist</h3>
+        <label>
+          Select Artist
+          <select v-model="moveWorkData.targetArtist" class="artist-select">
+            <option value="">Choose artist...</option>
+            <option v-for="a in sortedArtistsForMove" :key="a.name" :value="a.name">
+              {{ a.name }} ({{ (a.mainWorks?.length || 0) + (a.compilations?.length || 0) }} works)
+            </option>
+          </select>
+        </label>
+        <div class="modal-btns">
+          <button @click="executeMoveWork" class="btn" :disabled="!moveWorkData.targetArtist">Move</button>
+          <button @click="closeMoveWorkModal" class="btn" style="background: #666">Cancel</button>
         </div>
       </div>
     </div>
@@ -310,7 +334,9 @@ export default {
       showAddWorkModal: false,
       showAddArtistModal: false,
       showEditWorkModal: false,
+      showMoveWorkModal: false,
       editingWork: null,
+      moveWorkData: { code: '', sourceArtist: '', targetArtist: '', type: '' },
       newWork: { artist: '', code: '', type: 'mainWorks', releaseDate: '' },
       newArtist: { name: '', studio: '', photo: '' },
       artists: JSON.parse(JSON.stringify(DEFAULT_ARTISTS))
@@ -354,6 +380,11 @@ export default {
         })
       })
       return results
+    },
+    sortedArtistsForMove() {
+      return this.artists
+        .filter(a => a.name !== this.activeTab)
+        .sort((a, b) => a.name.localeCompare(b.name))
     }
   },
   watch: {
@@ -413,6 +444,42 @@ export default {
       this.showEditWorkModal = false
       this.editingWork = null
     },
+    openMoveWorkModal(work) {
+      this.moveWorkData = { code: work.code, sourceArtist: this.activeTab, targetArtist: '', type: '' }
+      // Find which type this work is
+      const artist = this.artists.find(a => a.name === this.activeTab)
+      if (artist?.mainWorks?.find(w => w.code === work.code)) {
+        this.moveWorkData.type = 'mainWorks'
+      } else if (artist?.compilations?.find(w => w.code === work.code)) {
+        this.moveWorkData.type = 'compilations'
+      }
+      this.showMoveWorkModal = true
+    },
+    closeMoveWorkModal() {
+      this.showMoveWorkModal = false
+      this.moveWorkData = { code: '', sourceArtist: '', targetArtist: '', type: '' }
+    },
+    executeMoveWork() {
+      if (!this.moveWorkData.targetArtist) return this.showToast('Select target artist', 'error')
+      const sourceArtist = this.artists.find(a => a.name === this.moveWorkData.sourceArtist)
+      const targetArtist = this.artists.find(a => a.name === this.moveWorkData.targetArtist)
+      if (!sourceArtist || !targetArtist) return this.showToast('Artist not found', 'error')
+
+      const type = this.moveWorkData.type
+      const work = sourceArtist[type]?.find(w => w.code === this.moveWorkData.code)
+      if (!work) return this.showToast('Work not found', 'error')
+
+      // Remove from source
+      sourceArtist[type] = sourceArtist[type].filter(w => w.code !== this.moveWorkData.code)
+
+      // Add to target
+      if (!targetArtist[type]) targetArtist[type] = []
+      targetArtist[type].push(work)
+
+      this.artists = [...this.artists]
+      this.closeMoveWorkModal()
+      this.showToast(`✅ Moved ${this.moveWorkData.code} to ${this.moveWorkData.targetArtist}`, 'success')
+    },
     saveEditWork() {
       if (!this.editingWork.newCode.trim()) return this.showToast('Code required', 'error')
       const newCode = this.editingWork.newCode.toUpperCase()
@@ -449,6 +516,35 @@ export default {
       const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
       if (allWorks.length === 0) return null
       return allWorks[Math.floor(Math.random() * allWorks.length)]
+    },
+    getArtistImageUrl(artist) {
+      const work = this.getRandomArtistWork(artist)
+      if (!work) return null
+      // Try different quality levels in order: pl (cover) -> jp-1 to jp-10
+      const qualities = ['pl', 'jp-1', 'jp-2', 'jp-3', 'jp-4', 'jp-5']
+      return { work: work.code, qualities }
+    },
+    getImageWithFallback(code, quality) {
+      // Try the requested quality first
+      const url = this.generateImageUrl(code, quality)
+      // If that fails, fallback to cover image (pl)
+      if (quality !== 'pl') {
+        return `url('${url}'), url('${this.generateImageUrl(code, 'pl')}')`
+      }
+      return url
+    },
+    handleImageError(e) {
+      e.target.style.display = 'none'
+      const parent = e.target.parentElement
+      if (parent) {
+        const span = document.createElement('span')
+        span.className = 'photo-placeholder'
+        span.textContent = '📷'
+        parent.appendChild(span)
+      }
+    },
+    handleImageLoad(e) {
+      e.target.style.opacity = '1'
     },
     generateImageUrl(code, quality = 'pl') {
       if (!code) return null
@@ -825,6 +921,35 @@ header p {
 .artist-photo-small.empty {
   background: #f0f0f0;
   color: #999;
+}
+
+.photo-placeholder {
+  font-size: 40px;
+  color: #999;
+}
+
+.artist-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease-in;
+}
+
+.artist-image:not([src]) {
+  background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .artist-photo-large {
@@ -1231,6 +1356,16 @@ header p {
   font-size: 14px;
 }
 
+.artist-select {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
 .radios {
   display: flex;
   gap: 15px;
@@ -1340,26 +1475,7 @@ header p {
 
 .dark-mode .modal-box {
   background: #2d2d2d;
-}
-
-.dark-mode .modal-box input,
-.dark-mode .modal-box select {
-  background: #1e1e1e;
-  color: #e0e0e0;
-  border-color: #404040;
-}
-
-.dark-mode .search-result-item {
-  background: #3a3a3a;
-}
-
-.dark-mode .link-btn-small {
-  background: #3b82f6;
-  color: white;
-}
-
-.dark-mode .link-btn-small:hover {
-  background: #2563eb;
+  color: #3b82f6;
 }
 
 @media (max-width: 768px) {
