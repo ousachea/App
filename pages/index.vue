@@ -33,19 +33,6 @@
             </select>
           </div>
 
-          <label class="upload-zone">
-            <input type="file" @change="decodeQR" accept="image/*" class="file-input" />
-            <div class="upload-content">
-              <span class="upload-icon">📷</span>
-              <span class="upload-text">Upload image</span>
-              <span class="upload-hint">PNG, JPG, GIF</span>
-            </div>
-          </label>
-
-          <div class="divider">
-            <span>or paste</span>
-          </div>
-
           <textarea v-model="manualQRInput" placeholder="Paste QR code data..." class="input-field"></textarea>
 
           <div class="action-buttons">
@@ -115,9 +102,14 @@
               <option v-for="bank in cambodianBanks" :key="bank" :value="bank">{{ bank }}</option>
             </select>
           </div>
-          <button @click="updateMerchantData" class="btn btn-primary" style="margin-top: 1rem;">
-            ✅ Update & Regenerate QR
-          </button>
+          <div class="edit-actions">
+            <button @click="updateMerchantData" class="btn btn-primary edit-update-btn">
+              🔐 Update & Encrypt Checksum (CRC-16/IBM-3740)
+            </button>
+            <button @click="toggleEditMode" class="btn btn-secondary edit-cancel-btn">
+              ❌ Cancel
+            </button>
+          </div>
         </div>
 
         <div class="tlv-tree">
@@ -592,23 +584,6 @@ export default {
     },
   },
   methods: {
-    async decodeQR(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const result = await QrScanner.scanImage(e.target.result);
-          this.processQRResult(result);
-        } catch {
-          this.qrResult = 'Could not decode QR code';
-          this.headerInfo = {};
-          this.parsedTLV = {};
-        }
-      };
-      reader.readAsDataURL(file);
-    },
-
     decodeManualQR() {
       if (this.manualQRInput.trim()) {
         this.processQRResult(this.manualQRInput.trim());
@@ -874,13 +849,29 @@ export default {
       // Remove old checksum (Tag 63)
       updatedResult = updatedResult.replace(/63\d{2}[A-F0-9a-f]{4}$/, '');
 
-      // Calculate and add new checksum
+      // Calculate and add new checksum using CRC-16/IBM-3740
       const newChecksum = this.calculateCRC16(updatedResult);
       updatedResult = updatedResult + '63' + '04' + newChecksum;
 
       this.manualQRInput = updatedResult;
       this.processQRResult(updatedResult);
       this.editMode = false;
+
+      // Show success notification
+      this.showNotification('✅ Data updated! Checksum encrypted with CRC-16/IBM-3740', 'success');
+    },
+
+    showNotification(message, type = 'info') {
+      // Create and show notification (can be enhanced with a proper toast library)
+      const notification = document.createElement('div');
+      notification.className = `notification notification-${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
     },
 
     getMerchantTypeDescription(code) {
@@ -1156,6 +1147,7 @@ export default {
   border-radius: 14px;
   margin-bottom: 2rem;
   box-shadow: 0 6px 16px rgba(14, 165, 233, 0.18);
+  animation: slideUpIn 0.5s ease;
 }
 
 .summary-item {
@@ -1397,77 +1389,6 @@ export default {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
-.upload-zone {
-  display: block;
-  border: 3px dashed #06b6d4;
-  border-radius: 18px;
-  padding: 3.5rem 2.5rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
-  margin-bottom: 2.2rem;
-  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.18);
-}
-
-.upload-zone:hover {
-  border-color: #0891b2;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-  box-shadow: 0 10px 24px rgba(6, 182, 212, 0.3);
-  transform: translateY(-3px);
-}
-
-.file-input {
-  display: none;
-}
-
-.upload-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-
-.upload-icon {
-  font-size: 3.8rem;
-  line-height: 1;
-}
-
-.upload-text {
-  font-size: 1.15rem;
-  font-weight: 900;
-  color: #0c4a6e;
-  letter-spacing: -0.3px;
-}
-
-.upload-hint {
-  font-size: 0.9rem;
-  color: #0284c7;
-  font-weight: 800;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin: 2rem 0;
-  color: #0284c7;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 2px;
-  background: linear-gradient(to right, #7dd3fc, transparent);
-}
-
-.divider::after {
-  background: linear-gradient(to left, #7dd3fc, transparent);
-}
-
 .input-field {
   width: 100%;
   height: 120px;
@@ -1590,7 +1511,7 @@ export default {
   border-radius: 16px;
   padding: 2.4rem;
   margin-bottom: 2.2rem;
-  animation: slideDown 0.3s ease;
+  animation: slideDown 0.4s ease;
   box-shadow: 0 8px 20px rgba(14, 165, 233, 0.2);
 }
 
@@ -1636,6 +1557,42 @@ export default {
 
 .edit-input::placeholder {
   color: #7dd3fc;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 1.2rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid rgba(14, 165, 233, 0.2);
+}
+
+.edit-update-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  font-weight: 900;
+  font-size: 0.95rem;
+  padding: 1.1rem 2.2rem;
+}
+
+.edit-update-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
+  transform: translateY(-3px);
+}
+
+.edit-cancel-btn {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  color: #0284c7;
+  border: 2px solid #7dd3fc;
+  font-weight: 900;
+}
+
+.edit-cancel-btn:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  border-color: #0284c7;
 }
 
 .edit-active {
@@ -2165,5 +2122,123 @@ export default {
 .tree-code {
   padding: 0.15rem 0.4rem;
   font-size: 0.7rem;
+}
+
+.notification {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  padding: 1.2rem 1.8rem;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.notification-success {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  border: 2px solid #22c55e;
+}
+
+.notification-info {
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  color: #0c4a6e;
+  border: 2px solid #06b6d4;
+}
+
+.notification-error {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border: 2px solid #ef4444;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Smooth, Non-Glitchy Animations */
+@keyframes slideUpIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glowPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 6px 16px rgba(14, 165, 233, 0.25);
+  }
+}
+
+@keyframes bobbing {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 </style>
