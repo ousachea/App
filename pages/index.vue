@@ -33,9 +33,13 @@
             </select>
           </div>
 
-          <textarea v-model="manualQRInput" placeholder="Paste QR code data..." class="input-field"></textarea>
+          <textarea v-model="manualQRInput" @paste="handlePaste" placeholder="Paste QR code data..."
+            class="input-field"></textarea>
 
           <div class="action-buttons">
+            <button @click="pasteFromClipboard" class="btn btn-primary paste-btn">
+              📋 Paste from Clipboard
+            </button>
             <button @click="clearData" class="btn btn-secondary">
               Clear
             </button>
@@ -566,6 +570,13 @@ export default {
         this.generateQRCode();
       });
     }
+
+    // Add global paste listener for Ctrl+V / Cmd+V
+    document.addEventListener('paste', this.handleGlobalPaste);
+  },
+
+  beforeDestroy() {
+    document.removeEventListener('paste', this.handleGlobalPaste);
   },
 
   watch: {
@@ -587,6 +598,63 @@ export default {
     decodeManualQR() {
       if (this.manualQRInput.trim()) {
         this.processQRResult(this.manualQRInput.trim());
+      }
+    },
+
+    handlePaste(event) {
+      // Allow the paste to complete
+      this.$nextTick(() => {
+        // Automatically process the pasted data
+        if (this.manualQRInput.trim()) {
+          const pastedData = this.manualQRInput.trim();
+          this.processQRResult(pastedData);
+          this.showNotification('✅ QR data pasted and decoded!', 'success');
+        }
+      });
+    },
+
+    async pasteFromClipboard() {
+      try {
+        // Modern Clipboard API
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text && text.trim()) {
+            this.manualQRInput = text.trim();
+            this.$nextTick(() => {
+              this.processQRResult(text.trim());
+              this.showNotification('✅ QR data pasted from clipboard!', 'success');
+            });
+          } else {
+            this.showNotification('❌ Clipboard is empty', 'error');
+          }
+        } else {
+          // Fallback for older browsers
+          this.showNotification('❌ Clipboard access not available', 'error');
+        }
+      } catch (error) {
+        console.error('Clipboard error:', error);
+        this.showNotification('❌ Failed to read clipboard. Please paste manually.', 'error');
+      }
+    },
+
+    handleGlobalPaste(event) {
+      // Handle Ctrl+V / Cmd+V anywhere on the page
+      try {
+        const clipboardData = event.clipboardData || window.clipboardData;
+        const pastedText = clipboardData.getData('text');
+
+        if (pastedText && pastedText.trim()) {
+          // Check if it looks like KHQR data
+          if (pastedText.includes('00') && (pastedText.includes('29') || pastedText.includes('30') || pastedText.includes('51'))) {
+            this.manualQRInput = pastedText.trim();
+            this.$nextTick(() => {
+              this.processQRResult(pastedText.trim());
+              this.showNotification('✅ QR data pasted and decoded!', 'success');
+            });
+          }
+        }
+      } catch (error) {
+        console.log('Paste error:', error);
       }
     },
 
@@ -1300,7 +1368,6 @@ export default {
   background: rgba(14, 165, 233, 0.06);
 }
 
-
 .tab-icon {
   font-size: 1.1rem;
 }
@@ -1425,7 +1492,12 @@ export default {
 .action-buttons {
   display: flex;
   gap: 1.2rem;
-  margin-top: 0;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.action-buttons .btn {
+  flex: 1;
 }
 
 .btn {
@@ -1474,6 +1546,24 @@ export default {
   background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
   border-color: #0284c7;
   box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+.paste-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  font-weight: 900;
+  transition: all 0.3s ease;
+}
+
+.paste-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.4);
+  transform: translateY(-2px);
+}
+
+.paste-btn:active {
+  transform: translateY(0);
 }
 
 .result-section {
@@ -2079,12 +2169,20 @@ export default {
 
   .action-buttons {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .action-buttons .btn {
+    flex: 1;
+    padding: 0.9rem 1.2rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
   }
 
   .btn {
-    width: 100%;
+    width: auto;
     padding: 0.9rem 1.2rem;
     font-size: 0.9rem;
     border-radius: 10px;
