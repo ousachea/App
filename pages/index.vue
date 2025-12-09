@@ -18,6 +18,10 @@
           <span class="tab-icon">✨</span>
           <span class="tab-text">Generate</span>
         </button>
+        <button @click="activeTab = 'reference'" :class="['tab-button', { active: activeTab === 'reference' }]">
+          <span class="tab-icon">📚</span>
+          <span class="tab-text">Reference</span>
+        </button>
       </div>
 
       <!-- Decode Tab -->
@@ -450,7 +454,96 @@
           </div>
         </div>
       </div>
+
+      <!-- Reference Tab -->
+      <div v-show="activeTab === 'reference'" class="tab-content reference-tab">
+        <div class="reference-container">
+          <div class="reference-section">
+            <h3 class="reference-title">🏦 Cambodian Banks (Tag 29/30/51)</h3>
+            <div class="reference-grid">
+              <div class="reference-item" v-for="bank in cambodianBanks" :key="bank">
+                <span class="bank-name">{{ bank }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-section">
+            <h3 class="reference-title">🏷️ KHQR Tag Definitions</h3>
+            <div class="tag-definitions">
+              <div class="tag-def">
+                <span class="tag-code">00</span>
+                <span class="tag-desc">Payload Format Indicator - KHQR version</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">29</span>
+                <span class="tag-desc">Merchant Type - Remittance (bank account info)</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">30</span>
+                <span class="tag-desc">Merchant Type - Merchant (business info)</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">51</span>
+                <span class="tag-desc">Acquirer Merchant ID - Bank and merchant ID</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">52</span>
+                <span class="tag-desc">Merchant Category Code - Business type</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">53</span>
+                <span class="tag-desc">Currency Code - 840 (USD) or 116 (KHR)</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">54</span>
+                <span class="tag-desc">Payment Amount - Transaction value</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">58</span>
+                <span class="tag-desc">Country Code - KH (Cambodia)</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">59</span>
+                <span class="tag-desc">Merchant Name - Business name</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">60</span>
+                <span class="tag-desc">Merchant City - Business location</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">62</span>
+                <span class="tag-desc">Additional Data - Extra info (UDF, Bill ID, etc)</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">63</span>
+                <span class="tag-desc">CRC-16/IBM-3740 - Checksum for validation</span>
+              </div>
+              <div class="tag-def">
+                <span class="tag-code">99</span>
+                <span class="tag-desc">Timestamp - Transaction date/time</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-section">
+            <h3 class="reference-title">💱 Currency Codes</h3>
+            <div class="currency-grid">
+              <div class="currency-item">
+                <span class="curr-code">840</span>
+                <span class="curr-name">USD (US Dollar)</span>
+              </div>
+              <div class="currency-item">
+                <span class="curr-code">116</span>
+                <span class="curr-name">KHR (Cambodian Riel)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
+  </div>
+  </div>
   </div>
 </template>
 
@@ -2562,6 +2655,142 @@ export default {
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+/* Reference Tab Styles */
+.reference-tab {
+  padding: 2.5rem 2rem;
+}
+
+.reference-container {
+  max-width: 100%;
+}
+
+.reference-section {
+  margin-bottom: 2.5rem;
+  animation: slideUpIn 0.5s ease;
+}
+
+.reference-title {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #0c4a6e;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.5px;
+}
+
+.reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.reference-item {
+  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 10px;
+  padding: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+.reference-item:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+}
+
+.bank-name {
+  font-weight: 800;
+  color: #0284c7;
+  font-size: 0.95rem;
+}
+
+.tag-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tag-def {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-left: 4px solid #0284c7;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  transition: all 0.3s ease;
+}
+
+.tag-def:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  transform: translateX(4px);
+}
+
+.tag-code {
+  background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%);
+  color: #0c4a6e;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 900;
+  font-size: 0.9rem;
+  min-width: 50px;
+  text-align: center;
+}
+
+.tag-desc {
+  flex: 1;
+  color: #0c4a6e;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.currency-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.currency-item {
+  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: center;
+}
+
+.curr-code {
+  font-weight: 900;
+  color: #0284c7;
+  font-size: 1.1rem;
+}
+
+.curr-name {
+  color: #0c4a6e;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Validator Tab Styles */
+/* Mobile Responsive for Reference Tab */
+@media (max-width: 768px) {
+  .reference-tab {
+    padding: 1.5rem 1.2rem;
+  }
+
+  .reference-grid,
+  .currency-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.8rem;
+  }
+
+  .tag-def {
+    flex-direction: column;
+    gap: 0.8rem;
   }
 }
 </style>
