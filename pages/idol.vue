@@ -9,79 +9,94 @@
       </div>
       <div class="btns">
         <button @click="autoFillImages" title="Auto-fill images">🖼️</button>
+        <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
+        <button @click="handleImportClick" class="btn-icon" title="Import">📤</button>
+        <button @click="toggleDarkMode" class="btn-icon" title="Toggle dark mode">{{ darkMode ? '☀️' : '🌙' }}</button>
+        <button @click="openAddArtistModal" title="Add new artist">➕ Artist</button>
+        <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
       </div>
     </header>
 
-    <!-- Controls -->
-    <div class="controls">
-      <input v-model="searchQuery" type="text" placeholder="🔍 Search..." class="search" />
-
-      <button @click="handleExport" class="btn">📥 Export JSON</button>
-      <button @click="handleImportClick" class="btn">📤 Import</button>
-      <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
+    <!-- Tabs -->
+    <div class="tabs-container">
+      <div class="tabs">
+        <button v-for="artist in artists" :key="artist.name" :class="['tab', { active: activeTab === artist.name }]"
+          @click="activeTab = artist.name">
+          {{ artist.name }}
+          <span class="tab-count">{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }}</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Artists -->
-    <div v-for="artist in filteredArtists" :key="artist.name" class="artist">
-      <div class="artist-info" @click="toggleArtist(artist)">
+    <!-- Artist Content -->
+    <div v-if="currentArtist" class="artist-content">
+      <div class="artist-header">
         <div>
-          <h2>{{ artist.name }}</h2>
-          <p>{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
+          <h2>{{ currentArtist.name }}</h2>
+          <p>{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }} works</p>
         </div>
-        <button class="toggle-btn" @click.stop>{{ artist.collapsed ? '▶' : '▼' }}</button>
+        <div class="header-actions">
+          <select v-model="sortBy" class="sort-select" title="Sort works">
+            <option value="code">Code (A-Z)</option>
+            <option value="code-desc">Code (Z-A)</option>
+            <option value="added">Recently Added</option>
+          </select>
+          <button @click="openAddWorkModal" class="add-work-btn" title="Add new work">➕</button>
+        </div>
       </div>
 
-      <div v-show="!artist.collapsed">
-
-        <!-- Main Works -->
-        <div v-if="artist.mainWorks?.length">
-          <h3>📌 Main Works</h3>
-          <div class="grid">
-            <div v-for="work in artist.mainWorks" :key="work.code" class="card">
-              <div class="preview-gallery">
-                <div class="preview-item">
-                  <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
-                </div>
-                <div v-for="i in 10" :key="i" class="preview-item">
-                  <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
-                </div>
+      <!-- Main Works -->
+      <div v-if="filteredCurrentMainWorks.length">
+        <h3>📌 Main Works</h3>
+        <div class="grid">
+          <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="card">
+            <div class="preview-gallery">
+              <div class="preview-item">
+                <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
               </div>
-              <div class="card-overlay">
-                <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
-                  title="Open in NJAV">🔗</button>
-
+              <div v-for="i in 20" :key="i" class="preview-item">
+                <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
               </div>
-              <div class="info">
-                <div>
-                  <strong>{{ work.code }}</strong>
-                </div>
+            </div>
+            <div class="card-overlay">
+              <button @click.stop="copyToClipboard(work.code)" class="overlay-btn copy-btn"
+                title="Copy code">📋</button>
+              <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
+                title="Open in NJAV">🔗</button>
+            </div>
+            <div class="info">
+              <div>
+                <strong>{{ work.code }}</strong>
+                <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Compilations -->
-        <div v-if="artist.compilations?.length">
-          <h3>📂 Compilations</h3>
-          <div class="grid">
-            <div v-for="work in artist.compilations" :key="work.code" class="card">
-              <div class="preview-gallery">
-                <div class="preview-item">
-                  <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
-                </div>
-                <div v-for="i in 10" :key="i" class="preview-item">
-                  <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
-                </div>
+      <!-- Compilations -->
+      <div v-if="filteredCurrentCompilations.length">
+        <h3>📂 Compilations</h3>
+        <div class="grid">
+          <div v-for="work in sortedFilteredCompilations" :key="work.code" class="card">
+            <div class="preview-gallery">
+              <div class="preview-item">
+                <img :src="generateImageUrl(work.code, 'pl')" :alt="`${work.code} cover`" />
               </div>
-              <div class="card-overlay">
-                <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
-                  title="Open in NJAV">🔗</button>
-
+              <div v-for="i in 20" :key="i" class="preview-item">
+                <img :src="generateImageUrl(work.code, `jp-${i}`)" :alt="`${work.code} preview ${i}`" />
               </div>
-              <div class="info">
-                <div>
-                  <strong>{{ work.code }}</strong>
-                </div>
+            </div>
+            <div class="card-overlay">
+              <button @click.stop="copyToClipboard(work.code)" class="overlay-btn copy-btn"
+                title="Copy code">📋</button>
+              <button @click.stop="openExternalLink(work.code)" class="overlay-btn link-btn"
+                title="Open in NJAV">🔗</button>
+            </div>
+            <div class="info">
+              <div>
+                <strong>{{ work.code }}</strong>
+                <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
               </div>
             </div>
           </div>
@@ -89,9 +104,54 @@
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-if="!filteredArtists.length" class="empty">
-      <p>❌ No results found</p>
+    <!-- Add Work Modal -->
+    <div v-if="showAddWorkModal" class="modal" @click.self="closeAddWorkModal">
+      <div class="modal-box">
+        <h3>Add New Work</h3>
+        <label>
+          Artist
+          <select v-model="newWork.artist">
+            <option value="">Select artist...</option>
+            <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
+          </select>
+        </label>
+        <label>
+          Work Code
+          <input v-model="newWork.code" type="text" placeholder="e.g., SONE-978" />
+        </label>
+        <label>
+          Type
+          <div class="radios">
+            <label style="margin: 0">
+              <input v-model="newWork.type" type="radio" value="mainWorks" />
+              Main Work
+            </label>
+            <label style="margin: 0">
+              <input v-model="newWork.type" type="radio" value="compilations" />
+              Compilation
+            </label>
+          </div>
+        </label>
+        <div class="modal-btns">
+          <button @click="addNewWork" class="btn">Add</button>
+          <button @click="closeAddWorkModal" class="btn" style="background: #666">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Artist Modal -->
+    <div v-if="showAddArtistModal" class="modal" @click.self="closeAddArtistModal">
+      <div class="modal-box">
+        <h3>Add New Artist</h3>
+        <label>
+          Artist Name
+          <input v-model="newArtist.name" type="text" placeholder="e.g., Jane Doe" />
+        </label>
+        <div class="modal-btns">
+          <button @click="addNewArtist" class="btn">Add</button>
+          <button @click="closeAddArtistModal" class="btn" style="background: #666">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <!-- Toast -->
@@ -108,12 +168,23 @@ export default {
   name: 'Works',
   data() {
     return {
-      searchQuery: '',
+      activeTab: '',
+      sortBy: 'code',
+      darkMode: false,
       toast: { show: false, message: '', type: 'success' },
+      showAddWorkModal: false,
+      showAddArtistModal: false,
+      newWork: {
+        artist: '',
+        code: '',
+        type: 'mainWorks'
+      },
+      newArtist: {
+        name: ''
+      },
       artists: [
         {
           name: 'Minato Haru',
-          period: '2019–2022',
           mainWorks: [
             { code: 'SONE-978' },
             { code: 'SONE-914' },
@@ -137,7 +208,6 @@ export default {
         },
         {
           name: 'Moa Maeda',
-          period: '2019–2022',
           mainWorks: [
             { code: 'ADN-334' },
             { code: 'MIMK-091' },
@@ -155,7 +225,6 @@ export default {
         },
         {
           name: 'Mitsuki Momota',
-          period: '2019–2022',
           mainWorks: [
             { code: 'MIDA-424' },
             { code: 'MIDA-026' },
@@ -194,7 +263,6 @@ export default {
         },
         {
           name: 'Anzai Rara',
-          period: '2019–2022',
           mainWorks: [
             { code: 'SSIS-025' },
             { code: 'SSIS-050' },
@@ -225,7 +293,6 @@ export default {
         },
         {
           name: 'RION',
-          period: '2015–2018',
           mainWorks: [
             { code: 'SNIS-517' },
             { code: 'SNIS-539' },
@@ -271,7 +338,6 @@ export default {
         },
         {
           name: 'Utsunomiya Shion',
-          period: '2013–2014',
           mainWorks: [
             { code: 'SOE-992' },
             { code: 'SNIS-009' },
@@ -293,7 +359,6 @@ export default {
         },
         {
           name: 'Hitomi Tanaka',
-          period: '2013–2014',
           mainWorks: [
             { code: 'MIMK-007' }
           ]
@@ -306,17 +371,22 @@ export default {
       return this.artists.reduce((sum, a) =>
         sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
     },
-    filteredArtists() {
-      const q = this.searchQuery.toLowerCase()
-      return this.artists
-        .map(a => ({
-          ...a,
-          mainWorks: (a.mainWorks || []).filter(w =>
-            w.code?.toLowerCase().includes(q) || w.name?.toLowerCase().includes(q)),
-          compilations: (a.compilations || []).filter(w =>
-            w.code?.toLowerCase().includes(q) || w.name?.toLowerCase().includes(q))
-        }))
-        .filter(a => a.mainWorks.length || a.compilations.length)
+    currentArtist() {
+      return this.artists.find(a => a.name === this.activeTab)
+    },
+    filteredCurrentMainWorks() {
+      if (!this.currentArtist?.mainWorks) return []
+      return this.currentArtist.mainWorks
+    },
+    filteredCurrentCompilations() {
+      if (!this.currentArtist?.compilations) return []
+      return this.currentArtist.compilations
+    },
+    sortedFilteredMainWorks() {
+      return this.getSortedWorks(this.filteredCurrentMainWorks)
+    },
+    sortedFilteredCompilations() {
+      return this.getSortedWorks(this.filteredCurrentCompilations)
     }
   },
   watch: {
@@ -330,27 +400,20 @@ export default {
         if (Array.isArray(parsed) && parsed.length) this.artists = parsed
       } catch (e) { }
 
-      // Initialize all artists as expanded (collapsed = false)
-      this.artists.forEach(artist => {
-        if (artist.collapsed === undefined) {
-          this.$set(artist, 'collapsed', false)
-        }
-      })
+      // Load dark mode preference
+      const darkModePreference = localStorage.getItem('darkMode')
+      if (darkModePreference === 'true') {
+        this.darkMode = true
+        document.documentElement.classList.add('dark-mode')
+      }
 
-      window.addEventListener('keydown', this.handleModalKeydown)
+      // Set first artist as active tab
+      if (this.artists.length) {
+        this.activeTab = this.artists[0].name
+      }
     }
   },
-  beforeDestroy() {
-    if (process.client) window.removeEventListener('keydown', this.handleModalKeydown)
-  },
   methods: {
-    toggleArtist(artist) {
-      this.$set(artist, 'collapsed', !artist.collapsed)
-    },
-    getImageUrl(work) {
-      // Use 'pl' quality for card preview images
-      return work.imageUrl || this.generateImageUrl(work.code, 'pl')
-    },
     generateImageUrl(code, quality = 'pl') {
       if (!code) return null
       const upper = code.toUpperCase()
@@ -390,79 +453,11 @@ export default {
       this.artists = [...this.artists]
       this.showToast(updated ? `✅ ${updated} images${failed ? ` (${failed} failed)` : ''}` : 'No missing images', updated ? 'success' : 'info')
     },
-    async autoGenerateEditImage() {
-      if (!this.editItem.code) return this.showToast('No code', 'error')
-      const url = this.generateImageUrl(this.editItem.code, 'pl')
-      if (await this.validateImageUrl(url)) {
-        this.editItem.imageUrl = url
-        this.showToast('✅ Generated', 'success')
-      } else this.showToast('⚠️ Failed', 'error')
-    },
-    generateSampleUrls(code, count = 10) {
-      if (!code) return []
-      const upper = code.toUpperCase()
-      const match = upper.match(/^([A-Z]+)-?(\d+)$/)
-      if (!match) return []
-      const prefix = match[1].toLowerCase()
-      const number = match[2].padStart(5, '0')
-      const clean = prefix + number
-      const base = `https://pics.dmm.co.jp/digital/video/${clean}/${clean}`
-      return [
-        { url: `${base}pl.jpg`, label: 'Cover (Small)' },
-        { url: `${base}ps.jpg`, label: 'Cover (Medium)' },
-        { url: `${base}jp-1.jpg`, label: 'Cover (Large)' },
-        ...Array.from({ length: count }, (_, i) => ({
-          url: `${base}jp-${i + 2}.jpg`,
-          label: `Sample ${i + 1}`
-        }))
-      ]
-    },
-    openSampleViewer(work, artist) {
-      console.log('Opening sample viewer for:', work.code, artist)
-      this.currentSampleCode = work.code
-      this.currentSampleArtist = artist
-      this.sampleImages = this.generateSampleUrls(work.code)
-      console.log('Sample images generated:', this.sampleImages.length)
-      this.currentSlideIndex = 0
-      this.showSampleModal = true
-      console.log('Modal should now be visible:', this.showSampleModal)
-    },
-    closeSampleViewer() {
-      this.showSampleModal = false
-      this.currentSampleCode = null
-      this.currentSampleArtist = null
-      this.sampleImages = []
-      this.currentSlideIndex = 0
-    },
     openExternalLink(code) {
       if (!code) return
-      // Convert code to lowercase and remove hyphen for URL format
       const formattedCode = code.toLowerCase().replace(/-/g, '-')
       const url = `https://www.njav.com/en/xvideos/${formattedCode}`
       window.open(url, '_blank', 'noopener,noreferrer')
-    },
-    nextSlide() {
-      this.currentSlideIndex = this.currentSlideIndex < this.sampleImages.length - 1
-        ? this.currentSlideIndex + 1 : 0
-    },
-    prevSlide() {
-      this.currentSlideIndex = this.currentSlideIndex > 0
-        ? this.currentSlideIndex - 1 : this.sampleImages.length - 1
-    },
-    goToSlide(i) { this.currentSlideIndex = i },
-    handleModalKeydown(e) {
-      if (e.key === 'Escape') {
-        if (this.showSampleModal) this.closeSampleViewer()
-      }
-      if (this.showSampleModal) {
-        if (e.key === 'ArrowRight') this.nextSlide()
-        else if (e.key === 'ArrowLeft') this.prevSlide()
-      }
-    },
-    filterWorks(works) {
-      const q = this.searchQuery.toLowerCase()
-      return (works || []).filter(w =>
-        w.code?.toLowerCase().includes(q) || w.name?.toLowerCase().includes(q))
     },
     showToast(msg, type = 'success') {
       this.toast = { show: true, message: msg, type }
@@ -496,8 +491,10 @@ export default {
           const data = JSON.parse(content)
 
           if (data.artists && Array.isArray(data.artists)) {
-            // Import full artists data
             this.artists = data.artists
+            if (this.artists.length) {
+              this.activeTab = this.artists[0].name
+            }
             this.showToast(`Imported ${this.totalCount} works`, 'success')
           } else {
             this.showToast('Invalid JSON format', 'error')
@@ -509,43 +506,126 @@ export default {
       reader.readAsText(file)
       e.target.value = ''
     },
-    closeAddModal() { this.showAddModal = false },
-    openEditModal(work, artist) {
-      this.editItem = { code: work.code, imageUrl: work.imageUrl || '', artist }
-      this.showEditModal = true
+    openAddWorkModal() {
+      this.newWork = { artist: '', code: '', type: 'mainWorks' }
+      this.showAddWorkModal = true
     },
-    closeEditModal() { this.showEditModal = false },
-    saveEditedItem() {
-      const artist = this.artists.find(a => a.name === this.editItem.artist)
-      if (!artist) return this.showToast('Artist not found', 'error')
-      let work = artist.mainWorks?.find(w => w.code === this.editItem.code) ||
-        artist.compilations?.find(w => w.code === this.editItem.code)
-      if (work) {
-        work.imageUrl = this.editItem.imageUrl || null
-        this.artists = [...this.artists]
-        this.closeEditModal()
-        this.showToast(`✅ Updated`, 'success')
-      }
+    closeAddWorkModal() {
+      this.showAddWorkModal = false
     },
-    async addNewItem() {
-      if (!this.newItem.artist || !this.newItem.code)
+    openAddArtistModal() {
+      this.newArtist = { name: '' }
+      this.showAddArtistModal = true
+    },
+    closeAddArtistModal() {
+      this.showAddArtistModal = false
+    },
+    async addNewWork() {
+      if (!this.newWork.artist || !this.newWork.code) {
         return this.showToast('Fill required fields', 'error')
-      const code = this.newItem.code.toUpperCase()
-      if (this.artists.some(a => a.mainWorks?.some(w => w.code === code) ||
-        a.compilations?.some(w => w.code === code)))
-        return this.showToast('Code exists', 'error')
-      const artist = this.artists.find(a => a.name === this.newItem.artist)
-      if (!artist) return this.showToast('Artist not found', 'error')
-      let imageUrl = this.newItem.imageUrl
-      if (!imageUrl) {
-        const url = this.generateImageUrl(code, 'pl')
-        if (await this.validateImageUrl(url)) imageUrl = url
       }
-      const work = { code, name: artist.name, imageUrl }
-      artist[this.newItem.type].push(work)
+
+      const code = this.newWork.code.toUpperCase()
+
+      // Check if code already exists
+      const exists = this.artists.some(a =>
+        a.mainWorks?.some(w => w.code === code) ||
+        a.compilations?.some(w => w.code === code)
+      )
+      if (exists) {
+        return this.showToast('Code already exists', 'error')
+      }
+
+      const artist = this.artists.find(a => a.name === this.newWork.artist)
+      if (!artist) {
+        return this.showToast('Artist not found', 'error')
+      }
+
+      // Initialize arrays if they don't exist
+      if (!artist[this.newWork.type]) {
+        artist[this.newWork.type] = []
+      }
+
+      const work = { code }
+      artist[this.newWork.type].push(work)
+
+      // Trigger reactivity
       this.artists = [...this.artists]
-      this.closeAddModal()
+
+      this.closeAddWorkModal()
       this.showToast(`✅ Added ${code}`, 'success')
+    },
+    addNewArtist() {
+      if (!this.newArtist.name.trim()) {
+        return this.showToast('Artist name required', 'error')
+      }
+
+      // Check if artist already exists
+      if (this.artists.some(a => a.name === this.newArtist.name)) {
+        return this.showToast('Artist already exists', 'error')
+      }
+
+      const newArtist = {
+        name: this.newArtist.name.trim(),
+        mainWorks: [],
+        compilations: []
+      }
+
+      this.artists.push(newArtist)
+      this.artists = [...this.artists]
+      this.activeTab = newArtist.name
+
+      this.closeAddArtistModal()
+      this.showToast(`✅ Added ${newArtist.name}`, 'success')
+    },
+    toggleDarkMode() {
+      this.darkMode = !this.darkMode
+      if (process.client) {
+        document.documentElement.classList.toggle('dark-mode', this.darkMode)
+        localStorage.setItem('darkMode', this.darkMode)
+      }
+    },
+    getSortedWorks(works) {
+      const sorted = [...works]
+      if (this.sortBy === 'code') {
+        return sorted.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
+      } else if (this.sortBy === 'code-desc') {
+        return sorted.sort((a, b) => b.code.localeCompare(a.code, undefined, { numeric: true }))
+      } else if (this.sortBy === 'added') {
+        return sorted.reverse()
+      }
+      return sorted
+    },
+    copyToClipboard(code) {
+      navigator.clipboard.writeText(code).then(() => {
+        this.showToast(`Copied: ${code}`, 'success')
+      }).catch(() => {
+        this.showToast('Failed to copy', 'error')
+      })
+    },
+    hasSimilarCode(code) {
+      const allCodes = this.artists.flatMap(a => [
+        ...(a.mainWorks || []).map(w => w.code),
+        ...(a.compilations || []).map(w => w.code)
+      ])
+
+      const similar = allCodes.filter(c => {
+        if (c === code) return false
+        // Check if codes are similar (same prefix, off by 1-2 numbers)
+        const codeMatch = code.match(/^([A-Z]+)-?(\d+)$/)
+        const checkMatch = c.match(/^([A-Z]+)-?(\d+)$/)
+
+        if (!codeMatch || !checkMatch) return false
+
+        const [, prefix1, num1] = codeMatch
+        const [, prefix2, num2] = checkMatch
+
+        if (prefix1 !== prefix2) return false
+        const diff = Math.abs(parseInt(num1) - parseInt(num2))
+        return diff === 1 || diff === 2
+      })
+
+      return similar.length > 0
     }
   }
 }
@@ -594,14 +674,32 @@ header p {
 }
 
 .btns button {
-  width: 40px;
-  height: 40px;
   border: none;
   border-radius: 8px;
   background: #f0f0f0;
-  font-size: 18px;
   cursor: pointer;
   transition: 0.2s;
+  font-weight: 500;
+}
+
+.btns button:first-child {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  padding: 0;
+}
+
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.btns button:not(.btn-icon) {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
 }
 
 .btns button:hover {
@@ -609,38 +707,21 @@ header p {
   background: #e0e0e0;
 }
 
-/* Controls */
-.controls {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.search {
-  flex: 1;
-  min-width: 200px;
-  padding: 10px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
+.btns button:hover {
+  transform: scale(1.05);
+  background: #e0e0e0;
 }
 
 .btn {
   padding: 10px 15px;
-  border: 2px solid #e0e0e0;
+  border: none;
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  background: white;
-  font-weight: 600;
-  transition: 0.2s;
-}
-
-.btn {
-  border: none;
   background: #2563eb;
   color: white;
+  font-weight: 600;
+  transition: 0.2s;
 }
 
 .btn:hover:not(:disabled) {
@@ -652,80 +733,156 @@ header p {
   cursor: not-allowed;
 }
 
-.btn.danger {
-  background: #dc2626;
-}
-
-.btn.danger:hover {
-  background: #b91c1c;
-}
-
-/* Progress */
-/* Artist */
-.artist {
+/* Tabs */
+.tabs-container {
   background: white;
   border-radius: 10px;
-  padding: 15px;
   margin-bottom: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
-.artist-info {
+.tabs-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tabs-container::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: #2563eb;
+  border-radius: 3px;
+}
+
+.tabs {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 0;
+  padding: 0;
+}
+
+.tab {
+  flex: 1;
+  min-width: 140px;
+  padding: 15px 20px;
+  border: none;
+  background: white;
+  border-bottom: 3px solid transparent;
+  color: #666;
   cursor: pointer;
   transition: 0.2s;
-  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-.artist-info:hover {
+.tab:hover {
+  background: #f8f9fa;
+  color: #2563eb;
+}
+
+.tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
   background: #f8f9fa;
 }
 
-.artist-info>div {
-  flex: 1;
+.tab-count {
+  background: #e0e7ff;
+  color: #2563eb;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.toggle-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
+.tab.active .tab-count {
   background: #2563eb;
   color: white;
-  border-radius: 6px;
+}
+
+/* Artist Content */
+.artist-content {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.artist-header {
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.artist-header h2 {
+  font-size: 1.8em;
+  color: #2563eb;
+  margin-bottom: 5px;
+}
+
+.artist-header p {
+  color: #666;
   font-size: 14px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sort-select {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sort-select:hover {
+  border-color: #2563eb;
+}
+
+.add-work-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 18px;
   cursor: pointer;
   transition: 0.2s;
   flex-shrink: 0;
 }
 
-.toggle-btn:hover {
+.add-work-btn:hover {
   background: #1d4ed8;
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
-.artist h2 {
-  color: #2563eb;
-  margin-bottom: 3px;
-  font-size: 1.3em;
-}
-
-.artist-info p {
-  color: #666;
-  font-size: 13px;
-}
-
-.artist h3 {
+.artist-content h3 {
   font-size: 12px;
   text-transform: uppercase;
   color: #666;
-  margin: 12px 0 8px;
+  margin: 20px 0 12px;
   letter-spacing: 0.5px;
   font-weight: 700;
+}
+
+.artist-content h3:first-of-type {
+  margin-top: 0;
 }
 
 /* Grid */
@@ -739,7 +896,7 @@ header p {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: white;
+  background: #f8f9fa;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   padding: 12px;
@@ -826,21 +983,23 @@ header p {
   transition: 0.2s;
 }
 
-.link-btn {
-  background: rgba(37, 99, 235, 0.9);
+.copy-btn {
+  background: rgba(100, 116, 139, 0.9);
+}
+
+.copy-btn:hover {
+  background: rgba(100, 116, 139, 1);
+  transform: scale(1.1);
+}
+
+.typo-warning {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 14px;
 }
 
 .link-btn:hover {
   background: rgba(37, 99, 235, 1);
-  transform: scale(1.1);
-}
-
-.edit-btn {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.edit-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
   transform: scale(1.1);
 }
 
@@ -907,6 +1066,190 @@ header p {
   transform: translateX(20px);
 }
 
+/* Dark Mode */
+:root.dark-mode {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --border-color: #404040;
+  --accent: #3b82f6;
+}
+
+:root.dark-mode,
+:root.dark-mode body {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+:root.dark-mode .container {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+:root.dark-mode header {
+  background: #2d2d2d;
+  color: #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid #404040;
+}
+
+:root.dark-mode header h1 {
+  color: #3b82f6;
+}
+
+:root.dark-mode header p {
+  color: #b0b0b0;
+}
+
+:root.dark-mode .tabs-container {
+  background: #2d2d2d;
+  border: 1px solid #404040;
+}
+
+:root.dark-mode .tab {
+  background: #2d2d2d;
+  color: #b0b0b0;
+  border-bottom-color: transparent;
+}
+
+:root.dark-mode .tab:hover {
+  background: #363636;
+  color: #3b82f6;
+}
+
+:root.dark-mode .tab.active {
+  background: #363636;
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+:root.dark-mode .tab-count {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+:root.dark-mode .tab.active .tab-count {
+  background: #3b82f6;
+  color: white;
+}
+
+:root.dark-mode .artist-content {
+  background: #2d2d2d;
+  color: #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+:root.dark-mode .artist-header {
+  border-bottom-color: #404040;
+}
+
+:root.dark-mode .artist-header h2 {
+  color: #3b82f6;
+}
+
+:root.dark-mode .artist-header p {
+  color: #b0b0b0;
+}
+
+:root.dark-mode .artist-content h3 {
+  color: #b0b0b0;
+}
+
+:root.dark-mode .card {
+  background: #1e1e1e;
+  border-color: #404040;
+}
+
+:root.dark-mode .card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+:root.dark-mode .preview-item {
+  background: #3a3a3a;
+}
+
+:root.dark-mode .info {
+  color: #e0e0e0;
+}
+
+:root.dark-mode .info strong {
+  color: #3b82f6;
+}
+
+:root.dark-mode .typo-warning {
+  color: #fbbf24;
+}
+
+:root.dark-mode .sort-select {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border-color: #404040;
+}
+
+:root.dark-mode .sort-select:hover {
+  border-color: #3b82f6;
+}
+
+:root.dark-mode .btns button {
+  background: #363636;
+  color: #e0e0e0;
+}
+
+:root.dark-mode .btns button:hover {
+  background: #404040;
+}
+
+:root.dark-mode .btn {
+  background: #3b82f6;
+  color: white;
+}
+
+:root.dark-mode .btn:hover {
+  background: #2563eb;
+}
+
+:root.dark-mode .modal {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+:root.dark-mode .modal-box {
+  background: #2d2d2d;
+  color: #e0e0e0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+:root.dark-mode .modal-box h3 {
+  color: #3b82f6;
+}
+
+:root.dark-mode .modal-box label {
+  color: #e0e0e0;
+}
+
+:root.dark-mode .modal-box input,
+:root.dark-mode .modal-box select {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border-color: #404040;
+}
+
+:root.dark-mode .modal-box input:disabled {
+  background: #3a3a3a;
+  color: #707070;
+}
+
+:root.dark-mode .modal-box input:focus,
+:root.dark-mode .modal-box select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+:root.dark-mode .toast {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
 /* Modal */
 .modal {
   position: fixed;
@@ -916,10 +1259,6 @@ header p {
   align-items: center;
   justify-content: center;
   z-index: 999;
-}
-
-.modal.fullscreen {
-  background: rgba(0, 0, 0, 0.95);
 }
 
 .modal-box {
@@ -979,164 +1318,6 @@ header p {
   flex: 1;
 }
 
-/* Slideshow */
-.slideshow {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f5f5f5;
-}
-
-.slideshow-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-}
-
-.slideshow-header h3 {
-  font-size: 1.3em;
-  color: #2563eb;
-}
-
-.slideshow-header p {
-  color: #666;
-  font-size: 14px;
-}
-
-.slideshow-header button {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: #f0f0f0;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.slideshow-main {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px 80px;
-}
-
-.nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: none;
-  font-size: 32px;
-  padding: 15px 12px;
-  cursor: pointer;
-  border-radius: 8px;
-  z-index: 10;
-}
-
-.nav:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.nav.prev {
-  left: 10px;
-}
-
-.nav.next {
-  right: 10px;
-}
-
-.slides {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  height: 100%;
-}
-
-.slide {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: 0.5s;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  pointer-events: none;
-}
-
-.slide.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.slide img {
-  width: 100%;
-  height: calc(100% - 40px);
-  object-fit: contain;
-  background: white;
-  border-radius: 8px;
-}
-
-.slide p {
-  text-align: center;
-  font-weight: 700;
-  padding: 10px;
-  background: white;
-  border-radius: 8px;
-}
-
-.thumbs {
-  display: flex;
-  gap: 8px;
-  padding: 15px;
-  overflow-x: auto;
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.thumb {
-  position: relative;
-  min-width: 60px;
-  height: 80px;
-  border: 3px solid transparent;
-  border-radius: 6px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.thumb:hover {
-  transform: scale(1.1);
-  border-color: #2563eb;
-}
-
-.thumb.active {
-  border-color: #2563eb;
-}
-
-.thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumb span {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   header {
@@ -1145,30 +1326,15 @@ header p {
     padding: 12px 15px;
   }
 
-  .controls {
-    flex-direction: column;
+  .tab {
+    min-width: 100px;
+    padding: 12px 15px;
+    font-size: 13px;
   }
 
   .preview-item {
     width: auto;
     height: 40vw;
-  }
-
-  .slideshow-main {
-    padding: 15px 50px;
-  }
-
-  .nav {
-    font-size: 24px;
-    padding: 10px 8px;
-  }
-
-  .nav.prev {
-    left: 5px;
-  }
-
-  .nav.next {
-    right: 5px;
   }
 
   .card-overlay {
@@ -1179,8 +1345,8 @@ header p {
     padding: 10px;
   }
 
-  .artist {
-    padding: 12px;
+  .artist-content {
+    padding: 15px;
   }
 
   .info {
