@@ -63,19 +63,19 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Hitomi Tanaka',
-        mainWorks: ['MIMK-007', 'PPPD-663', 'PPPD-867', 'PPPD-996', 'MDYD-940', 'MDYD-971', 'MIDE-184']
+        mainWorks: ['MIMK-007', 'PPPD-663', 'PPPD-867', 'PPPD-996', 'MDYD-940', 'MDYD-971', 'MIDE-184','PPPD-818','PPPD-752', 'DASD-132','PPPD-441', 'PPPD-881', 'ATID-192', 'PPPD-835', 'PPPD-671','MIDD-933', 'PPPD-618', 'PPPD-703', 'PPPD-824']
     },
     {
         name: 'Ai Sayama',
-        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652']
+        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652','JUY-717']
     },
     {
         name: 'Touka Rinne',
-        mainWorks: ['KTB-303', 'PPPD-754', 'MVSD-383', 'JUY-603']
+        mainWorks: ['KTB-303', 'PPPD-754', 'MVSD-383', 'JUY-603','JUY-984', 'PPPD-715']
     },
     {
         name: 'Sakura Kirishima',
-        mainWorks: ['MKMP-001', 'UMMA-001', 'DVAJ-360', 'FSET-797']
+        mainWorks: ['MKMP-001', 'UMMA-001', 'DVAJ-360', 'FSET-797', 'MDBK-260', 'AP-363', 'MAXVR-7','REAL-679','URPW-013', 'VOSS-094']
     },
     {
         name: 'Yuri Oshikawa',
@@ -127,16 +127,16 @@ export const DEFAULT_ARTISTS = [
     { name: 'Kanno Sayuki', mainWorks: ['GVG-122'] },
     {
         name: 'Ruri Saijo',
-        mainWorks: ['PPPD-413', 'VEC-094', 'WANZ-103', 'IENE-596', 'TYOD-255']
+        mainWorks: ['PPPD-413', 'VEC-094', 'WANZ-103', 'IENE-596', 'TYOD-255','NITR-056','VEC-135 ', 'JUFD-502','JUFD-407','WANZ-103','IESP-605','ATOM-150 ','VEC-094']
     },
     { name: 'Nagi Hikaru', mainWorks: ['SONE-385'] },
-    { name: 'Yui Hatano', mainWorks: ['JJDA-058'] },
+    { name: 'Yui Hatano', mainWorks: ['JJDA-058', 'NGOD-304'] },
     { name: 'Sakura Nene', mainWorks: ['HEYZO-3675'] },
     {
         name: 'Aiko Kimura',
         mainWorks: ['SONE-866', 'SONE-828']
     },
-    { name: 'Saegusa Chitose', mainWorks: ['NGOD-150'] },
+    { name: 'Saegusa Chitose', mainWorks: ['NGOD-150','JUFD-430 ','WAAA-026','',''] },
     { name: 'Mina Fukuhara', mainWorks: ['CLUB-881'] },
     {
         name: 'Aika Yumeno',
