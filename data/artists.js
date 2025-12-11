@@ -1,253 +1,182 @@
 // artists.js - Artist data for Works Tracker
 export const DEFAULT_ARTISTS = [
-    { name: 'Nagarekawa Rio', mainWorks: [{ code: '300MIUM-892' }] },
-    { name: 'Hana Himesaki', mainWorks: [{ code: '300MIUM-720' }, { code: 'KAM-213' }, { code: '348NTR-024' }] },
-    { name: 'Hoshino Nami', mainWorks: [{ code: 'SNIS-462' }, { code: 'SNIS-373' }] },
-    { name: 'Kiritani Matsuri', mainWorks: [{ code: 'MEYD-624' }] },
-    { name: 'Kiyohara Miyuu', mainWorks: [{ code: 'SONE-342' }] },
-    { name: 'Haruna Hana', mainWorks: [{ code: 'TOEN-020' }] },
+    { name: 'Nagarekawa Rio', mainWorks: ['300MIUM-892'] },
+    { name: 'Hana Himesaki', mainWorks: ['300MIUM-720', 'KAM-213', '348NTR-024'] },
+    { name: 'Hoshino Nami', mainWorks: ['SNIS-462', 'SNIS-373'] },
+    { name: 'Kiritani Matsuri', mainWorks: ['MEYD-624'] },
+    { name: 'Kiyohara Miyuu', mainWorks: ['SONE-342'] },
+    { name: 'Haruna Hana', mainWorks: ['TOEN-020'] },
     {
         name: 'Minato Haru',
         mainWorks: [
-            { code: 'SONE-978' }, { code: 'SONE-914' }, { code: 'SONE-865' }, { code: 'MIRD-259' },
-            { code: 'OFES-013' }, { code: 'SONE-776' }, { code: 'SONE-508' }, { code: 'FWAY-060' },
-            { code: 'SONE-503' }, { code: 'SONE-155' }, { code: 'SONE-188' }, { code: 'SONE-063' },
-            { code: 'SONE-021' }, { code: 'SSIS-978' }, { code: 'FWAY-002' }, { code: 'SSIS-945' },
-            { code: 'SSIS-890' }, { code: 'SSIS-889' }, { code: 'FC2PPV-3104502' }, { code: 'FC2PPV-3087371' },
-            { code: 'FC2PPV-4203485' }, { code: 'JDKR-032' }, { code: 'TZ-124' }
+            'SONE-978', 'SONE-914', 'SONE-865', 'MIRD-259', 'OFES-013', 'SONE-776', 'SONE-508',
+            'FWAY-060', 'SONE-503', 'SONE-155', 'SONE-188', 'SONE-063', 'SONE-021', 'SSIS-978',
+            'FWAY-002', 'SSIS-945', 'SSIS-890', 'SSIS-889', 'FC2PPV-3104502', 'FC2PPV-3087371',
+            'FC2PPV-4203485', 'JDKR-032', 'TZ-124'
         ]
     },
     {
         name: 'Moa Maeda',
         mainWorks: [
-            { code: 'ADN-334' }, { code: 'MIMK-091' }, { code: 'JUFE-300' }, { code: 'WAAA-065' },
-            { code: 'HND-991' }, { code: 'PPPD-926' }, { code: 'MSFH-034' }, { code: 'MSFH-030' },
-            { code: 'MSFH-024' }, { code: 'MSFH-018' }, { code: 'MSFH-014' }, { code: 'MSFH-010' }
+            'ADN-334', 'MIMK-091', 'JUFE-300', 'WAAA-065', 'HND-991', 'PPPD-926',
+            'MSFH-034', 'MSFH-030', 'MSFH-024', 'MSFH-018', 'MSFH-014', 'MSFH-010'
         ]
     },
     {
         name: 'Mitsuki Momota',
         mainWorks: [
-            { code: 'MIDA-424' }, { code: 'MIDA-026' }, { code: 'REBD-854' }, { code: 'OAE-253' },
-            { code: 'FWAY-047' }, { code: 'MIDV-869' }, { code: 'MIDV-569' }, { code: 'MIDA-346' },
-            { code: 'MIDV-668' }, { code: 'MIDV-831' }, { code: 'MIDV-574' }, { code: 'MIDV-577' },
-            { code: 'MIDA-102' }, { code: 'MIDA-190' }, { code: 'MIDV-985' }, { code: 'MIDV-637' },
-            { code: 'MIDA-305' }, { code: 'MIDA-139' }, { code: 'MIDA-258' }, { code: 'MIDV-769' },
-            { code: 'MDVR-325' }, { code: 'MIDV-905' }, { code: 'MIDV-804' }, { code: 'MIDA-214' },
-            { code: 'MIDA-064' }, { code: 'MDVR-317' }, { code: 'MDVR-288' }, { code: 'MIDA-385' },
-            { code: 'NAAC-032' }, { code: 'MIDV-698' }
+            'MIDA-424', 'MIDA-026', 'REBD-854', 'OAE-253', 'FWAY-047', 'MIDV-869', 'MIDV-569',
+            'MIDA-346', 'MIDV-668', 'MIDV-831', 'MIDV-574', 'MIDV-577', 'MIDA-102', 'MIDA-190',
+            'MIDV-985', 'MIDV-637', 'MIDA-305', 'MIDA-139', 'MIDA-258', 'MIDV-769', 'MDVR-325',
+            'MIDV-905', 'MIDV-804', 'MIDA-214', 'MIDA-064', 'MDVR-317', 'MDVR-288', 'MIDA-385',
+            'NAAC-032', 'MIDV-698'
         ],
-        compilations: [{ code: 'OFJE-279' }]
+        compilations: ['OFJE-279']
     },
     {
         name: 'Anzai Rara',
         mainWorks: [
-            { code: 'SSIS-025' }, { code: 'SSIS-050' }, { code: 'SSIS-103' }, { code: 'SSIS-124' },
-            { code: 'SSIS-136' }, { code: 'SSIS-172' }, { code: 'SSIS-203' }, { code: 'SSIS-232' },
-            { code: 'SSIS-262' }, { code: 'SSIS-269' }, { code: 'SSIS-357' }, { code: 'SSNI-643' },
-            { code: 'SSNI-671' }, { code: 'SSNI-700' }, { code: 'SSNI-727' }, { code: 'SSNI-752' },
-            { code: 'SSNI-777' }, { code: 'SSNI-799' }, { code: 'SSNI-822' }
+            'SSIS-025', 'SSIS-050', 'SSIS-103', 'SSIS-124', 'SSIS-136', 'SSIS-172', 'SSIS-203',
+            'SSIS-232', 'SSIS-262', 'SSIS-269', 'SSIS-357', 'SSNI-643', 'SSNI-671', 'SSNI-700',
+            'SSNI-727', 'SSNI-752', 'SSNI-777', 'SSNI-799', 'SSNI-822'
         ],
-        compilations: [{ code: 'OFJE-288' }, { code: 'OFJE-354' }, { code: 'OFJE-410' }]
+        compilations: ['OFJE-288', 'OFJE-354', 'OFJE-410']
     },
     {
         name: 'RION',
         mainWorks: [
-            { code: 'SNIS-517' }, { code: 'SNIS-539' }, { code: 'SNIS-561' }, { code: 'SNIS-594' },
-            { code: 'SNIS-603' }, { code: 'SNIS-623' }, { code: 'SNIS-640' }, { code: 'SNIS-656' },
-            { code: 'SNIS-673' }, { code: 'SNIS-692' }, { code: 'SNIS-712' }, { code: 'SNIS-731' },
-            { code: 'SNIS-752' }, { code: 'SNIS-774' }, { code: 'SNIS-787' }, { code: 'SNIS-811' },
-            { code: 'SNIS-824' }, { code: 'SNIS-895' }, { code: 'SNIS-918' }, { code: 'SNIS-939' },
-            { code: 'SNIS-963' }, { code: 'SNIS-985' }, { code: 'SSNI-008' }, { code: 'SSNI-029' },
-            { code: 'SSNI-053' }, { code: 'SSNI-100' }, { code: 'SSNI-126' }, { code: 'SSNI-151' },
-            { code: 'SSNI-177' }, { code: 'SSNI-204' }, { code: 'SSNI-228' }, { code: 'SSNI-241' },
-            { code: 'SSNI-268' }, { code: 'SSNI-290' }, { code: 'EBOD-609' }
+            'SNIS-517', 'SNIS-539', 'SNIS-561', 'SNIS-594', 'SNIS-603', 'SNIS-623', 'SNIS-640',
+            'SNIS-656', 'SNIS-673', 'SNIS-692', 'SNIS-712', 'SNIS-731', 'SNIS-752', 'SNIS-774',
+            'SNIS-787', 'SNIS-811', 'SNIS-824', 'SNIS-895', 'SNIS-918', 'SNIS-939', 'SNIS-963',
+            'SNIS-985', 'SSNI-008', 'SSNI-029', 'SSNI-053', 'SSNI-100', 'SSNI-126', 'SSNI-151',
+            'SSNI-177', 'SSNI-204', 'SSNI-228', 'SSNI-241', 'SSNI-268', 'SSNI-290', 'EBOD-609'
         ],
-        compilations: [{ code: 'OFJE-104' }, { code: 'OFJE-144' }, { code: 'OFJE-255' }]
+        compilations: ['OFJE-104', 'OFJE-144', 'OFJE-255']
     },
     {
         name: 'Utsunomiya Shion',
         mainWorks: [
-            { code: 'SOE-992' }, { code: 'SNIS-009' }, { code: 'SNIS-027' }, { code: 'SNIS-048' },
-            { code: 'SNIS-070' }, { code: 'SNIS-091' }, { code: 'SNIS-110' }, { code: 'SNIS-129' },
-            { code: 'SNIS-147' }, { code: 'SNIS-166' }, { code: 'AVOP-004' }, { code: 'SNIS-205' }
+            'SOE-992', 'SNIS-009', 'SNIS-027', 'SNIS-048', 'SNIS-070', 'SNIS-091',
+            'SNIS-110', 'SNIS-129', 'SNIS-147', 'SNIS-166', 'AVOP-004', 'SNIS-205'
         ],
-        compilations: [{ code: 'ONSD-850' }, { code: 'ONSD-899' }]
+        compilations: ['ONSD-850', 'ONSD-899']
     },
     {
         name: 'Hitomi Tanaka',
-        mainWorks: [
-            { code: 'MIMK-007' }, { code: 'PPPD-663' }, { code: 'PPPD-867' }, { code: 'PPPD-996' },
-            { code: 'MDYD-940' }, { code: 'MDYD-971' }, { code: 'MIDE-184' }
-        ]
+        mainWorks: ['MIMK-007', 'PPPD-663', 'PPPD-867', 'PPPD-996', 'MDYD-940', 'MDYD-971', 'MIDE-184']
     },
     {
         name: 'Ai Sayama',
-        mainWorks: [
-            { code: 'JUFE-101' }, { code: 'JUFE-090' }, { code: 'MEYD-652' }
-        ]
+        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652']
     },
     {
         name: 'Touka Rinne',
-        mainWorks: [
-            { code: 'KTB-303' }, { code: 'PPPD-754' }, { code: 'MVSD-383' }, { code: 'JUY-603' }
-        ]
+        mainWorks: ['KTB-303', 'PPPD-754', 'MVSD-383', 'JUY-603']
     },
     {
         name: 'Sakura Kirishima',
-        mainWorks: [
-            { code: 'MKMP-001' }, { code: 'UMMA-001' }, { code: 'DVAJ-360' }, { code: 'FSET-797' }
-        ]
+        mainWorks: ['MKMP-001', 'UMMA-001', 'DVAJ-360', 'FSET-797']
     },
     {
         name: 'Yuri Oshikawa',
-        mainWorks: [
-            { code: 'PPPD-666' }, { code: 'JUFE-351' }, { code: 'MILLE-009' }, { code: 'LULU-181' },
-            { code: 'JUR-126' }, { code: 'WANZ-388' }, { code: 'BDA-059' }
-        ]
+        mainWorks: ['PPPD-666', 'JUFE-351', 'MILLE-009', 'LULU-181', 'JUR-126', 'WANZ-388', 'BDA-059']
     },
     {
         name: 'Satomi Mioka',
-        mainWorks: [
-            { code: 'BARE-009' }, { code: 'HAWA-325' }, { code: '300MIUM-908' }, { code: '300MIUM-865' },
-            { code: '483DAM-016' }, { code: 'MAAN-955' }, { code: 'APNS-293' }
-        ]
+        mainWorks: ['BARE-009', 'HAWA-325', '300MIUM-908', '300MIUM-865', '483DAM-016', 'MAAN-955', 'APNS-293']
     },
     {
         name: 'Asahi Mizuno',
-        mainWorks: [
-            { code: 'JUL-546' }, { code: 'JUL-442' }, { code: 'NITR-114' }
-        ]
+        mainWorks: ['JUL-546', 'JUL-442', 'NITR-114']
     },
     {
         name: 'Miu Shiramine',
-        mainWorks: [
-            { code: 'PRED-685' }, { code: 'ATID-641' }
-        ]
+        mainWorks: ['PRED-685', 'ATID-641']
     },
     {
         name: 'Miina Wakatsuki',
-        mainWorks: [
-            { code: 'NGOD-113' }, { code: 'SW-621' }, { code: 'NITR-202' }
-        ]
+        mainWorks: ['NGOD-113', 'SW-621', 'NITR-202']
     },
     {
         name: 'Meguri',
-        mainWorks: [
-            { code: 'JUR-531' }, { code: 'PPPD-329' }
-        ]
+        mainWorks: ['JUR-531', 'PPPD-329']
     },
     {
         name: 'Ai Kano',
-        mainWorks: [
-            { code: 'JUQ-763' }, { code: 'JUQ-106' }, { code: 'JUQ-963' }
-        ]
+        mainWorks: ['JUQ-763', 'JUQ-106', 'JUQ-963']
     },
-    { name: 'Koibuchi Momona', mainWorks: [{ code: 'START-165' }] },
-    { name: 'Anna Morikawa', mainWorks: [{ code: 'PRED-018' }] },
+    { name: 'Koibuchi Momona', mainWorks: ['START-165'] },
+    { name: 'Anna Morikawa', mainWorks: ['PRED-018'] },
     {
         name: 'Mary Tachibana',
-        mainWorks: [
-            { code: 'ROYD-175' }, { code: 'NKKD-322' }
-        ]
+        mainWorks: ['ROYD-175', 'NKKD-322']
     },
     {
         name: 'Marina Shiraishi',
-        mainWorks: [
-            { code: 'STAR-830' }, { code: 'JUQ-941' }
-        ]
+        mainWorks: ['STAR-830', 'JUQ-941']
     },
     {
         name: 'Hikari Sena',
-        mainWorks: [
-            { code: 'BNST-023' }, { code: 'WAAA-043' }, { code: 'URKK-035' }
-        ]
+        mainWorks: ['BNST-023', 'WAAA-043', 'URKK-035']
     },
-    { name: 'Saeko Matsushita', mainWorks: [{ code: 'SHKD-713' }] },
+    { name: 'Saeko Matsushita', mainWorks: ['SHKD-713'] },
     {
         name: 'Mio Kimijima',
-        mainWorks: [
-            { code: 'JUY-606' }, { code: 'NITR-388' }, { code: 'JUY-543' }
-        ]
+        mainWorks: ['JUY-606', 'NITR-388', 'JUY-543']
     },
-    { name: 'Kanno Sayuki', mainWorks: [{ code: 'GVG-122' }] },
+    { name: 'Kanno Sayuki', mainWorks: ['GVG-122'] },
     {
         name: 'Ruri Saijo',
-        mainWorks: [
-            { code: 'PPPD-413' }, { code: 'VEC-094' }, { code: 'WANZ-103' },
-            { code: 'IENE-596' }, { code: 'TYOD-255' }
-        ]
+        mainWorks: ['PPPD-413', 'VEC-094', 'WANZ-103', 'IENE-596', 'TYOD-255']
     },
-    { name: 'Nagi Hikaru', mainWorks: [{ code: 'SONE-385' }] },
-    { name: 'Yui Hatano', mainWorks: [{ code: 'JJDA-058' }] },
-    { name: 'Sakura Nene', mainWorks: [{ code: 'HEYZO-3675' }] },
+    { name: 'Nagi Hikaru', mainWorks: ['SONE-385'] },
+    { name: 'Yui Hatano', mainWorks: ['JJDA-058'] },
+    { name: 'Sakura Nene', mainWorks: ['HEYZO-3675'] },
     {
         name: 'Aiko Kimura',
-        mainWorks: [
-            { code: 'SONE-866' }, { code: 'SONE-828' }
-        ]
+        mainWorks: ['SONE-866', 'SONE-828']
     },
-    { name: 'Saegusa Chitose', mainWorks: [{ code: 'NGOD-150' }] },
-    { name: 'Mina Fukuhara', mainWorks: [{ code: 'CLUB-881' }] },
+    { name: 'Saegusa Chitose', mainWorks: ['NGOD-150'] },
+    { name: 'Mina Fukuhara', mainWorks: ['CLUB-881'] },
     {
         name: 'Aika Yumeno',
-        mainWorks: [
-            { code: 'SONE-874' }, { code: 'SNIS-413' }, { code: 'SNIS-477' },
-            { code: 'SSNI-304' }, { code: 'SNIS-659' }
-        ]
+        mainWorks: ['SONE-874', 'SNIS-413', 'SNIS-477', 'SSNI-304', 'SNIS-659']
     },
     {
         name: 'Sena Kasumi',
-        mainWorks: [
-            { code: '483PAK-006' }, { code: '200GANA-2156' }
-        ]
+        mainWorks: ['483PAK-006', '200GANA-2156']
     },
-    { name: 'Aoi', mainWorks: [{ code: 'SNIS-977' }] },
+    { name: 'Aoi', mainWorks: ['SNIS-977'] },
     {
         name: 'Nanami Matsumoto',
-        mainWorks: [
-            { code: 'OFES-009' }, { code: 'SSNI-110' }, { code: 'JUY-858' }
-        ]
+        mainWorks: ['OFES-009', 'SSNI-110', 'JUY-858']
     },
-    { name: 'JULIA', mainWorks: [{ code: 'PRED-293' }] },
-    { name: 'Airi Hinata', mainWorks: [{ code: 'NITR-223' }] },
-    { name: 'Nana Fukada', mainWorks: [{ code: 'EBOD-578' }] },
-    { name: 'Satomi Hibino', mainWorks: [{ code: 'BF-475' }] },
+    { name: 'JULIA', mainWorks: ['PRED-293'] },
+    { name: 'Airi Hinata', mainWorks: ['NITR-223'] },
+    { name: 'Nana Fukada', mainWorks: ['EBOD-578'] },
+    { name: 'Satomi Hibino', mainWorks: ['BF-475'] },
     {
         name: 'Ema Yuina',
-        mainWorks: [
-            { code: 'CHN-096' }, { code: 'BGN-031' }, { code: 'ABP-433' }, { code: 'ABP-471' },
-            { code: 'ABP-447' }, { code: 'ABP-460' }, { code: 'ABP-484' }
-        ]
+        mainWorks: ['CHN-096', 'BGN-031', 'ABP-433', 'ABP-471', 'ABP-447', 'ABP-460', 'ABP-484']
     },
-    { name: 'Kana Kusakabe', mainWorks: [{ code: 'HMN-519' }] },
+    { name: 'Kana Kusakabe', mainWorks: ['HMN-519'] },
     {
         name: 'Collection',
         mainWorks: [
-            { code: '259LUXU-688' }, { code: 'ABP-447' }, { code: 'ARA-412' }, { code: 'NNPJ-514' },
-            { code: 'BONY-007' }, { code: 'MFC-117' }, { code: 'IND-063' }, { code: 'MFC-169' },
-            { code: 'MAAN-632' }, { code: 'SUKE-053' }, { code: 'FC2-PPV-2864495' }, { code: 'ECB-109' },
-            { code: 'JUFE-028' }, { code: 'GES-038' }, { code: 'XVSR-487' }, { code: 'VGD-192' },
-            { code: 'NITR-209' }, { code: 'CLUB-855' }, { code: 'SUKE-043' }, { code: 'HAWA-325' },
-            { code: 'DLDSS-362' }, { code: 'BDST-027' }, { code: 'MAAN-982' }, { code: 'DDHP-044' },
-            { code: 'GANA-2100' }, { code: 'GANA-2858' }, { code: 'GANA-1026' }, { code: 'GANA-1996' },
-            { code: 'TOUKA-01' }, { code: 'MAAN-387' }, { code: 'NHMSG-031' }, { code: 'ADN-630' },
-            { code: 'APAA-387' }, { code: 'NTK-391' }, { code: 'MIUM-811' }, { code: 'MIUM-681' },
-            { code: 'MIUM-742' }, { code: 'BSY-022' }, { code: 'KTB-018' }, { code: 'VEC-340' },
-            { code: 'SIRO-3954' }, { code: 'GANA-2156' }, { code: 'STCV-240' }, { code: 'NTK-637' },
-            { code: 'AKDL-247' }, { code: '259LUXU-1511' }, { code: '259LUXU-1518' }, { code: '259LUXU-743' },
-            { code: '259LUXU-688' }, { code: '259LUXU-1571' }, { code: '259LUXU-1631' }, { code: '259LUXU-1618' },
-            { code: '259LUXU-1621' }, { code: '259LUXU-1610' }, { code: 'SRTD-349' }, { code: 'ORECO-079' },
-            { code: 'MIUM-908' }, { code: 'ION-162' }, { code: 'MAAN-836' }, { code: 'MIUM-865' },
-            { code: 'SIRO-4820' }, { code: 'FLC-004' }, { code: 'PKPD-217' }, { code: 'JAC-175' },
-            { code: 'MIUM-862' }, { code: 'SRTD-345' }, { code: 'AKDL-213' }, { code: 'AKDL-193' },
-            { code: 'HMT-018' }, { code: 'MAAN-955' }, { code: 'GERK-350' }, { code: 'SPAY-241' },
-            { code: 'LUXU-1572' }, { code: 'SUN-071' }, { code: 'GANA-2705' }, { code: 'HAWA-287' },
-            { code: 'MRPA-006' }, { code: 'UZU-004' }, { code: 'ZOZO-165' }, { code: 'GVH-477' },
-            { code: 'BARE-009' }, { code: 'DFDM-041' }, { code: 'FC2-PPV-1046522' }, { code: 'SSNI-362' },
-            { code: 'MIUM-801' }, { code: 'KTKC-074' }, { code: 'IND-022' }, { code: 'MIUM-495' },
-            { code: 'SUKE-062' }, { code: 'MAAN-842' }, { code: 'JUL-442' }, { code: 'JUL-872' },
-            { code: 'ORECS-132' }
+            '259LUXU-688', 'ABP-447', 'ARA-412', 'NNPJ-514', 'BONY-007', 'MFC-117', 'IND-063',
+            'MFC-169', 'MAAN-632', 'SUKE-053', 'FC2-PPV-2864495', 'ECB-109', 'JUFE-028', 'GES-038',
+            'XVSR-487', 'VGD-192', 'NITR-209', 'CLUB-855', 'SUKE-043', 'HAWA-325', 'DLDSS-362',
+            'BDST-027', 'MAAN-982', 'DDHP-044', 'GANA-2100', 'GANA-2858', 'GANA-1026', 'GANA-1996',
+            'TOUKA-01', 'MAAN-387', 'NHMSG-031', 'ADN-630', 'APAA-387', 'NTK-391', 'MIUM-811',
+            'MIUM-681', 'MIUM-742', 'BSY-022', 'KTB-018', 'VEC-340', 'SIRO-3954', 'GANA-2156',
+            'STCV-240', 'NTK-637', 'AKDL-247', '259LUXU-1511', '259LUXU-1518', '259LUXU-743',
+            '259LUXU-688', '259LUXU-1571', '259LUXU-1631', '259LUXU-1618', '259LUXU-1621',
+            '259LUXU-1610', 'SRTD-349', 'ORECO-079', 'MIUM-908', 'ION-162', 'MAAN-836', 'MIUM-865',
+            'SIRO-4820', 'FLC-004', 'PKPD-217', 'JAC-175', 'MIUM-862', 'SRTD-345', 'AKDL-213',
+            'AKDL-193', 'HMT-018', 'MAAN-955', 'GERK-350', 'SPAY-241', 'LUXU-1572', 'SUN-071',
+            'GANA-2705', 'HAWA-287', 'MRPA-006', 'UZU-004', 'ZOZO-165', 'GVH-477', 'BARE-009',
+            'DFDM-041', 'FC2-PPV-1046522', 'SSNI-362', 'MIUM-801', 'KTKC-074', 'IND-022', 'MIUM-495',
+            'SUKE-062', 'MAAN-842', 'JUL-442', 'JUL-872', 'ORECS-132'
         ]
     }
 ]
