@@ -1,10 +1,10 @@
 // artists.js - Artist data for Works Tracker
 export const DEFAULT_ARTISTS = [
     { name: 'Nagarekawa Rio', mainWorks: ['300MIUM-892'] },
-    { name: 'Hana Himesaki', mainWorks: ['300MIUM-720', 'KAM-213', '348NTR-024'] },
+    { name: 'Hana Himesaki', mainWorks: ['300MIUM-720', 'KAM-213', '348NTR-024','NSFS-012','MXGS-1306 ','MIAA-392','JUFE-264','FPRE-199','LULU-076 ','KAM-213'] },
     { name: 'Hoshino Nami', mainWorks: ['SNIS-462', 'SNIS-373'] },
     { name: 'Kiritani Matsuri', mainWorks: ['MEYD-624'] },
-    { name: 'Kiyohara Miyuu', mainWorks: ['SONE-342'] },
+    { name: 'Kiyohara Miyuu', mainWorks: ['SONE-342','SONE-142','SONE-387','SNOS-040','SONE-115','SONE-798'] },
     { name: 'Haruna Hana', mainWorks: ['TOEN-020'] },
     {
         name: 'Minato Haru',
@@ -63,11 +63,11 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Hitomi Tanaka',
-        mainWorks: ['MIMK-007', 'PPPD-663', 'PPPD-867', 'PPPD-996', 'MDYD-940', 'MDYD-971', 'MIDE-184','PPPD-818','PPPD-752', 'DASD-132','PPPD-441', 'PPPD-881', 'ATID-192', 'PPPD-835', 'PPPD-671','MIDD-933', 'PPPD-618', 'PPPD-703', 'PPPD-824']
+        mainWorks: ['PPPD-628','MEYD-691', 'MDYD-895', 'MDYD-895', 'MIMK-007', 'PPPD-663', 'PPPD-867', 'PPPD-996', 'MDYD-940', 'MDYD-971', 'MIDE-184','PPPD-818','PPPD-752', 'DASD-132','PPPD-441', 'PPPD-881', 'ATID-192', 'PPPD-835', 'PPPD-671','MIDD-933', 'PPPD-618', 'PPPD-703', 'PPPD-824']
     },
     {
         name: 'Ai Sayama',
-        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652','JUY-717']
+        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652','JUY-717','MEYD-978','MEYD-652','WAAA-403']
     },
     {
         name: 'Touka Rinne',
@@ -105,7 +105,7 @@ export const DEFAULT_ARTISTS = [
         name: 'Ai Kano',
         mainWorks: ['JUQ-763', 'JUQ-106', 'JUQ-963']
     },
-    { name: 'Koibuchi Momona', mainWorks: ['START-165'] },
+    { name: 'Koibuchi Momona', mainWorks: ['START-165','START-042','STARS-712','START-231'] },
     { name: 'Anna Morikawa', mainWorks: ['PRED-018'] },
     {
         name: 'Mary Tachibana',
@@ -117,7 +117,7 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Hikari Sena',
-        mainWorks: ['BNST-023', 'WAAA-043', 'URKK-035']
+        mainWorks: ['BNST-023', 'WAAA-043', 'URKK-035','MIAA-395','JUFE-279','PFES-002','HOMA-108','SAN-019','CEAD-475','CEMD-090','BANK-013','AVSA-171']
     },
     { name: 'Saeko Matsushita', mainWorks: ['SHKD-713'] },
     {
@@ -131,12 +131,12 @@ export const DEFAULT_ARTISTS = [
     },
     { name: 'Nagi Hikaru', mainWorks: ['SONE-385'] },
     { name: 'Yui Hatano', mainWorks: ['JJDA-058', 'NGOD-304'] },
-    { name: 'Sakura Nene', mainWorks: ['HEYZO-3675'] },
+    { name: 'Sakura Nene', mainWorks: ['HEYZO-3675','TEM-066','NITR-367','DASD-406'] },
     {
         name: 'Aiko Kimura',
         mainWorks: ['SONE-866', 'SONE-828']
     },
-    { name: 'Saegusa Chitose', mainWorks: ['NGOD-150','JUFD-430 ','WAAA-026','',''] },
+    { name: 'Saegusa Chitose', mainWorks: ['NGOD-150','JUFD-430 ','WAAA-026'] },
     { name: 'Mina Fukuhara', mainWorks: ['CLUB-881'] },
     {
         name: 'Aika Yumeno',
@@ -147,11 +147,12 @@ export const DEFAULT_ARTISTS = [
         mainWorks: ['483PAK-006', '200GANA-2156']
     },
     { name: 'Aoi', mainWorks: ['SNIS-977'] },
+{ name: 'Momoka Nishina', mainWorks: ['PYU-069','JUFD-183','JUC-579','SVDVD-278'] },
     {
         name: 'Nanami Matsumoto',
         mainWorks: ['OFES-009', 'SSNI-110', 'JUY-858']
     },
-    { name: 'JULIA', mainWorks: ['PRED-293'] },
+    { name: 'JULIA', mainWorks: ['PRED-293','MDYD-751 ','WANZ-808'] },
     { name: 'Airi Hinata', mainWorks: ['NITR-223'] },
     { name: 'Nana Fukada', mainWorks: ['EBOD-578'] },
     { name: 'Satomi Hibino', mainWorks: ['BF-475'] },
