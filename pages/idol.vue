@@ -42,7 +42,6 @@
         <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
           :class="['artist-card-modern', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
 
-          <!-- Artist Photo with Overlay -->
           <div class="artist-photo-container">
             <div class="artist-photo-modern">
               <img v-if="getRandomArtistWork(artist)"
@@ -51,15 +50,12 @@
               <div v-else class="photo-placeholder-modern">📷</div>
             </div>
 
-            <!-- Photo Overlay with Name -->
             <div class="photo-overlay-gradient">
               <h3 class="artist-name-overlay">{{ artist.name }}</h3>
             </div>
 
-
           </div>
 
-          <!-- Info Footer -->
           <div class="artist-card-footer">
             <div class="breakdown-modern">
               <span v-if="artist.mainWorks?.length" class="badge-main">
@@ -101,114 +97,106 @@
 
         <div v-if="filteredCurrentMainWorks.length">
           <h3>📌 Main Works</h3>
-          <div class="grid">
-            <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="work-card">
-              <!-- Cover Image Section -->
-              <div class="work-cover" @click="openLightbox(work, 0)">
-                <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
-                  :alt="`${work.code} cover`" />
-                <div class="cover-overlay">
-                  <div class="view-gallery-btn">
-                    <span>📸 View Gallery</span>
-                  </div>
-                </div>
+          <div class="works-grid-compact">
+            <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="work-thumbnail"
+              @click="openWorkModal(work)">
+              <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" :alt="work.code"
+                @error="handleImageError" />
+              <div class="work-thumbnail-overlay">
+                <span class="work-code-compact">{{ work.code }}</span>
+                <span v-if="work.releaseDate" class="work-date-compact">
+                  {{ formatDate(work.releaseDate) }}
+                </span>
               </div>
-
-              <!-- Work Info Section -->
-              <div class="work-info">
-                <div class="work-header">
-                  <h4 class="work-code" @click="copyToClipboard(work.code)" title="Click to copy">
-                    {{ work.code }}
-                    <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
-                  </h4>
-                  <span v-if="work.releaseDate" class="work-date">{{ formatDate(work.releaseDate) }}</span>
-                </div>
-
-                <!-- Preview Gallery Thumbnails -->
-                <div class="work-thumbnails">
-                  <div v-for="i in 6" :key="i" class="thumbnail" @click="openLightbox(work, i)" :title="`Preview ${i}`">
-                    <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
-                      @error="(e) => e.target.style.opacity = '0.2'" />
-                  </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="work-actions">
-                  <div class="action-row">
-                    <button @click.stop="openEditWorkModal(work)" class="action-btn edit" title="Edit">
-                      ✏️ Edit
-                    </button>
-                    <button @click.stop="openMoveWorkModal(work)" class="action-btn move" title="Move">
-                      ➡️ Move
-                    </button>
-                  </div>
-
-                  <div class="action-row">
-                    <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
-                      class="image-source-select">
-                      <option value="dmm">DMM</option>
-                      <option value="mgstage">MGS</option>
-                      <option value="fourhoi">4hoi</option>
-                      <option value="pornfhd">FHD</option>
-                    </select>
-
-                    <div class="external-links">
-                      <button @click.stop="openExternalLink(work.code, 'njav')" class="ext-link" title="NJAV">
-                        NJAV
-                      </button>
-                      <button @click.stop="openExternalLink(work.code, 'missav')" class="ext-link" title="Missav">
-                        Missav
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <span v-if="hasSimilarCode(work.code)" class="typo-warning-compact">⚠️</span>
             </div>
           </div>
         </div>
 
         <div v-if="filteredCurrentCompilations.length">
           <h3>📂 Compilations</h3>
-          <div class="grid">
-            <div v-for="work in sortedFilteredCompilations" :key="work.code" class="card">
-              <div class="preview-gallery">
-                <div class="preview-item" @click="openLightbox(work, 0)">
-                  <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
-                    :alt="`${work.code} cover`" />
-                </div>
-                <div v-for="i in 10" :key="i" class="preview-item" @click="openLightbox(work, i)">
-                  <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
-                    @error="(e) => e.target.style.display = 'none'" :alt="`${work.code} preview ${i}`" />
-                </div>
+          <div class="works-grid-compact">
+            <div v-for="work in sortedFilteredCompilations" :key="work.code" class="work-thumbnail"
+              @click="openWorkModal(work)">
+              <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" :alt="work.code"
+                @error="handleImageError" />
+              <div class="work-thumbnail-overlay">
+                <span class="work-code-compact">{{ work.code }}</span>
+                <span v-if="work.releaseDate" class="work-date-compact">
+                  {{ formatDate(work.releaseDate) }}
+                </span>
+              </div>
+              <span v-if="hasSimilarCode(work.code)" class="typo-warning-compact">⚠️</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Work Detail Modal -->
+    <div v-if="showWorkModal" class="work-modal" @click.self="closeWorkModal">
+      <div class="work-modal-content">
+        <button class="work-modal-close" @click="closeWorkModal">✕</button>
+        <button class="work-modal-nav work-modal-prev" @click="navigateWork(-1)" v-if="canNavigateWork(-1)">‹</button>
+        <button class="work-modal-nav work-modal-next" @click="navigateWork(1)" v-if="canNavigateWork(1)">›</button>
+
+        <div class="work-modal-body">
+          <!-- Left Column: Cover + Info + Actions -->
+          <div class="work-modal-left">
+            <div class="work-modal-cover">
+              <img :src="generateImageUrl(currentWork.code, 'pl', currentWork.imageSource)" :alt="currentWork.code"
+                @click="openLightbox(currentWork, 0)" />
+              <div class="cover-click-hint">Click to view full size</div>
+            </div>
+
+            <div class="work-modal-sidebar">
+              <h2 class="work-modal-title" @click="copyToClipboard(currentWork.code)">
+                {{ currentWork.code }}
+                <span v-if="hasSimilarCode(currentWork.code)" class="typo-warning">⚠️</span>
+              </h2>
+
+              <div v-if="currentWork.releaseDate" class="release-date-info">
+                📅 {{ formatDate(currentWork.releaseDate) }}
               </div>
 
-              <div class="info">
-                <div>
-                  <strong>{{ work.code }}</strong>
-                  <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
-                  <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
-                </div>
-                <div class="work-controls">
-                  <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn"
-                    title="Edit code">✏️</button>
-                  <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
-                    title="Move to another artist">➡️</button>
+              <div class="image-source-selector">
+                <label>Image Source</label>
+                <select :value="currentWork.imageSource || 'dmm'" @change="setWorkImageSource(currentWork, $event)"
+                  class="source-select">
+                  <option value="dmm">DMM</option>
+                  <option value="mgstage">MgStage</option>
+                  <option value="fourhoi">Fourhoi</option>
+                  <option value="pornfhd">PornFHD</option>
+                </select>
+              </div>
 
-                  <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
-                    class="work-image-select" title="Choose image source">
-                    <option value="dmm">DMM</option>
-                    <option value="mgstage">MgStage</option>
-                    <option value="fourhoi">Fourhoi</option>
-                    <option value="pornfhd">PornFHD</option>
-                  </select>
+              <div class="action-buttons">
+                <button @click="openEditWorkModal(currentWork)" class="action-btn-sidebar edit">
+                  ✏️ Edit
+                </button>
+                <button @click="openMoveWorkModal(currentWork)" class="action-btn-sidebar move">
+                  ➡️ Move
+                </button>
+              </div>
 
-                  <div class="link-buttons">
-                    <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
-                      title="Open on NJAV">NJAV</button>
-                    <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
-                      title="Open on Missav">Missav</button>
-                  </div>
-                </div>
+              <div class="external-links-sidebar">
+                <button @click="openExternalLink(currentWork.code, 'njav')" class="ext-btn njav">
+                  NJAV
+                </button>
+                <button @click="openExternalLink(currentWork.code, 'missav')" class="ext-btn missav">
+                  Missav
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Preview Gallery -->
+          <div class="work-modal-right">
+            <h3 class="gallery-title">Preview Gallery</h3>
+            <div class="modal-gallery-grid">
+              <div v-for="i in 20" :key="i" class="modal-gallery-item" @click="openLightbox(currentWork, i)">
+                <img :src="generateImageUrl(currentWork.code, `jp-${i}`, currentWork.imageSource)"
+                  @error="(e) => e.target.style.opacity = '0.2'" :alt="`Preview ${i}`" />
               </div>
             </div>
           </div>
@@ -345,11 +333,7 @@
 import { DEFAULT_ARTISTS } from '~/data/artists.js'
 import { normalizeArtists } from '~/utils/artistHelpers.js'
 
-// --- HELPER CONSTANTS FOR IMAGE GENERATION ---
-
-// Map code prefixes to MGStage Maker IDs
 const MGS_MAKER_MAP = {
-  // Major Studios
   'ssni': 's1', 'snis': 's1', 'soav': 's1', 'ofje': 's1', 'onvb': 's1',
   'ipx': 'ideapocket', 'ipz': 'ideapocket', 'idz': 'ideapocket',
   'mide': 'moodyz', 'miaa': 'moodyz', 'migd': 'moodyz', 'mifd': 'moodyz', 'miad': 'moodyz',
@@ -372,7 +356,6 @@ const MGS_MAKER_MAP = {
   'yrh': 'magic'
 };
 
-// Helper to clean code into parts
 const parseWorkCode = (code) => {
   if (!code) return null;
   const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -404,11 +387,15 @@ export default {
       showAddArtistModal: false,
       showEditWorkModal: false,
       showMoveWorkModal: false,
+      showWorkModal: false,
       editingWork: null,
       moveWorkData: { code: '', sourceArtist: '', targetArtist: '', type: '' },
       newWork: { artist: '', code: '', type: 'mainWorks', releaseDate: '' },
       newArtist: { name: '', studio: '', photo: '' },
       artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
+      currentWork: null,
+      currentWorkList: [],
+      currentWorkIndex: 0,
       lightbox: {
         show: false,
         images: [],
@@ -503,16 +490,23 @@ export default {
         this.activeTab = this.artists[0].name
       }
 
-      // Keyboard navigation for lightbox
       document.addEventListener('keydown', (e) => {
-        if (!this.lightbox.show) return
-
-        if (e.key === 'ArrowLeft') {
-          this.prevImage()
-        } else if (e.key === 'ArrowRight') {
-          this.nextImage()
-        } else if (e.key === 'Escape') {
-          this.closeLightbox()
+        if (this.lightbox.show) {
+          if (e.key === 'ArrowLeft') {
+            this.prevImage()
+          } else if (e.key === 'ArrowRight') {
+            this.nextImage()
+          } else if (e.key === 'Escape') {
+            this.closeLightbox()
+          }
+        } else if (this.showWorkModal) {
+          if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) {
+            this.navigateWork(-1)
+          } else if (e.key === 'ArrowRight' && this.canNavigateWork(1)) {
+            this.navigateWork(1)
+          } else if (e.key === 'Escape') {
+            this.closeWorkModal()
+          }
         }
       })
     }
@@ -528,7 +522,42 @@ export default {
       this.showToast('✅ Reset to default data', 'success')
     },
 
-    // --- LIGHTBOX METHODS ---
+    openWorkModal(work) {
+      const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
+      this.currentWorkList = isMain ?
+        this.sortedFilteredMainWorks :
+        this.sortedFilteredCompilations
+
+      this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
+      this.currentWork = work
+      this.showWorkModal = true
+
+      if (process.client) {
+        document.body.style.overflow = 'hidden'
+      }
+    },
+
+    closeWorkModal() {
+      this.showWorkModal = false
+      this.currentWork = null
+      if (process.client) {
+        document.body.style.overflow = ''
+      }
+    },
+
+    navigateWork(direction) {
+      const newIndex = this.currentWorkIndex + direction
+      if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
+        this.currentWorkIndex = newIndex
+        this.currentWork = this.currentWorkList[newIndex]
+      }
+    },
+
+    canNavigateWork(direction) {
+      const newIndex = this.currentWorkIndex + direction
+      return newIndex >= 0 && newIndex < this.currentWorkList.length
+    },
+
     openLightbox(work, startIndex = 0) {
       const images = [
         this.generateImageUrl(work.code, 'pl', work.imageSource)
@@ -569,7 +598,6 @@ export default {
       e.target.style.opacity = '0.3'
     },
 
-    // --- MODAL & DATA ACTIONS ---
     openEditWorkModal(work) {
       this.editingWork = { code: work.code, newCode: work.code, releaseDate: work.releaseDate || '' }
       this.showEditWorkModal = true
@@ -653,45 +681,32 @@ export default {
       return allWorks[Math.floor(Math.random() * allWorks.length)]
     },
 
-    // --- IMPROVED IMAGE GENERATION LOGIC ---
     generateImageUrl(code, quality = 'pl', workImageSource = null) {
       const parsed = parseWorkCode(code);
       if (!parsed) return null;
 
       const source = workImageSource || this.imageSource;
 
-      // 1. MGSTAGE
       if (source === 'mgstage') {
         const makerId = MGS_MAKER_MAP[parsed.prefix] || parsed.prefix;
         let frame = '0';
-
         if (quality !== 'pl') {
           const qNum = parseInt(quality.split('-')[1] || '0');
           frame = (qNum + 1).toString();
         }
-
         return `https://image.mgstage.com/images/${makerId}/${parsed.prefix}/${parsed.number}/cap_e_${frame}_${parsed.prefix}${parsed.number}.jpg`;
-      }
-
-      // 2. FOURHOI
-      else if (source === 'fourhoi') {
+      } else if (source === 'fourhoi') {
         const cleanCode = `${parsed.prefix}-${parsed.number}`;
         let suffix = 'cover-n';
-
         if (quality !== 'pl') {
           const qNum = parseInt(quality.split('-')[1] || '1');
           const char = String.fromCharCode(96 + qNum);
           suffix = `cover-${char}`;
         }
-
         return `https://fourhoi.com/${parsed.full.toLowerCase()}/${suffix}.jpg`;
-      }
-
-      // 3. PORNFHD
-      else if (source === 'pornfhd') {
+      } else if (source === 'pornfhd') {
         const makerId = MGS_MAKER_MAP[parsed.prefix] || parsed.prefix;
         const filenameCode = `${parsed.prefix}-${parsed.number}`;
-
         if (quality === 'pl') {
           return `https://pics.pornfhd.com/mgs/images/${makerId}/${parsed.prefix}/${parsed.number}/pb_e_${filenameCode}.jpg`;
         } else {
@@ -702,20 +717,14 @@ export default {
           }
           return `https://pics.pornfhd.com/mgs/images/${makerId}/${parsed.prefix}/${parsed.number}/cap_e_${frame}_${filenameCode}.jpg`;
         }
-      }
-
-      // 4. DMM (Default)
-      else {
+      } else {
         const paddedNum = parsed.number.padStart(5, '0');
         const dmmId = `${parsed.prefix}${paddedNum}`;
-
         if (dmmId.length < 3) return null;
-
         if (quality !== 'pl') {
           const qNum = quality.split('-')[1] || '1';
           return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`;
         }
-
         return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`;
       }
     },
@@ -724,10 +733,8 @@ export default {
       return this.generateImageUrl(code, quality);
     },
 
-    // --- ERROR HANDLING & RETRY ---
     handleImageError(e) {
       const img = e.target;
-
       if (img.dataset.retried) {
         img.style.display = 'none';
         const parent = img.parentElement;
@@ -739,9 +746,7 @@ export default {
         }
         return;
       }
-
       img.dataset.retried = 'true';
-
       if (img.src.includes('dmm.co.jp') && img.src.includes('00')) {
         const src = img.src;
         const newSrc = src.replace(/00(\d+)/g, '$1');
@@ -755,7 +760,6 @@ export default {
       e.target.style.opacity = '1'
     },
 
-    // --- UTILITIES ---
     async validateImageUrl(url) {
       return new Promise(r => {
         const img = new Image()
