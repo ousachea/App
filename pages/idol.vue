@@ -84,43 +84,64 @@
         <div v-if="filteredCurrentMainWorks.length">
           <h3>📌 Main Works</h3>
           <div class="grid">
-            <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="card">
-              <div class="preview-gallery">
-                <div class="preview-item" @click="openLightbox(work, 0)">
-                  <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
-                    :alt="`${work.code} cover`" />
-                </div>
-                <div v-for="i in 10" :key="i" class="preview-item" @click="openLightbox(work, i)">
-                  <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
-                    @error="(e) => e.target.style.display = 'none'" :alt="`${work.code} preview ${i}`" />
+            <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="work-card">
+              <!-- Cover Image Section -->
+              <div class="work-cover" @click="openLightbox(work, 0)">
+                <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
+                  :alt="`${work.code} cover`" />
+                <div class="cover-overlay">
+                  <div class="view-gallery-btn">
+                    <span>📸 View Gallery</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="info">
-                <div>
-                  <strong @click="copyToClipboard(work.code)" class="clickable-code">{{ work.code }}</strong>
-                  <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
-                  <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+              <!-- Work Info Section -->
+              <div class="work-info">
+                <div class="work-header">
+                  <h4 class="work-code" @click="copyToClipboard(work.code)" title="Click to copy">
+                    {{ work.code }}
+                    <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
+                  </h4>
+                  <span v-if="work.releaseDate" class="work-date">{{ formatDate(work.releaseDate) }}</span>
                 </div>
-                <div class="work-controls">
-                  <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn"
-                    title="Edit code">✏️</button>
-                  <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
-                    title="Move to another artist">➡️</button>
 
-                  <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
-                    class="work-image-select" title="Choose image source">
-                    <option value="dmm">DMM</option>
-                    <option value="mgstage">MgStage</option>
-                    <option value="fourhoi">Fourhoi</option>
-                    <option value="pornfhd">PornFHD</option>
-                  </select>
+                <!-- Preview Gallery Thumbnails -->
+                <div class="work-thumbnails">
+                  <div v-for="i in 6" :key="i" class="thumbnail" @click="openLightbox(work, i)" :title="`Preview ${i}`">
+                    <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
+                      @error="(e) => e.target.style.opacity = '0.2'" />
+                  </div>
+                </div>
 
-                  <div class="link-buttons">
-                    <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
-                      title="Open on NJAV">NJAV</button>
-                    <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
-                      title="Open on Missav">Missav</button>
+                <!-- Action Buttons -->
+                <div class="work-actions">
+                  <div class="action-row">
+                    <button @click.stop="openEditWorkModal(work)" class="action-btn edit" title="Edit">
+                      ✏️ Edit
+                    </button>
+                    <button @click.stop="openMoveWorkModal(work)" class="action-btn move" title="Move">
+                      ➡️ Move
+                    </button>
+                  </div>
+
+                  <div class="action-row">
+                    <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
+                      class="image-source-select">
+                      <option value="dmm">DMM</option>
+                      <option value="mgstage">MGS</option>
+                      <option value="fourhoi">4hoi</option>
+                      <option value="pornfhd">FHD</option>
+                    </select>
+
+                    <div class="external-links">
+                      <button @click.stop="openExternalLink(work.code, 'njav')" class="ext-link" title="NJAV">
+                        NJAV
+                      </button>
+                      <button @click.stop="openExternalLink(work.code, 'missav')" class="ext-link" title="Missav">
+                        Missav
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
