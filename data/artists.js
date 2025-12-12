@@ -1,14 +1,27 @@
 // artists.js - Artist data for Works Tracker
 export const DEFAULT_ARTISTS = [
+    { name: 'Hikari Ogura', mainWorks: ['EBWH-289','EBWH-264','EBWH-258','EBWH-222']},
+    { name: 'Mei Washio', mainWorks: ['SSIS-585','SSIS-558','SSIS-383']},
+    { name: 'Umika Minamizawa', mainWorks: ['SONE-590']},
+    { name: 'Rei Kamiki', mainWorks: ['STARS-734','START-398','START-070']},
+     { name: 'Mihara Honoka', mainWorks: ['HUNTA-430','NHDTB-249','FC2PPV-1178399']},
+     { name: 'Koume Ena', mainWorks: ['CLUB-893','MADV-609','KAM-196','MIMK-137','JUFE-131']},
+    { name: 'Yoshine Yuria', mainWorks: ['JUFE-195','NGOD-128','MIMK-249']},
+    { name: 'Kanon Hinano', mainWorks: ['IPZZ-736','FWAY-086','DLDSS-361','DLDSS-372','DLDSS-362'] },
+     { name: 'Umika Minamisawa', mainWorks: ['SNOS-009'] },
+     { name: 'Haruka Riri', mainWorks: ['CKCK-020','EBWH-138','EBWH-191'] },
+     { name: 'Ren Gojou', mainWorks: ['MIMK-263','SONE-888','SONE-837','SONE-748','SONE-532','SONE-486','SONE-394'] },
+     { name: 'Sunao Kokonoi', mainWorks: ['REAL-958'] },
+     { name: 'Asuna Kawai', mainWorks: ['ABF-278','ABF-268','ABF-119','ABW-268','PPT-128'] },
     { name: 'Nagarekawa Rio', mainWorks: ['300MIUM-892'] },
-    { name: 'Hana Himesaki', mainWorks: ['300MIUM-720', 'KAM-213', '348NTR-024','NSFS-012','MXGS-1306 ','MIAA-392','JUFE-264','FPRE-199','LULU-076 ','KAM-213'] },
+    { name: 'Hana Himesaki', mainWorks: ['ABP-892','ABP-943','ABP-971', 'KAM-213', '348NTR-024','NSFS-012','ABW-019', 'MXGS-1306 ','ABW-256','MIAA-392','JUFE-264','FPRE-199','LULU-076 ','KAM-213'] },
     { name: 'Hoshino Nami', mainWorks: ['SNIS-462', 'SNIS-373'] },
     { name: 'Kiritani Matsuri', mainWorks: ['MEYD-624'] },
     { name: 'Kiyohara Miyuu', mainWorks: ['SONE-342','SONE-142','SONE-387','SNOS-040','SONE-115','SONE-798'] },
-    { name: 'Haruna Hana', mainWorks: ['TOEN-020'] },
+    { name: 'Haruna Hana', mainWorks: ['TOEN-020','PKPT-015','UFE-084','JUFD-867','VRTM-446'] },
     {
         name: 'Minato Haru',
-        mainWorks: [
+        mainWorks: ['SNOS-001',
             'SONE-978', 'SONE-914', 'SONE-865', 'MIRD-259', 'OFES-013', 'SONE-776', 'SONE-508',
             'FWAY-060', 'SONE-503', 'SONE-155', 'SONE-188', 'SONE-063', 'SONE-021', 'SSIS-978',
             'FWAY-002', 'SSIS-945', 'SSIS-890', 'SSIS-889', 'FC2PPV-3104502', 'FC2PPV-3087371',
@@ -67,7 +80,7 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Ai Sayama',
-        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652','JUY-717','MEYD-978','MEYD-652','WAAA-403']
+        mainWorks: ['JUFE-101', 'JUFE-090', 'MEYD-652','JUY-717','MEYD-978','MEYD-652','WAAA-403','PPPD-603','MEYD-414','MEYD-576','PPPD-394']
     },
     {
         name: 'Touka Rinne',
@@ -75,7 +88,7 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Sakura Kirishima',
-        mainWorks: ['MKMP-001', 'UMMA-001', 'DVAJ-360', 'FSET-797', 'MDBK-260', 'AP-363', 'MAXVR-7','REAL-679','URPW-013', 'VOSS-094']
+        mainWorks: ['EKDV-514','MKMP-001', 'UMMA-001', 'DVAJ-360', 'FSET-797', 'MDBK-260', 'AP-363', 'MAXVR-7','REAL-679','URPW-013', 'VOSS-094']
     },
     {
         name: 'Yuri Oshikawa',
@@ -83,7 +96,7 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Satomi Mioka',
-        mainWorks: ['BARE-009', 'HAWA-325', '300MIUM-908', '300MIUM-865', '483DAM-016', 'MAAN-955', 'APNS-293']
+        mainWorks: ['BARE-009', 'HAWA-325', '300MIUM-908', '300MIUM-865', '483DAM-016', 'MAAN-955', 'APNS-293','SAN-406','RECS-283','HUNTB-733','230ORECO-189','483DAM-016']
     },
     {
         name: 'Asahi Mizuno',
@@ -91,15 +104,15 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Miu Shiramine',
-        mainWorks: ['PRED-685', 'ATID-641']
+        mainWorks: ['PRED-685', 'ATID-641','PRED-533','ADN-499','IPX-845','IPX-736','ADN-738']
     },
     {
         name: 'Miina Wakatsuki',
-        mainWorks: ['NGOD-113', 'SW-621', 'NITR-202']
+        mainWorks: ['NGOD-113', 'SW-621', 'NITR-202','SW-560','CLUB-669','KATU-080','GVH-222','AP-444','HUNTA-348','HUNTA-314','VRTM-446']
     },
     {
         name: 'Meguri',
-        mainWorks: ['JUR-531', 'PPPD-329']
+        mainWorks: ['JUR-531', 'PPPD-329','JUQ-943']
     },
     {
         name: 'Ai Kano',
@@ -113,7 +126,7 @@ export const DEFAULT_ARTISTS = [
     },
     {
         name: 'Marina Shiraishi',
-        mainWorks: ['STAR-830', 'JUQ-941']
+        mainWorks: ['STAR-830', 'JUQ-941','JUL-225']
     },
     {
         name: 'Hikari Sena',
@@ -122,7 +135,7 @@ export const DEFAULT_ARTISTS = [
     { name: 'Saeko Matsushita', mainWorks: ['SHKD-713'] },
     {
         name: 'Mio Kimijima',
-        mainWorks: ['JUY-606', 'NITR-388', 'JUY-543']
+        mainWorks: ['JUY-606', 'NITR-388', 'JUY-543','IQQQ-024','URPW-039','HND-511','MIAE-226','PPPD-686','NIMA-007','HND-547','NITR-388','IPX-083']
     },
     { name: 'Kanno Sayuki', mainWorks: ['GVG-122'] },
     {
