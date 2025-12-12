@@ -1,168 +1,174 @@
 <template>
-  <div class="container" :class="{ 'dark-mode': darkMode }">
-    <header>
-      <div>
-        <h1>🎬 Works Tracker</h1>
-        <p>{{ totalCount }} total works</p>
-      </div>
-      <div class="search-box">
-        <input v-model="globalSearch" type="text" placeholder="🔍 Search all works..." class="global-search" />
-        <span v-if="globalSearch" class="search-results">{{ searchResults.length }} found</span>
-      </div>
-
-      <div class="btns">
-        <button @click="autoFillImages" title="Auto-fetch posters">🖼️</button>
-        <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
-        <button @click="handleImportClick" class="btn-icon" title="Import">📤</button>
-        <button @click="toggleDarkMode" class="btn-icon" title="Toggle dark mode">{{ darkMode ? '☀️' : '🌙' }}</button>
-        <button @click="resetToDefaults" class="btn-icon" title="Reset to default data">🔄</button>
-        <select v-model="imageSource" class="header-select" title="Default Image Source">
-          <option value="dmm">DMM (Default)</option>
-          <option value="mgstage">MgStage</option>
-          <option value="fourhoi">Fourhoi</option>
-          <option value="pornfhd">PornFHD</option>
-        </select>
-
-        <button @click="openAddArtistModal" title="Add new artist">➕ Artist</button>
-        <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
-      </div>
-    </header>
-
-    <div v-if="globalSearch && searchResults.length" class="search-results-container">
-      <div v-for="result in searchResults" :key="`${result.artistName}-${result.work.code}`" class="search-result-item">
-        <strong>{{ result.artistName }}</strong> - {{ result.work.code }}
-        <button @click="activeTab = result.artistName" class="goto-btn">View →</button>
-      </div>
-    </div>
-
-    <div class="artist-grid">
-      <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
-        :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
-        <div class="artist-photo-small">
-          <img v-if="getRandomArtistWork(artist)" :src="getImageWithFallback(getRandomArtistWork(artist).code, 'pl')"
-            :alt="artist.name" @error="handleImageError" @load="handleImageLoad" class="artist-image" />
-          <span v-else class="photo-placeholder">📷</span>
+  <div>
+    <div class="container" :class="{ 'dark-mode': darkMode }">
+      <header>
+        <div>
+          <h1>🎬 Works Tracker</h1>
+          <p>{{ totalCount }} total works</p>
         </div>
-        <div class="card-content">
-          <h3>{{ artist.name }}</h3>
-          <p class="work-count">{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
-          <div class="breakdown">
-            <span v-if="artist.mainWorks?.length" class="main">📌 {{ artist.mainWorks.length }}</span>
-            <span v-if="artist.compilations?.length" class="comp">📂 {{ artist.compilations.length }}</span>
-          </div>
-          <div v-if="artist.studio" class="studio-tag">📦 {{ artist.studio }}</div>
+        <div class="search-box">
+          <input v-model="globalSearch" type="text" placeholder="🔍 Search all works..." class="global-search" />
+          <span v-if="globalSearch" class="search-results">{{ searchResults.length }} found</span>
         </div>
-      </button>
-    </div>
 
-    <div v-if="currentArtist" class="artist-content">
-      <div class="artist-header">
-        <div class="artist-info">
-          <div v-if="currentArtist.photo" class="artist-photo-large">
-            <img :src="currentArtist.photo" :alt="currentArtist.name" />
-          </div>
-          <div>
-            <h2>{{ currentArtist.name }}</h2>
-            <p>{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }} works</p>
-            <p v-if="currentArtist.studio" class="studio-info">📦 Studio: {{ currentArtist.studio }}</p>
-          </div>
-        </div>
-        <div class="header-actions">
-          <select v-model="sortBy" class="sort-select" title="Sort works">
-            <option value="code">Code (A-Z)</option>
-            <option value="code-desc">Code (Z-A)</option>
-            <option value="date">Release Date</option>
-            <option value="added">Recently Added</option>
+        <div class="btns">
+          <button @click="autoFillImages" title="Auto-fetch posters">🖼️</button>
+          <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
+          <button @click="handleImportClick" class="btn-icon" title="Import">📤</button>
+          <button @click="toggleDarkMode" class="btn-icon" title="Toggle dark mode">{{ darkMode ? '☀️' : '🌙'
+            }}</button>
+          <button @click="resetToDefaults" class="btn-icon" title="Reset to default data">🔄</button>
+          <select v-model="imageSource" class="header-select" title="Default Image Source">
+            <option value="dmm">DMM (Default)</option>
+            <option value="mgstage">MgStage</option>
+            <option value="fourhoi">Fourhoi</option>
+            <option value="pornfhd">PornFHD</option>
           </select>
-          <button @click="openAddWorkModal" class="add-work-btn" title="Add new work">➕</button>
+
+          <button @click="openAddArtistModal" title="Add new artist">➕ Artist</button>
+          <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
+        </div>
+      </header>
+
+      <div v-if="globalSearch && searchResults.length" class="search-results-container">
+        <div v-for="result in searchResults" :key="`${result.artistName}-${result.work.code}`"
+          class="search-result-item">
+          <strong>{{ result.artistName }}</strong> - {{ result.work.code }}
+          <button @click="activeTab = result.artistName" class="goto-btn">View →</button>
         </div>
       </div>
 
-      <div v-if="filteredCurrentMainWorks.length">
-        <h3>📌 Main Works</h3>
-        <div class="grid">
-          <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="card">
-            <div class="preview-gallery">
-              <div class="preview-item">
-                <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
-                  :alt="`${work.code} cover`" />
-              </div>
-              <div v-for="i in 10" :key="i" class="preview-item">
-                <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
-                  @error="(e) => e.target.style.display = 'none'" :alt="`${work.code} preview ${i}`" />
-              </div>
+      <div class="artist-grid">
+        <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
+          :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
+          <div class="artist-photo-small">
+            <img v-if="getRandomArtistWork(artist)" :src="getImageWithFallback(getRandomArtistWork(artist).code, 'pl')"
+              :alt="artist.name" @error="handleImageError" @load="handleImageLoad" class="artist-image" />
+            <span v-else class="photo-placeholder">📷</span>
+          </div>
+          <div class="card-content">
+            <h3>{{ artist.name }}</h3>
+            <p class="work-count">{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
+            <div class="breakdown">
+              <span v-if="artist.mainWorks?.length" class="main">📌 {{ artist.mainWorks.length }}</span>
+              <span v-if="artist.compilations?.length" class="comp">📂 {{ artist.compilations.length }}</span>
             </div>
+            <div v-if="artist.studio" class="studio-tag">📦 {{ artist.studio }}</div>
+          </div>
+        </button>
+      </div>
 
-            <div class="info">
-              <div>
-                <strong @click="copyToClipboard(work.code)" class="clickable-code">{{ work.code }}</strong>
-                <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
-                <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+      <div v-if="currentArtist" class="artist-content">
+        <div class="artist-header">
+          <div class="artist-info">
+            <div v-if="currentArtist.photo" class="artist-photo-large">
+              <img :src="currentArtist.photo" :alt="currentArtist.name" />
+            </div>
+            <div>
+              <h2>{{ currentArtist.name }}</h2>
+              <p>{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }} works</p>
+              <p v-if="currentArtist.studio" class="studio-info">📦 Studio: {{ currentArtist.studio }}</p>
+            </div>
+          </div>
+          <div class="header-actions">
+            <select v-model="sortBy" class="sort-select" title="Sort works">
+              <option value="code">Code (A-Z)</option>
+              <option value="code-desc">Code (Z-A)</option>
+              <option value="date">Release Date</option>
+              <option value="added">Recently Added</option>
+            </select>
+            <button @click="openAddWorkModal" class="add-work-btn" title="Add new work">➕</button>
+          </div>
+        </div>
+
+        <div v-if="filteredCurrentMainWorks.length">
+          <h3>📌 Main Works</h3>
+          <div class="grid">
+            <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="card">
+              <div class="preview-gallery">
+                <div class="preview-item" @click="openLightbox(work, 0)">
+                  <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
+                    :alt="`${work.code} cover`" />
+                </div>
+                <div v-for="i in 10" :key="i" class="preview-item" @click="openLightbox(work, i)">
+                  <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
+                    @error="(e) => e.target.style.display = 'none'" :alt="`${work.code} preview ${i}`" />
+                </div>
               </div>
-              <div class="work-controls">
-                <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn" title="Edit code">✏️</button>
-                <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
-                  title="Move to another artist">➡️</button>
 
-                <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
-                  class="work-image-select" title="Choose image source">
-                  <option value="dmm">DMM</option>
-                  <option value="mgstage">MgStage</option>
-                  <option value="fourhoi">Fourhoi</option>
-                  <option value="pornfhd">PornFHD</option>
-                </select>
+              <div class="info">
+                <div>
+                  <strong @click="copyToClipboard(work.code)" class="clickable-code">{{ work.code }}</strong>
+                  <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
+                  <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+                </div>
+                <div class="work-controls">
+                  <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn"
+                    title="Edit code">✏️</button>
+                  <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
+                    title="Move to another artist">➡️</button>
 
-                <div class="link-buttons">
-                  <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
-                    title="Open on NJAV">NJAV</button>
-                  <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
-                    title="Open on Missav">Missav</button>
+                  <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
+                    class="work-image-select" title="Choose image source">
+                    <option value="dmm">DMM</option>
+                    <option value="mgstage">MgStage</option>
+                    <option value="fourhoi">Fourhoi</option>
+                    <option value="pornfhd">PornFHD</option>
+                  </select>
+
+                  <div class="link-buttons">
+                    <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
+                      title="Open on NJAV">NJAV</button>
+                    <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
+                      title="Open on Missav">Missav</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="filteredCurrentCompilations.length">
-        <h3>📂 Compilations</h3>
-        <div class="grid">
-          <div v-for="work in sortedFilteredCompilations" :key="work.code" class="card">
-            <div class="preview-gallery">
-              <div class="preview-item">
-                <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
-                  :alt="`${work.code} cover`" />
+        <div v-if="filteredCurrentCompilations.length">
+          <h3>📂 Compilations</h3>
+          <div class="grid">
+            <div v-for="work in sortedFilteredCompilations" :key="work.code" class="card">
+              <div class="preview-gallery">
+                <div class="preview-item" @click="openLightbox(work, 0)">
+                  <img :src="generateImageUrl(work.code, 'pl', work.imageSource)" @error="handleImageError"
+                    :alt="`${work.code} cover`" />
+                </div>
+                <div v-for="i in 10" :key="i" class="preview-item" @click="openLightbox(work, i)">
+                  <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
+                    @error="(e) => e.target.style.display = 'none'" :alt="`${work.code} preview ${i}`" />
+                </div>
               </div>
-              <div v-for="i in 10" :key="i" class="preview-item">
-                <img :src="generateImageUrl(work.code, `jp-${i}`, work.imageSource)"
-                  @error="(e) => e.target.style.display = 'none'" :alt="`${work.code} preview ${i}`" />
-              </div>
-            </div>
 
-            <div class="info">
-              <div>
-                <strong>{{ work.code }}</strong>
-                <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
-                <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
-              </div>
-              <div class="work-controls">
-                <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn" title="Edit code">✏️</button>
-                <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
-                  title="Move to another artist">➡️</button>
+              <div class="info">
+                <div>
+                  <strong>{{ work.code }}</strong>
+                  <span v-if="hasSimilarCode(work.code)" class="typo-warning" title="Similar code exists">⚠️</span>
+                  <span v-if="work.releaseDate" class="release-date">📅 {{ formatDate(work.releaseDate) }}</span>
+                </div>
+                <div class="work-controls">
+                  <button @click.stop="openEditWorkModal(work)" class="overlay-btn edit-btn"
+                    title="Edit code">✏️</button>
+                  <button @click.stop="openMoveWorkModal(work)" class="overlay-btn move-btn"
+                    title="Move to another artist">➡️</button>
 
-                <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
-                  class="work-image-select" title="Choose image source">
-                  <option value="dmm">DMM</option>
-                  <option value="mgstage">MgStage</option>
-                  <option value="fourhoi">Fourhoi</option>
-                  <option value="pornfhd">PornFHD</option>
-                </select>
+                  <select :value="work.imageSource || 'dmm'" @change="setWorkImageSource(work, $event)"
+                    class="work-image-select" title="Choose image source">
+                    <option value="dmm">DMM</option>
+                    <option value="mgstage">MgStage</option>
+                    <option value="fourhoi">Fourhoi</option>
+                    <option value="pornfhd">PornFHD</option>
+                  </select>
 
-                <div class="link-buttons">
-                  <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
-                    title="Open on NJAV">NJAV</button>
-                  <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
-                    title="Open on Missav">Missav</button>
+                  <div class="link-buttons">
+                    <button @click.stop="openExternalLink(work.code, 'njav')" class="link-btn-small"
+                      title="Open on NJAV">NJAV</button>
+                    <button @click.stop="openExternalLink(work.code, 'missav')" class="link-btn-small"
+                      title="Open on Missav">Missav</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -171,6 +177,7 @@
       </div>
     </div>
 
+    <!-- Move Work Modal -->
     <div v-if="showMoveWorkModal" class="modal" @click.self="closeMoveWorkModal">
       <div class="modal-box">
         <h3>Move Work to Another Artist</h3>
@@ -190,6 +197,7 @@
       </div>
     </div>
 
+    <!-- Edit Work Modal -->
     <div v-if="showEditWorkModal" class="modal" @click.self="closeEditWorkModal">
       <div class="modal-box">
         <h3>Edit Work Code</h3>
@@ -208,6 +216,7 @@
       </div>
     </div>
 
+    <!-- Add Work Modal -->
     <div v-if="showAddWorkModal" class="modal" @click.self="closeAddWorkModal">
       <div class="modal-box">
         <h3>Add New Work</h3>
@@ -246,6 +255,7 @@
       </div>
     </div>
 
+    <!-- Add Artist Modal -->
     <div v-if="showAddArtistModal" class="modal" @click.self="closeAddArtistModal">
       <div class="modal-box">
         <h3>Add New Artist</h3>
@@ -268,11 +278,27 @@
       </div>
     </div>
 
+    <!-- Toast -->
     <transition name="fade">
       <div v-if="toast.show" :class="['toast', toast.type]">
         {{ toast.message }}
       </div>
     </transition>
+
+    <!-- Image Lightbox -->
+    <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
+      <button class="lightbox-close" @click="closeLightbox">✕</button>
+      <button class="lightbox-nav lightbox-prev" @click="prevImage" v-if="lightbox.images.length > 1">‹</button>
+      <button class="lightbox-nav lightbox-next" @click="nextImage" v-if="lightbox.images.length > 1">›</button>
+
+      <div class="lightbox-content">
+        <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" @error="handleLightboxError" />
+        <div class="lightbox-info">
+          <span class="lightbox-code">{{ lightbox.code }}</span>
+          <span class="lightbox-counter">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -310,13 +336,10 @@ const MGS_MAKER_MAP = {
 // Helper to clean code into parts
 const parseWorkCode = (code) => {
   if (!code) return null;
-  // Clean alphanumeric
   const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  // Try to split Letters vs Numbers
   const match = clean.match(/^([A-Z]+)(\d+)$/);
 
   if (!match) {
-    // Fallback for edge cases, just return what we have
     return { full: clean, prefix: clean.toLowerCase(), number: '001', rawNumber: 1 };
   }
 
@@ -346,7 +369,13 @@ export default {
       moveWorkData: { code: '', sourceArtist: '', targetArtist: '', type: '' },
       newWork: { artist: '', code: '', type: 'mainWorks', releaseDate: '' },
       newArtist: { name: '', studio: '', photo: '' },
-      artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
+      artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
+      lightbox: {
+        show: false,
+        images: [],
+        currentIndex: 0,
+        code: ''
+      }
     }
   },
   computed: {
@@ -434,6 +463,19 @@ export default {
       if (this.artists.length && !this.activeTab) {
         this.activeTab = this.artists[0].name
       }
+
+      // Keyboard navigation for lightbox
+      document.addEventListener('keydown', (e) => {
+        if (!this.lightbox.show) return
+
+        if (e.key === 'ArrowLeft') {
+          this.prevImage()
+        } else if (e.key === 'ArrowRight') {
+          this.nextImage()
+        } else if (e.key === 'Escape') {
+          this.closeLightbox()
+        }
+      })
     }
   },
   methods: {
@@ -442,10 +484,52 @@ export default {
       return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     },
     resetToDefaults() {
-      this.artists = JSON.parse(JSON.stringify(DEFAULT_ARTISTS))
+      this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
       this.activeTab = this.artists[0].name
       this.showToast('✅ Reset to default data', 'success')
     },
+
+    // --- LIGHTBOX METHODS ---
+    openLightbox(work, startIndex = 0) {
+      const images = [
+        this.generateImageUrl(work.code, 'pl', work.imageSource)
+      ]
+
+      for (let i = 1; i <= 20; i++) {
+        images.push(this.generateImageUrl(work.code, `jp-${i}`, work.imageSource))
+      }
+
+      this.lightbox = {
+        show: true,
+        images: images,
+        currentIndex: startIndex,
+        code: work.code
+      }
+
+      if (process.client) {
+        document.body.style.overflow = 'hidden'
+      }
+    },
+
+    closeLightbox() {
+      this.lightbox.show = false
+      if (process.client) {
+        document.body.style.overflow = ''
+      }
+    },
+
+    nextImage() {
+      this.lightbox.currentIndex = (this.lightbox.currentIndex + 1) % this.lightbox.images.length
+    },
+
+    prevImage() {
+      this.lightbox.currentIndex = (this.lightbox.currentIndex - 1 + this.lightbox.images.length) % this.lightbox.images.length
+    },
+
+    handleLightboxError(e) {
+      e.target.style.opacity = '0.3'
+    },
+
     // --- MODAL & DATA ACTIONS ---
     openEditWorkModal(work) {
       this.editingWork = { code: work.code, newCode: work.code, releaseDate: work.releaseDate || '' }
@@ -540,11 +624,10 @@ export default {
       // 1. MGSTAGE
       if (source === 'mgstage') {
         const makerId = MGS_MAKER_MAP[parsed.prefix] || parsed.prefix;
-        let frame = '0'; // Default cover (cap_e_0) is often a thing, but cap_e_2 is usually first preview
+        let frame = '0';
 
         if (quality !== 'pl') {
           const qNum = parseInt(quality.split('-')[1] || '0');
-          // MGS previews often start at index 2 or 3
           frame = (qNum + 1).toString();
         }
 
@@ -558,7 +641,6 @@ export default {
 
         if (quality !== 'pl') {
           const qNum = parseInt(quality.split('-')[1] || '1');
-          // Map 1=a, 2=b, etc.
           const char = String.fromCharCode(96 + qNum);
           suffix = `cover-${char}`;
         }
@@ -569,13 +651,12 @@ export default {
       // 3. PORNFHD
       else if (source === 'pornfhd') {
         const makerId = MGS_MAKER_MAP[parsed.prefix] || parsed.prefix;
-        // This server usually expects hyphens in filenames: '300mium-1072'
         const filenameCode = `${parsed.prefix}-${parsed.number}`;
 
         if (quality === 'pl') {
           return `https://pics.pornfhd.com/mgs/images/${makerId}/${parsed.prefix}/${parsed.number}/pb_e_${filenameCode}.jpg`;
         } else {
-          let frame = 2; // Default start for previews
+          let frame = 2;
           if (quality.startsWith('jp-')) {
             const num = parseInt(quality.split('-')[1]);
             frame = num + 1;
@@ -586,29 +667,21 @@ export default {
 
       // 4. DMM (Default)
       else {
-        // Standard DMM needs 5-digit padding for most modern codes
         const paddedNum = parsed.number.padStart(5, '0');
         const dmmId = `${parsed.prefix}${paddedNum}`;
-        // Folder structure: first letter / first 3 letters / full ID
-        // e.g. s / ssni / ssni00001
 
-        // Safety check for short prefixes
         if (dmmId.length < 3) return null;
 
-        // Preview (jp-X)
         if (quality !== 'pl') {
           const qNum = quality.split('-')[1] || '1';
           return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`;
         }
 
-        // Cover (pl)
         return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`;
       }
     },
 
     getImageWithFallback(code, quality) {
-      // Wrapper for main image generation
-      // This is mostly for the artist thumbnail logic in the grid
       return this.generateImageUrl(code, quality);
     },
 
@@ -616,10 +689,8 @@ export default {
     handleImageError(e) {
       const img = e.target;
 
-      // Stop infinite loops
       if (img.dataset.retried) {
         img.style.display = 'none';
-        // Add placeholder icon if parent exists
         const parent = img.parentElement;
         if (parent && !parent.querySelector('.photo-placeholder')) {
           const span = document.createElement('span');
@@ -630,20 +701,10 @@ export default {
         return;
       }
 
-      // Mark as retried
       img.dataset.retried = 'true';
 
-      // Fallback Strategy: DMM Unpadded
-      // Sometimes older DMM codes don't have 00 padding (e.g. ABC123pl.jpg instead of ABC00123pl.jpg)
       if (img.src.includes('dmm.co.jp') && img.src.includes('00')) {
-        // Try to reconstruct unpadded URL
-        // A simple way is to replace the 00 padded ID with unpadded ID in the URL
-        // This is a rough heuristic
         const src = img.src;
-        // This regex looks for 00+ digits and replaces them with just digits
-        // Use with caution or simply try a different provider
-        // Here we will just let it fail gracefully or try Fourhoi as backup?
-        // Let's try removing 00 padding
         const newSrc = src.replace(/00(\d+)/g, '$1');
         if (newSrc !== src) {
           img.src = newSrc;
@@ -670,14 +731,8 @@ export default {
       this.showToast('Auto-fetching posters...', 'info')
       for (const artist of this.artists) {
         for (const work of [...(artist.mainWorks || []), ...(artist.compilations || [])]) {
-          // If no manual URL is set, check if the generated one is valid
-          // Note: Logic here just checks if default DMM/Selected source works
           const url = this.generateImageUrl(work.code, 'pl', work.imageSource || this.imageSource)
           if (await this.validateImageUrl(url)) {
-            // We don't actually need to save the URL if we generate it dynamically,
-            // but this method is useful if you want to hardcode valid URLs for export.
-            // If you prefer dynamic only, you can remove this method entirely.
-            // Here we just count successes for user feedback.
             updated++
           } else failed++
         }
@@ -768,7 +823,7 @@ export default {
             compilations: Array.isArray(a.compilations) ? a.compilations.filter(w => w && w.code) : []
           }))
           if (validArtists.length === 0) throw new Error('No valid artists found')
-          this.artists = validArtists
+          this.artists = normalizeArtists(validArtists)
           if (this.artists.length) this.activeTab = this.artists[0].name
           const totalCount = validArtists.reduce((sum, a) => sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
           this.showToast(`✅ Imported ${validArtists.length} artists, ${totalCount} works`, 'success')
@@ -817,6 +872,7 @@ export default {
   }
 }
 </script>
+
 <style scoped>
 @import '~/assets/css/works.css';
 </style>
