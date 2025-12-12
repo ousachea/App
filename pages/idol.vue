@@ -40,20 +40,38 @@
 
       <div class="artist-grid">
         <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
-          :class="['artist-card', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
-          <div class="artist-photo-small">
-            <img v-if="getRandomArtistWork(artist)" :src="getImageWithFallback(getRandomArtistWork(artist).code, 'pl')"
-              :alt="artist.name" @error="handleImageError" @load="handleImageLoad" class="artist-image" />
-            <span v-else class="photo-placeholder">📷</span>
-          </div>
-          <div class="card-content">
-            <h3>{{ artist.name }}</h3>
-            <p class="work-count">{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }} works</p>
-            <div class="breakdown">
-              <span v-if="artist.mainWorks?.length" class="main">📌 {{ artist.mainWorks.length }}</span>
-              <span v-if="artist.compilations?.length" class="comp">📂 {{ artist.compilations.length }}</span>
+          :class="['artist-card-modern', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
+
+          <!-- Artist Photo with Overlay -->
+          <div class="artist-photo-container">
+            <div class="artist-photo-modern">
+              <img v-if="getRandomArtistWork(artist)"
+                :src="getImageWithFallback(getRandomArtistWork(artist).code, 'pl')" :alt="artist.name"
+                @error="handleImageError" @load="handleImageLoad" class="artist-image-modern" />
+              <div v-else class="photo-placeholder-modern">📷</div>
             </div>
-            <div v-if="artist.studio" class="studio-tag">📦 {{ artist.studio }}</div>
+
+            <!-- Photo Overlay with Name -->
+            <div class="photo-overlay-gradient">
+              <h3 class="artist-name-overlay">{{ artist.name }}</h3>
+            </div>
+
+
+          </div>
+
+          <!-- Info Footer -->
+          <div class="artist-card-footer">
+            <div class="breakdown-modern">
+              <span v-if="artist.mainWorks?.length" class="badge-main">
+                📌 {{ artist.mainWorks.length }}
+              </span>
+              <span v-if="artist.compilations?.length" class="badge-comp">
+                📂 {{ artist.compilations.length }}
+              </span>
+            </div>
+            <div v-if="artist.studio" class="studio-badge-modern">
+              {{ artist.studio }}
+            </div>
           </div>
         </button>
       </div>

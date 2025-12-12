@@ -158,6 +158,236 @@ header p {
   padding: 0;
 }
 
+.artist-card-modern {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.artist-card-modern:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.25);
+  border-color: #2563eb;
+}
+
+.artist-card-modern.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  background: linear-gradient(to bottom, #eff6ff 0%, white 100%);
+}
+
+.artist-card-modern.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Photo Container - 3/2 LANDSCAPE */
+.artist-photo-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/2;  /* ← LANDSCAPE RATIO */
+  overflow: hidden;
+}
+
+.artist-photo-modern {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.artist-image-modern {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.artist-card-modern:hover .artist-image-modern {
+  transform: scale(1.08);
+}
+
+.photo-placeholder-modern {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  opacity: 0.5;
+}
+
+/* Photo Overlay Gradient */
+.photo-overlay-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 12px 12px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.6) 50%,
+    transparent 100%
+  );
+  display: flex;
+  align-items: flex-end;
+}
+
+.artist-name-overlay {
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+  word-break: break-word;
+  width: 100%;
+}
+
+/* Work Count Badge */
+.work-count-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  border: 3px solid white;
+  z-index: 2;
+}
+
+.artist-card-modern.active .work-count-badge {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Card Footer */
+.artist-card-footer {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: white;
+}
+
+.breakdown-modern {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge-main,
+.badge-comp {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-main {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.badge-comp {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.studio-badge-modern {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .artist-name-overlay {
+    font-size: 14px;
+  }
+
+  .work-count-badge {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .artist-card-footer {
+    padding: 10px;
+  }
+}
+
+/* Dark Mode */
+.dark-mode .artist-card-modern {
+  background: #1e1e1e;
+  border-color: #404040;
+}
+
+.dark-mode .artist-card-modern:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3);
+}
+
+.dark-mode .artist-card-modern.active {
+  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 0%, #1e1e1e 100%);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.dark-mode .artist-card-footer {
+  background: #1e1e1e;
+}
+
+.dark-mode .studio-badge-modern {
+  background: #2d2d2d;
+  color: #9ca3af;
+}
+
+.dark-mode .work-count-badge {
+  border-color: #1e1e1e;
+}
+
 .artist-card {
   background: white;
   border: none;
@@ -1137,7 +1367,7 @@ header p {
 /* Artist Grid */
 .artist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 12px;
   margin-bottom: 15px;
 }

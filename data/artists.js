@@ -174,7 +174,7 @@ export const DEFAULT_ARTISTS = [
     ]
   },
 
-  { name: 'Nagi Hikaru', mainWorks: ['SONE-385'] },
+  { name: 'Nagi Hikaru', mainWorks: ['SONE-385','SONE-290','SSIS-817'] },
 
   { name: 'Yui Hatano', mainWorks: ['JJDA-058','NGOD-304'] },
 
