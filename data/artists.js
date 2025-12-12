@@ -157,7 +157,7 @@ export const DEFAULT_ARTISTS = [
 
   { name: 'Hikari Sena', mainWorks: ['AVSA-171','BANK-013','BNST-023','CEMD-090','CEAD-475','HOMA-108','JUFE-279','MIAA-395','PFES-002','SAN-019','URKK-035','WAAA-043'] },
 
-  { name: 'Saeko Matsushita', mainWorks: ['SHKD-713'] },
+  { name: 'Saeko Matsushita', mainWorks: ['SHKD-713','MBYD-289','IPX-461'] },
 
   {
     name: 'Mio Kimijima',
