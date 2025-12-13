@@ -5,7 +5,14 @@ export const DEFAULT_ARTISTS = [
 
   { name: 'Mei Washio', mainWorks: ['SSIS-383','SSIS-558','SSIS-585'] },
 
-  // combined “Umika Minamizawa” and “Umika Minamisawa”
+  { name: 'Tsuji Imaru', mainWorks: ['CAWD-681','ONSG-085'] },
+
+  { name: 'Haruna Noa', mainWorks: ['MIDA-351','MIDA-450','MDBK-320','DVAJ-698','116NHDTB-92304'] },
+
+  { name: 'Mizuhara Misono', mainWorks: ['JUFE-603','BDST-1201','BDST-1202','BDST-012','355OPCYN-356','LULU-167','300NTK-728','CAWD-271'] },
+ 
+  { name: 'Shiiba Mikuru (Arioka Miu)', mainWorks: ['DANDY-923','SCOP-863','AVSA-323','FJIN-018','SUKE-043','748SPAY-308','GDRD-003','200GANA-1962','AVSA-184','VEMA-241','JUTA-176','748SPAY-308','BBTU-051','LULU-163'] },
+
   { name: 'Umika Minamizawa', mainWorks: ['SNOS-009','SONE-590'] },
 
   { name: 'Rei Kamiki', mainWorks: ['START-070','START-398','STARS-734'] },
@@ -143,6 +150,10 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['AP-444','CLUB-669','GVH-222','HUNTA-314','HUNTA-348','KATU-080','NGOD-113','NITR-202','SW-560','SW-621','VRTM-446']
   },
 
+  { name: 'Yamamoto Shuri (Fujimori Riho)', mainWorks: ['NGOD-158','HMN-448','MIAA-451','HMN-160','LULU-045','MIAA-400','USBA-032'] },
+
+  { name: 'Tsujii Honoka', mainWorks: ['PPPE-280','NGOD-157','GVH-288','PPPD-870','DOCP-232'] },
+
   { name: 'Meguri', mainWorks: ['JUR-531','JUQ-943','PPPD-329'] },
 
   { name: 'Ai Kano', mainWorks: ['JUQ-106','JUQ-763','JUQ-963'] },
@@ -155,7 +166,7 @@ export const DEFAULT_ARTISTS = [
 
   { name: 'Marina Shiraishi', mainWorks: ['JUQ-941','JUL-225','STAR-830'] },
 
-  { name: 'Hikari Sena', mainWorks: ['AVSA-171','BANK-013','BNST-023','CEMD-090','CEAD-475','HOMA-108','JUFE-279','MIAA-395','PFES-002','SAN-019','URKK-035','WAAA-043'] },
+  { name: 'Hikari Sena', mainWorks: ['AVSA-171','BANK-013','BNST-023','CEMD-090','CEAD-475','HOMA-108','JUFE-279','MIAA-395','PFES-002','SAN-019','URKK-035','WAAA-043','LULU-092','MCSR-452','HND-966','AGAV-034','300NTK-404','348NTR-024','ONSG-027'] },
 
   { name: 'Saeko Matsushita', mainWorks: ['SHKD-713','MBYD-289','IPX-461'] },
 
