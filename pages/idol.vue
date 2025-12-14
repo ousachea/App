@@ -1,208 +1,165 @@
 <template>
-  <div>
-    <div class="container" :class="{ 'dark-mode': darkMode }">
-      <header>
-        <div>
-          <h1>🎬 Works Tracker</h1>
-          <p>{{ totalCount }} total works</p>
-        </div>
-        <div class="search-box">
-          <input v-model="globalSearch" type="text" placeholder="🔍 Search all works..." class="global-search" />
-          <span v-if="globalSearch" class="search-results">{{ searchResults.length }} found</span>
+  <div class="container">
+    <header>
+      <div>
+        <h1>🎬 Works Tracker</h1>
+        <p>{{ totalCount }} total works</p>
+      </div>
+
+      <div class="btns">
+        <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
+        <button @click="handleImportClick" class="btn-icon" title="Import">📤</button>
+        <button @click="resetToDefaults" class="btn-icon" title="Reset to default data">🔄</button>
+        <button @click="openAddArtistModal" title="Add new artist">➕ Artist</button>
+        <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
+      </div>
+    </header>
+
+    <div class="content-wrapper">
+      <!-- Artist Grid View (Page 1) -->
+      <div v-show="currentView === 'artists'" class="view-page">
+        <!-- Sort Options -->
+        <div class="sort-bar">
+          <label>Sort by:</label>
+          <div class="sort-buttons">
+            <button :class="['sort-btn', { active: artistSort === 'name-asc' }]" @click="artistSort = 'name-asc'"
+              title="Name A-Z">
+              A-Z
+            </button>
+            <button :class="['sort-btn', { active: artistSort === 'name-desc' }]" @click="artistSort = 'name-desc'"
+              title="Name Z-A">
+              Z-A
+            </button>
+            <button :class="['sort-btn', { active: artistSort === 'works-desc' }]" @click="artistSort = 'works-desc'"
+              title="Most Works First">
+              Most Works
+            </button>
+            <button :class="['sort-btn', { active: artistSort === 'works-asc' }]" @click="artistSort = 'works-asc'"
+              title="Least Works First">
+              Least Works
+            </button>
+          </div>
         </div>
 
-        <div class="btns">
-          <button @click="autoFillImages" title="Auto-fetch posters">🖼️</button>
-          <button @click="handleExport" class="btn-icon" title="Export JSON">📥</button>
-          <button @click="handleImportClick" class="btn-icon" title="Import">📤</button>
-          <button @click="toggleDarkMode" class="btn-icon" title="Toggle dark mode">{{ darkMode ? '☀️' : '🌙'
-            }}</button>
-          <button @click="resetToDefaults" class="btn-icon" title="Reset to default data">🔄</button>
-          <select v-model="imageSource" class="header-select" title="Default Image Source">
-            <option value="dmm">DMM (Default)</option>
-            <option value="mgstage">MgStage</option>
-            <option value="fourhoi">Fourhoi</option>
-            <option value="pornfhd">PornFHD</option>
-          </select>
+        <div class="artist-grid">
+          <button v-for="artist in sortedArtists" :key="artist.name" class="artist-card-modern"
+            @click="selectArtist(artist.name)">
 
-          <button @click="openAddArtistModal" title="Add new artist">➕ Artist</button>
-          <input ref="fileInput" type="file" accept=".json" @change="handleImport" hidden />
-        </div>
-      </header>
+            <div class="artist-photo-container">
+              <div class="artist-photo-modern">
+                <img v-if="getRandomArtistWork(artist)" :src="getImageUrl(getRandomArtistWork(artist).code, 'pl')"
+                  :alt="artist.name" @error="showPlaceholder" @load="handleImageLoad" class="artist-image-modern" />
+                <div v-else class="photo-placeholder-modern">📷</div>
+              </div>
 
-      <div v-if="globalSearch && searchResults.length" class="search-results-container">
-        <div v-for="result in searchResults" :key="`${result.artistName}-${result.work.code}`"
-          class="search-result-item">
-          <strong>{{ result.artistName }}</strong> - {{ result.work.code }}
-          <button @click="activeTab = result.artistName" class="goto-btn">View →</button>
+              <div class="photo-overlay-gradient">
+                <h3 class="artist-name-overlay">{{ artist.name }}</h3>
+              </div>
+            </div>
+
+            <div class="artist-card-footer">
+              <div class="breakdown-modern">
+                <span v-if="artist.mainWorks?.length" class="badge-main">
+                  📌 {{ artist.mainWorks.length }}
+                </span>
+                <span v-if="artist.compilations?.length" class="badge-comp">
+                  📂 {{ artist.compilations.length }}
+                </span>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 
-      <div class="artist-grid">
-        <button v-for="artist in sortedArtistsByWorkCount" :key="artist.name"
-          :class="['artist-card-modern', { active: activeTab === artist.name }]" @click="activeTab = artist.name">
-
-          <div class="artist-photo-container">
-            <div class="artist-photo-modern">
-              <img v-if="getRandomArtistWork(artist)"
-                :src="getImageUrl(getRandomArtistWork(artist).code, 'pl', getRandomArtistWork(artist).imageSource)"
-                :alt="artist.name"
-                @error="(e) => handleImageErrorWithFallback(e, getRandomArtistWork(artist).code, 'pl', getRandomArtistWork(artist).imageSource)"
-                @load="handleImageLoad" class="artist-image-modern" />
-              <div v-else class="photo-placeholder-modern">📷</div>
-            </div>
-
-            <div class="photo-overlay-gradient">
-              <h3 class="artist-name-overlay">{{ artist.name }}</h3>
-            </div>
-
+      <!-- Artist Works List View (Page 2) -->
+      <div v-show="currentView === 'works'" class="view-page">
+        <div class="page-header">
+          <button @click="backToArtists" class="back-btn">← Back to Artists</button>
+          <div class="page-title">
+            <h2>{{ currentArtist?.name }}</h2>
+            <p>{{ (currentArtist?.mainWorks?.length || 0) + (currentArtist?.compilations?.length || 0) }} works</p>
           </div>
-
-          <div class="artist-card-footer">
-            <div class="breakdown-modern">
-              <span v-if="artist.mainWorks?.length" class="badge-main">
-                📌 {{ artist.mainWorks.length }}
-              </span>
-              <span v-if="artist.compilations?.length" class="badge-comp">
-                📂 {{ artist.compilations.length }}
-              </span>
-            </div>
-            <div v-if="artist.studio" class="studio-badge-modern">
-              {{ artist.studio }}
-            </div>
-          </div>
-        </button>
-      </div>
-
-      <div v-if="currentArtist" class="artist-content">
-        <div class="artist-header">
-          <div class="artist-info">
-            <div v-if="currentArtist.photo" class="artist-photo-large">
-              <img :src="currentArtist.photo" :alt="currentArtist.name" />
-            </div>
-            <div>
-              <h2>{{ currentArtist.name }}</h2>
-              <p>{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }} works</p>
-              <p v-if="currentArtist.studio" class="studio-info">📦 Studio: {{ currentArtist.studio }}</p>
-            </div>
-          </div>
-          <div class="header-actions">
-            <select v-model="sortBy" class="sort-select" title="Sort works">
-              <option value="code">Code (A-Z)</option>
-              <option value="code-desc">Code (Z-A)</option>
-              <option value="date">Release Date</option>
-              <option value="added">Recently Added</option>
-            </select>
-            <button @click="openAddWorkModal" class="add-work-btn" title="Add new work">➕</button>
-          </div>
+          <button @click="openAddWorkModal" class="add-work-btn">➕ Add Work</button>
         </div>
 
-        <div v-if="filteredCurrentMainWorks.length">
+        <div v-if="currentArtist?.mainWorks?.length" class="works-section">
           <h3>📌 Main Works</h3>
           <div class="works-grid-compact">
-            <div v-for="work in sortedFilteredMainWorks" :key="work.code" class="work-thumbnail"
-              @click="openWorkModal(work)">
-              <img :src="getImageUrl(work.code, 'pl', work.imageSource)" :alt="work.code"
-                @error="(e) => handleImageErrorWithFallback(e, work.code, 'pl', work.imageSource)"
+            <div v-for="work in currentArtist.mainWorks" :key="work.code" class="work-thumbnail"
+              @click="openWorkView(work)">
+              <img :src="getImageUrl(work.code, 'pl')" :alt="work.code" @error="showPlaceholder"
                 @load="handleImageLoad" />
               <div class="work-thumbnail-overlay">
                 <span class="work-code-compact">{{ work.code }}</span>
-                <span v-if="work.releaseDate" class="work-date-compact">
-                  {{ formatDate(work.releaseDate) }}
-                </span>
               </div>
               <span v-if="hasSimilarCode(work.code)" class="typo-warning-compact">⚠️</span>
             </div>
           </div>
         </div>
 
-        <div v-if="filteredCurrentCompilations.length">
+        <div v-if="currentArtist?.compilations?.length" class="works-section">
           <h3>📂 Compilations</h3>
           <div class="works-grid-compact">
-            <div v-for="work in sortedFilteredCompilations" :key="work.code" class="work-thumbnail"
-              @click="openWorkModal(work)">
-              <img :src="getImageUrl(work.code, 'pl', work.imageSource)" :alt="work.code"
-                @error="(e) => handleImageErrorWithFallback(e, work.code, 'pl', work.imageSource)"
+            <div v-for="work in currentArtist.compilations" :key="work.code" class="work-thumbnail"
+              @click="openWorkView(work)">
+              <img :src="getImageUrl(work.code, 'pl')" :alt="work.code" @error="showPlaceholder"
                 @load="handleImageLoad" />
               <div class="work-thumbnail-overlay">
                 <span class="work-code-compact">{{ work.code }}</span>
-                <span v-if="work.releaseDate" class="work-date-compact">
-                  {{ formatDate(work.releaseDate) }}
-                </span>
               </div>
               <span v-if="hasSimilarCode(work.code)" class="typo-warning-compact">⚠️</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Work Detail Modal -->
-    <div v-if="showWorkModal" class="work-modal" @click.self="closeWorkModal" style="z-index: 8000;">
-      <div class="work-modal-content" style="z-index: 8001; position: relative;">
-        <button class="work-modal-close" @click="closeWorkModal" style="z-index: 8003;">✕</button>
-        <button class="work-modal-nav work-modal-prev" @click="navigateWork(-1)" v-if="canNavigateWork(-1)"
-          style="z-index: 8003; position: absolute;">‹</button>
-        <button class="work-modal-nav work-modal-next" @click="navigateWork(1)" v-if="canNavigateWork(1)"
-          style="z-index: 8003; position: absolute;">›</button>
+      <!-- Work Detail View (Page 3) -->
+      <div v-show="currentView === 'detail'" class="view-page">
+        <div class="page-header">
+          <button @click="backToWorks" class="back-btn">← Back to {{ currentArtist?.name }}</button>
+          <div class="work-nav-buttons">
+            <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="nav-btn">‹ Previous</button>
+            <button @click="navigateWork(1)" :disabled="!canNavigateWork(1)" class="nav-btn">Next ›</button>
+          </div>
+        </div>
 
-        <div class="work-modal-body">
+        <div v-if="currentWork" class="work-detail-content">
           <!-- Left Column: Cover + Info + Actions -->
-          <div class="work-modal-left">
-            <div class="work-modal-cover">
-              <img :src="getImageUrl(currentWork.code, 'pl', currentWork.imageSource)" :alt="currentWork.code"
-                @click="openLightbox(currentWork, 0)"
-                @error="(e) => handleImageErrorWithFallback(e, currentWork.code, 'pl', currentWork.imageSource)"
-                @load="handleImageLoad" />
+          <div class="work-detail-left">
+            <div class="work-cover-container">
+              <img :src="getImageUrl(currentWork.code, 'pl')" :alt="currentWork.code"
+                @click="openLightbox(currentWork, 0)" @error="showPlaceholder" @load="handleImageLoad"
+                class="work-cover-image" />
               <div class="cover-click-hint">Click to view full size</div>
-              <div v-if="hasCustomImage(currentWork.code)" class="image-source-badge" style="background: #4CAF50;">
+              <div v-if="hasCustomImage(currentWork.code)" class="image-source-badge">
                 Custom Upload ✓
-              </div>
-              <div v-else-if="getWorkImageSource(currentWork.code)" class="image-source-badge">
-                Source: {{ getWorkImageSource(currentWork.code).toUpperCase() }}
               </div>
             </div>
 
-            <div class="work-modal-sidebar">
-              <h2 class="work-modal-title" @click="copyToClipboard(currentWork.code)">
+            <div class="work-info-card">
+              <h2 class="work-title" @click="copyToClipboard(currentWork.code)">
                 {{ currentWork.code }}
                 <span v-if="hasSimilarCode(currentWork.code)" class="typo-warning">⚠️</span>
               </h2>
 
-              <div v-if="currentWork.releaseDate" class="release-date-info">
-                📅 {{ formatDate(currentWork.releaseDate) }}
-              </div>
-
-              <div class="image-source-selector">
-                <label>Preferred Image Source</label>
-                <select :value="currentWork.imageSource || 'dmm'" @change="setWorkImageSource(currentWork, $event)"
-                  class="source-select">
-                  <option value="dmm">DMM</option>
-                  <option value="mgstage">MgStage</option>
-                  <option value="fourhoi">Fourhoi</option>
-                  <option value="pornfhd">PornFHD</option>
-                </select>
-                <small>Auto-fallback enabled</small>
-              </div>
-
-              <div class="action-buttons">
-                <button @click="openEditWorkModal(currentWork)" class="action-btn-sidebar edit">
+              <div class="work-actions">
+                <button @click="openEditWorkModal(currentWork)" class="action-btn edit">
                   ✏️ Edit
                 </button>
-                <button @click="openMoveWorkModal(currentWork)" class="action-btn-sidebar move">
+                <button @click="openMoveWorkModal(currentWork)" class="action-btn move">
                   ➡️ Move
                 </button>
                 <button v-if="!hasCustomImage(currentWork.code)" @click="openUploadModal(currentWork.code)"
-                  class="action-btn-sidebar upload">
+                  class="action-btn upload">
                   📤 Upload Image
                 </button>
                 <button v-if="hasCustomImage(currentWork.code)" @click="removeCustomImage(currentWork.code)"
-                  class="action-btn-sidebar remove">
+                  class="action-btn remove">
                   🗑️ Remove Custom
                 </button>
               </div>
 
-              <div class="external-links-sidebar">
+              <div class="external-links">
                 <button @click="openExternalLink(currentWork.code, 'njav')" class="ext-btn njav">
                   NJAV
                 </button>
@@ -214,12 +171,11 @@
           </div>
 
           <!-- Right Column: Preview Gallery -->
-          <div class="work-modal-right">
+          <div class="work-detail-right">
             <h3 class="gallery-title">Preview Gallery</h3>
-            <div class="modal-gallery-grid">
-              <div v-for="i in 20" :key="i" class="modal-gallery-item" @click="openLightbox(currentWork, i)">
-                <img :src="getImageUrl(currentWork.code, `jp-${i}`, currentWork.imageSource)"
-                  @error="(e) => handleGalleryImageError(e, currentWork.code, i, currentWork.imageSource)"
+            <div class="gallery-grid">
+              <div v-for="i in 20" :key="i" class="gallery-item" @click="openLightbox(currentWork, i)">
+                <img :src="getImageUrl(currentWork.code, `jp-${i}`)" @error="handleGalleryImageError"
                   :alt="`Preview ${i}`" />
               </div>
             </div>
@@ -229,8 +185,8 @@
     </div>
 
     <!-- Move Work Modal -->
-    <div v-if="showMoveWorkModal" class="modal" @click.self="closeMoveWorkModal" style="z-index: 9000;">
-      <div class="modal-box" style="z-index: 9001;">
+    <div v-if="showMoveWorkModal" class="modal" @click.self="closeMoveWorkModal">
+      <div class="modal-box">
         <h3>Move Work to Another Artist</h3>
         <label>
           Select Artist
@@ -249,16 +205,12 @@
     </div>
 
     <!-- Edit Work Modal -->
-    <div v-if="showEditWorkModal" class="modal" @click.self="closeEditWorkModal" style="z-index: 9000;">
-      <div class="modal-box" style="z-index: 9001;">
+    <div v-if="showEditWorkModal" class="modal" @click.self="closeEditWorkModal">
+      <div class="modal-box">
         <h3>Edit Work Code</h3>
         <label>
           Code
           <input v-model="editingWork.newCode" type="text" placeholder="e.g., SONE-978" />
-        </label>
-        <label>
-          Release Date (optional)
-          <input v-model="editingWork.releaseDate" type="date" />
         </label>
         <div class="modal-btns">
           <button @click="saveEditWork" class="btn">Save</button>
@@ -268,8 +220,8 @@
     </div>
 
     <!-- Add Work Modal -->
-    <div v-if="showAddWorkModal" class="modal" @click.self="closeAddWorkModal" style="z-index: 9000;">
-      <div class="modal-box" style="z-index: 9001;">
+    <div v-if="showAddWorkModal" class="modal" @click.self="closeAddWorkModal">
+      <div class="modal-box">
         <h3>Add New Work</h3>
         <label>
           Artist
@@ -281,10 +233,6 @@
         <label>
           Work Code
           <input v-model="newWork.code" type="text" placeholder="e.g., SONE-978" />
-        </label>
-        <label>
-          Release Date (optional)
-          <input v-model="newWork.releaseDate" type="date" />
         </label>
         <label>
           Type
@@ -307,16 +255,12 @@
     </div>
 
     <!-- Add Artist Modal -->
-    <div v-if="showAddArtistModal" class="modal" @click.self="closeAddArtistModal" style="z-index: 9000;">
-      <div class="modal-box" style="z-index: 9001;">
+    <div v-if="showAddArtistModal" class="modal" @click.self="closeAddArtistModal">
+      <div class="modal-box">
         <h3>Add New Artist</h3>
         <label>
           Artist Name
           <input v-model="newArtist.name" type="text" placeholder="e.g., Jane Doe" />
-        </label>
-        <label>
-          Studio (optional)
-          <input v-model="newArtist.studio" type="text" placeholder="e.g., S1" />
         </label>
         <label>
           Photo URL (optional)
@@ -330,14 +274,13 @@
     </div>
 
     <!-- Upload Custom Image Modal -->
-    <div v-if="showUploadModal" class="modal" @click.self="closeUploadModal" style="z-index: 10000;">
-      <div class="modal-box" style="z-index: 10001;">
+    <div v-if="showUploadModal" class="modal" @click.self="closeUploadModal">
+      <div class="modal-box">
         <h3>Add Custom Image</h3>
         <p style="margin-bottom: 16px; color: #666;">
           For <strong>{{ uploadingWork }}</strong>
         </p>
 
-        <!-- Tab Selection -->
         <div class="upload-tabs">
           <button :class="['upload-tab', { active: uploadMethod === 'url' }]" @click="uploadMethod = 'url'">
             🔗 Image URL
@@ -347,7 +290,6 @@
           </button>
         </div>
 
-        <!-- URL Input Method -->
         <div v-if="uploadMethod === 'url'" class="upload-method">
           <label>
             Image URL
@@ -370,7 +312,6 @@
           </div>
         </div>
 
-        <!-- File Upload Method -->
         <div v-if="uploadMethod === 'file'" class="upload-method">
           <label class="file-upload-label">
             <input type="file" @change="handleCustomImageUpload" accept="image/*" ref="customImageInput"
@@ -405,14 +346,12 @@
     </transition>
 
     <!-- Image Lightbox -->
-    <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox" style="z-index: 11000;">
-      <button class="lightbox-close" @click="closeLightbox" style="z-index: 11002;">✕</button>
-      <button class="lightbox-nav lightbox-prev" @click="prevImage" v-if="lightbox.images.length > 1"
-        style="z-index: 11002;">‹</button>
-      <button class="lightbox-nav lightbox-next" @click="nextImage" v-if="lightbox.images.length > 1"
-        style="z-index: 11002;">›</button>
+    <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
+      <button class="lightbox-close" @click="closeLightbox">✕</button>
+      <button class="lightbox-nav lightbox-prev" @click="prevImage" v-if="lightbox.images.length > 1">‹</button>
+      <button class="lightbox-nav lightbox-next" @click="nextImage" v-if="lightbox.images.length > 1">›</button>
 
-      <div class="lightbox-content" style="z-index: 11001;">
+      <div class="lightbox-content">
         <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" @error="handleLightboxError" />
         <div class="lightbox-info">
           <span class="lightbox-code">{{ lightbox.code }}</span>
@@ -426,31 +365,6 @@
 <script>
 import { DEFAULT_ARTISTS } from '~/data/artists.js'
 import { normalizeArtists } from '~/utils/artistHelpers.js'
-
-const IMAGE_SOURCE_PRIORITY = ['dmm', 'mgstage', 'fourhoi', 'pornfhd'];
-
-const MGS_MAKER_MAP = {
-  'ssni': 's1', 'snis': 's1', 'soav': 's1', 'ofje': 's1', 'onvb': 's1', 'sone': 's1',
-  'ipx': 'ideapocket', 'ipz': 'ideapocket', 'idz': 'ideapocket',
-  'mide': 'moodyz', 'miaa': 'moodyz', 'migd': 'moodyz', 'mifd': 'moodyz', 'miad': 'moodyz',
-  'atid': 'attackers', 'adn': 'attackers',
-  'hmn': 'honnaka',
-  'stars': 'sod', 'sdmu': 'sod', 'scop': 'sod',
-  'pred': 'premium', 'pre': 'premium',
-  'jul': 'madonna', 'juc': 'madonna',
-  'ebod': 'ebody',
-  'ntr': 'ntr',
-  'midv': 'mida',
-  'luxu': '259luxu',
-  'gvg': 'gloryquest',
-  'fset': 'faleno',
-  'mium': 'prestigepremium', '300mium': 'prestigepremium',
-  '200gana': 'ganan', 'gana': 'ganan',
-  'abp': 'prestige', 'abw': 'prestige',
-  'dasd': 'das',
-  'bf': 'befree',
-  'yrh': 'magic'
-};
 
 const parseWorkCode = (code) => {
   if (!code) return null;
@@ -473,21 +387,18 @@ export default {
   name: 'Works',
   data() {
     return {
+      currentView: 'artists', // 'artists', 'works', 'detail'
       activeTab: '',
-      sortBy: 'code',
-      darkMode: false,
-      imageSource: 'dmm',
-      globalSearch: '',
+      artistSort: 'works-desc', // 'name-asc', 'name-desc', 'works-asc', 'works-desc'
       toast: { show: false, message: '', type: 'success' },
       showAddWorkModal: false,
       showAddArtistModal: false,
       showEditWorkModal: false,
       showMoveWorkModal: false,
-      showWorkModal: false,
       editingWork: null,
       moveWorkData: { code: '', sourceArtist: '', targetArtist: '', type: '' },
-      newWork: { artist: '', code: '', type: 'mainWorks', releaseDate: '' },
-      newArtist: { name: '', studio: '', photo: '' },
+      newWork: { artist: '', code: '', type: 'mainWorks' },
+      newArtist: { name: '', photo: '' },
       artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
       currentWork: null,
       currentWorkList: [],
@@ -498,7 +409,6 @@ export default {
         currentIndex: 0,
         code: ''
       },
-      imageSourceCache: {},
       customImages: {},
       showUploadModal: false,
       uploadingWork: null,
@@ -513,40 +423,45 @@ export default {
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
     },
-    filteredCurrentMainWorks() {
-      return this.currentArtist?.mainWorks || []
-    },
-    filteredCurrentCompilations() {
-      return this.currentArtist?.compilations || []
-    },
-    sortedFilteredMainWorks() {
-      return this.getSortedWorks(this.filteredCurrentMainWorks)
-    },
-    sortedFilteredCompilations() {
-      return this.getSortedWorks(this.filteredCurrentCompilations)
-    },
-    sortedArtistsByWorkCount() {
-      return [...this.artists].sort((a, b) => {
-        if (a.name === 'Collection') return 1
-        if (b.name === 'Collection') return -1
-        const aCount = (a.mainWorks?.length || 0) + (a.compilations?.length || 0)
-        const bCount = (b.mainWorks?.length || 0) + (b.compilations?.length || 0)
-        if (bCount !== aCount) return bCount - aCount
-        return a.name.localeCompare(b.name)
-      })
-    },
-    searchResults() {
-      if (!this.globalSearch) return []
-      const q = this.globalSearch.toLowerCase()
-      const results = []
-      this.artists.forEach(artist => {
-        [...(artist.mainWorks || []), ...(artist.compilations || [])].forEach(work => {
-          if (work.code.toLowerCase().includes(q)) {
-            results.push({ artistName: artist.name, work })
-          }
-        })
-      })
-      return results
+    sortedArtists() {
+      const artists = [...this.artists]
+
+      switch (this.artistSort) {
+        case 'name-asc':
+          return artists.sort((a, b) => {
+            if (a.name === 'Collection') return 1
+            if (b.name === 'Collection') return -1
+            return a.name.localeCompare(b.name)
+          })
+
+        case 'name-desc':
+          return artists.sort((a, b) => {
+            if (a.name === 'Collection') return 1
+            if (b.name === 'Collection') return -1
+            return b.name.localeCompare(a.name)
+          })
+
+        case 'works-asc':
+          return artists.sort((a, b) => {
+            if (a.name === 'Collection') return 1
+            if (b.name === 'Collection') return -1
+            const aCount = (a.mainWorks?.length || 0) + (a.compilations?.length || 0)
+            const bCount = (b.mainWorks?.length || 0) + (b.compilations?.length || 0)
+            if (aCount !== bCount) return aCount - bCount
+            return a.name.localeCompare(b.name)
+          })
+
+        case 'works-desc':
+        default:
+          return artists.sort((a, b) => {
+            if (a.name === 'Collection') return 1
+            if (b.name === 'Collection') return -1
+            const aCount = (a.mainWorks?.length || 0) + (a.compilations?.length || 0)
+            const bCount = (b.mainWorks?.length || 0) + (b.compilations?.length || 0)
+            if (bCount !== aCount) return bCount - aCount
+            return a.name.localeCompare(b.name)
+          })
+      }
     },
     sortedArtistsForMove() {
       return this.artists
@@ -567,18 +482,6 @@ export default {
       },
       deep: true
     },
-    imageSourceCache: {
-      handler(v) {
-        if (process.client) {
-          try {
-            localStorage.setItem('imageSourceCache', JSON.stringify(v))
-          } catch (e) {
-            console.warn('Failed to save image cache:', e)
-          }
-        }
-      },
-      deep: true
-    },
     customImages: {
       handler(v) {
         if (process.client) {
@@ -590,6 +493,14 @@ export default {
         }
       },
       deep: true
+    },
+    currentView() {
+      this.scrollToTop()
+    },
+    artistSort(v) {
+      if (process.client) {
+        localStorage.setItem('artistSort', v)
+      }
     }
   },
   mounted() {
@@ -603,23 +514,17 @@ export default {
           }
         }
 
-        const cachedSources = localStorage.getItem('imageSourceCache')
-        if (cachedSources) {
-          this.imageSourceCache = JSON.parse(cachedSources)
-        }
-
         const savedCustomImages = localStorage.getItem('customImages')
         if (savedCustomImages) {
           this.customImages = JSON.parse(savedCustomImages)
         }
+
+        const savedSort = localStorage.getItem('artistSort')
+        if (savedSort) {
+          this.artistSort = savedSort
+        }
       } catch (e) {
         console.warn('Failed to load artists:', e)
-      }
-
-      const darkModePreference = localStorage.getItem('darkMode')
-      if (darkModePreference === 'true') {
-        this.darkMode = true
-        document.documentElement.classList.add('dark-mode')
       }
 
       if (this.artists.length && !this.activeTab) {
@@ -635,171 +540,75 @@ export default {
           } else if (e.key === 'Escape') {
             this.closeLightbox()
           }
-        } else if (this.showWorkModal) {
+        } else if (this.currentView === 'detail') {
           if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) {
             this.navigateWork(-1)
           } else if (e.key === 'ArrowRight' && this.canNavigateWork(1)) {
             this.navigateWork(1)
           } else if (e.key === 'Escape') {
-            this.closeWorkModal()
+            this.backToWorks()
           }
+        } else if (this.currentView === 'works' && e.key === 'Escape') {
+          this.backToArtists()
         }
       })
     }
   },
   methods: {
-    formatDate(date) {
-      if (!date) return ''
-      return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    scrollToTop() {
+      if (process.client) {
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      }
     },
+
+    selectArtist(name) {
+      this.activeTab = name
+      this.currentView = 'works'
+    },
+
+    backToArtists() {
+      this.currentView = 'artists'
+      this.activeTab = ''
+    },
+
+    backToWorks() {
+      this.currentView = 'works'
+      this.currentWork = null
+    },
+
     resetToDefaults() {
       this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
       this.activeTab = this.artists[0].name
-      this.imageSourceCache = {}
+      this.customImages = {}
+      this.currentWork = null
+      this.currentView = 'artists'
+      this.artistSort = 'works-desc'
       this.showToast('✅ Reset to default data', 'success')
     },
 
-    getWorkImageSource(code) {
-      return this.imageSourceCache[code] || null
-    },
-
-    getImageUrl(code, quality = 'pl', preferredSource = null) {
-      // Check for custom uploaded image first (only for cover/poster)
+    getImageUrl(code, quality = 'pl') {
       if (quality === 'pl' && this.customImages[code]) {
         return this.customImages[code]
       }
 
-      const cachedSource = this.imageSourceCache[code]
-      if (cachedSource) {
-        return this.generateImageUrl(code, quality, cachedSource)
+      const parsed = parseWorkCode(code);
+      if (!parsed) return null;
+
+      const paddedNum = parsed.number.padStart(5, '0');
+      const dmmId = `${parsed.prefix}${paddedNum}`;
+
+      if (dmmId.length < 3) return null;
+
+      if (quality !== 'pl') {
+        const qNum = quality.split('-')[1] || '1';
+        return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`;
       }
 
-      const source = preferredSource || this.imageSource
-      return this.generateImageUrl(code, quality, source)
+      return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`;
     },
 
-    isPlaceholderImage(img) {
-      const width = img.naturalWidth || img.width
-      const height = img.naturalHeight || img.height
-
-      if (width < 100 || height < 100) {
-        return true
-      }
-
-      const placeholderSizes = [
-        { w: 280, h: 392 },
-        { w: 560, h: 784 },
-        { w: 300, h: 300 },
-        { w: 468, h: 468 },
-      ]
-
-      const isKnownPlaceholder = placeholderSizes.some(size =>
-        Math.abs(width - size.w) < 5 && Math.abs(height - size.h) < 5
-      )
-
-      if (isKnownPlaceholder) {
-        return true
-      }
-
-      const aspectRatio = width / height
-      if (Math.abs(aspectRatio - 1) < 0.05) {
-        return true
-      }
-
-      return false
-    },
-
-    handleImageErrorWithFallback(event, code, quality = 'pl', currentSource = null) {
-      const img = event.target
-
-      if (img.dataset.fallbackAttempts >= 4) {
-        this.showPlaceholder(img)
-        return
-      }
-
-      const attempts = parseInt(img.dataset.fallbackAttempts || '0')
-      img.dataset.fallbackAttempts = attempts + 1
-
-      const current = currentSource || this.imageSource
-      const currentIndex = IMAGE_SOURCE_PRIORITY.indexOf(current)
-      const nextIndex = (currentIndex + 1) % IMAGE_SOURCE_PRIORITY.length
-      const nextSource = IMAGE_SOURCE_PRIORITY[nextIndex]
-
-      if (current === 'dmm' && attempts === 0) {
-        const parsed = parseWorkCode(code)
-        if (parsed) {
-          const unpaddedId = `${parsed.prefix}${parsed.number}`
-          const newUrl = `https://pics.dmm.co.jp/digital/video/${unpaddedId}/${unpaddedId}${quality === 'pl' ? 'pl' : `jp-${quality.split('-')[1]}`}.jpg`
-          img.src = newUrl
-          return
-        }
-      }
-
-      if (attempts < 4) {
-        const newUrl = this.generateImageUrl(code, quality, nextSource)
-        img.src = newUrl
-
-        img.onload = () => {
-          const isPlaceholder = this.isPlaceholderImage(img)
-
-          if (isPlaceholder && attempts < 3) {
-            img.dataset.fallbackAttempts = attempts + 1
-            const nextAttemptIndex = (IMAGE_SOURCE_PRIORITY.indexOf(nextSource) + 1) % IMAGE_SOURCE_PRIORITY.length
-            const nextAttemptSource = IMAGE_SOURCE_PRIORITY[nextAttemptIndex]
-            const nextUrl = this.generateImageUrl(code, quality, nextAttemptSource)
-            img.src = nextUrl
-          } else if (!isPlaceholder) {
-            this.imageSourceCache = {
-              ...this.imageSourceCache,
-              [code]: nextSource
-            }
-            img.style.opacity = '1'
-          } else {
-            this.showPlaceholder(img)
-          }
-        }
-      } else {
-        this.showPlaceholder(img)
-      }
-    },
-
-    handleGalleryImageError(event, code, imageNumber, currentSource = null) {
-      const img = event.target
-
-      if (img.dataset.fallbackAttempts >= 2) {
-        img.style.opacity = '0.1'
-        img.style.filter = 'grayscale(1)'
-        return
-      }
-
-      const attempts = parseInt(img.dataset.fallbackAttempts || '0')
-      img.dataset.fallbackAttempts = attempts + 1
-
-      const current = currentSource || this.imageSource
-      const currentIndex = IMAGE_SOURCE_PRIORITY.indexOf(current)
-      const nextIndex = (currentIndex + 1) % IMAGE_SOURCE_PRIORITY.length
-      const nextSource = IMAGE_SOURCE_PRIORITY[nextIndex]
-
-      const newUrl = this.generateImageUrl(code, `jp-${imageNumber}`, nextSource)
-      img.src = newUrl
-
-      img.onload = () => {
-        if (this.isPlaceholderImage(img)) {
-          if (attempts < 1) {
-            img.dataset.fallbackAttempts = attempts + 1
-            const nextAttemptIndex = (IMAGE_SOURCE_PRIORITY.indexOf(nextSource) + 1) % IMAGE_SOURCE_PRIORITY.length
-            const nextAttemptSource = IMAGE_SOURCE_PRIORITY[nextAttemptIndex]
-            const nextAttemptUrl = this.generateImageUrl(code, `jp-${imageNumber}`, nextAttemptSource)
-            img.src = nextAttemptUrl
-          } else {
-            img.style.opacity = '0.1'
-            img.style.filter = 'grayscale(1)'
-          }
-        }
-      }
-    },
-
-    showPlaceholder(img) {
+    showPlaceholder(e) {
+      const img = e.target
       img.style.display = 'none'
       const parent = img.parentElement
       if (parent && !parent.querySelector('.photo-placeholder')) {
@@ -815,7 +624,6 @@ export default {
         `
         placeholder.style.cssText = 'display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: rgba(128,128,128,0.1);'
 
-        // Get the work code from the image alt or from parent
         const workCode = img.alt || img.dataset.code
 
         const uploadBtn = placeholder.querySelector('.upload-custom-btn')
@@ -830,27 +638,20 @@ export default {
       }
     },
 
-    openWorkModal(work) {
+    handleGalleryImageError(e) {
+      e.target.style.opacity = '0.1'
+      e.target.style.filter = 'grayscale(1)'
+    },
+
+    openWorkView(work) {
       const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
       this.currentWorkList = isMain ?
-        this.sortedFilteredMainWorks :
-        this.sortedFilteredCompilations
+        (this.currentArtist.mainWorks || []) :
+        (this.currentArtist.compilations || [])
 
       this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
       this.currentWork = work
-      this.showWorkModal = true
-
-      if (process.client) {
-        document.body.style.overflow = 'hidden'
-      }
-    },
-
-    closeWorkModal() {
-      this.showWorkModal = false
-      this.currentWork = null
-      if (process.client) {
-        document.body.style.overflow = ''
-      }
+      this.currentView = 'detail'
     },
 
     navigateWork(direction) {
@@ -858,6 +659,7 @@ export default {
       if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
         this.currentWorkIndex = newIndex
         this.currentWork = this.currentWorkList[newIndex]
+        this.scrollToTop()
       }
     },
 
@@ -868,11 +670,11 @@ export default {
 
     openLightbox(work, startIndex = 0) {
       const images = [
-        this.getImageUrl(work.code, 'pl', work.imageSource)
+        this.getImageUrl(work.code, 'pl')
       ]
 
       for (let i = 1; i <= 20; i++) {
-        images.push(this.getImageUrl(work.code, `jp-${i}`, work.imageSource))
+        images.push(this.getImageUrl(work.code, `jp-${i}`))
       }
 
       this.lightbox = {
@@ -907,7 +709,7 @@ export default {
     },
 
     openEditWorkModal(work) {
-      this.editingWork = { code: work.code, newCode: work.code, releaseDate: work.releaseDate || '' }
+      this.editingWork = { code: work.code, newCode: work.code }
       this.showEditWorkModal = true
     },
     closeEditWorkModal() {
@@ -945,19 +747,8 @@ export default {
 
       this.artists = [...this.artists]
       this.closeMoveWorkModal()
+      this.backToWorks()
       this.showToast(`✅ Moved ${this.moveWorkData.code} to ${this.moveWorkData.targetArtist}`, 'success')
-    },
-    setWorkImageSource(work, event) {
-      const newSource = event.target.value
-      work.imageSource = newSource
-
-      this.imageSourceCache = {
-        ...this.imageSourceCache,
-        [work.code]: newSource
-      }
-
-      this.artists = [...this.artists]
-      this.showToast(`Image source set to ${newSource.toUpperCase()}`, 'success')
     },
     saveEditWork() {
       if (!this.editingWork.newCode.trim()) return this.showToast('Code required', 'error')
@@ -969,35 +760,12 @@ export default {
       if (!artist) return
       let work = artist.mainWorks?.find(w => w.code === this.editingWork.code) || artist.compilations?.find(w => w.code === this.editingWork.code)
       if (work) {
-        if (work.code !== newCode && this.imageSourceCache[work.code]) {
-          this.imageSourceCache = {
-            ...this.imageSourceCache,
-            [newCode]: this.imageSourceCache[work.code]
-          }
-          delete this.imageSourceCache[work.code]
-        }
-
         work.code = newCode
-        work.releaseDate = this.editingWork.releaseDate
+        this.currentWork.code = newCode
         this.artists = [...this.artists]
         this.closeEditWorkModal()
         this.showToast(`✅ Updated to ${newCode}`, 'success')
       }
-    },
-    getSortedWorks(works) {
-      const sorted = [...works]
-      if (this.sortBy === 'code') {
-        return sorted.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
-      } else if (this.sortBy === 'code-desc') {
-        return sorted.sort((a, b) => b.code.localeCompare(a.code, undefined, { numeric: true }))
-      } else if (this.sortBy === 'date') {
-        return sorted.sort((a, b) => {
-          const dateA = new Date(a.releaseDate || '9999-12-31')
-          const dateB = new Date(b.releaseDate || '9999-12-31')
-          return dateB - dateA
-        })
-      }
-      return sorted.reverse()
     },
     getRandomArtistWork(artist) {
       const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
@@ -1005,90 +773,6 @@ export default {
       return allWorks[Math.floor(Math.random() * allWorks.length)]
     },
 
-    generateImageUrl(code, quality = 'pl', source = 'dmm') {
-      const parsed = parseWorkCode(code);
-      if (!parsed) return null;
-
-      if (source === 'mgstage') {
-        const makerId = MGS_MAKER_MAP[parsed.prefix] || parsed.prefix;
-        let frame = '0';
-        if (quality !== 'pl') {
-          const qNum = parseInt(quality.split('-')[1] || '0');
-          frame = (qNum + 1).toString();
-        }
-        return `https://image.mgstage.com/images/${makerId}/${parsed.prefix}/${parsed.number}/cap_e_${frame}_${parsed.prefix}${parsed.number}.jpg`;
-      } else if (source === 'fourhoi') {
-        const cleanCode = `${parsed.prefix}-${parsed.number}`;
-        let suffix = 'cover-n';
-        if (quality !== 'pl') {
-          const qNum = parseInt(quality.split('-')[1] || '1');
-          const char = String.fromCharCode(96 + qNum);
-          suffix = `cover-${char}`;
-        }
-        return `https://fourhoi.com/${parsed.full.toLowerCase()}/${suffix}.jpg`;
-      } else if (source === 'pornfhd') {
-        const makerId = MGS_MAKER_MAP[parsed.prefix] || parsed.prefix;
-        const filenameCode = `${parsed.prefix}-${parsed.number}`;
-        if (quality === 'pl') {
-          return `https://pics.pornfhd.com/mgs/images/${makerId}/${parsed.prefix}/${parsed.number}/pb_e_${filenameCode}.jpg`;
-        } else {
-          let frame = 2;
-          if (quality.startsWith('jp-')) {
-            const num = parseInt(quality.split('-')[1]);
-            frame = num + 1;
-          }
-          return `https://pics.pornfhd.com/mgs/images/${makerId}/${parsed.prefix}/${parsed.number}/cap_e_${frame}_${filenameCode}.jpg`;
-        }
-      } else {
-        const paddedNum = parsed.number.padStart(5, '0');
-        const dmmId = `${parsed.prefix}${paddedNum}`;
-        if (dmmId.length < 3) return null;
-        if (quality !== 'pl') {
-          const qNum = quality.split('-')[1] || '1';
-          return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`;
-        }
-        return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`;
-      }
-    },
-
-    async validateImageUrl(url) {
-      return new Promise(r => {
-        const img = new Image()
-        const t = setTimeout(() => r(false), 5000)
-        img.onload = () => { clearTimeout(t); r(true) }
-        img.onerror = () => { clearTimeout(t); r(false) }
-        img.src = url
-      })
-    },
-    async autoFillImages() {
-      let updated = 0, failed = 0
-      this.showToast('Auto-fetching posters...', 'info')
-
-      for (const artist of this.artists) {
-        for (const work of [...(artist.mainWorks || []), ...(artist.compilations || [])]) {
-          let foundSource = null
-          for (const source of IMAGE_SOURCE_PRIORITY) {
-            const url = this.generateImageUrl(work.code, 'pl', source)
-            if (await this.validateImageUrl(url)) {
-              foundSource = source
-              break
-            }
-          }
-
-          if (foundSource) {
-            this.imageSourceCache = {
-              ...this.imageSourceCache,
-              [work.code]: foundSource
-            }
-            updated++
-          } else {
-            failed++
-          }
-        }
-      }
-
-      this.showToast(`✅ Verified ${updated} works${failed ? ` (${failed} unverified)` : ''}`, 'info')
-    },
     copyToClipboard(code) {
       navigator.clipboard.writeText(code).then(() => {
         this.showToast(`Copied: ${code}`, 'success')
@@ -1122,13 +806,6 @@ export default {
       }
       window.open(url, '_blank', 'noopener,noreferrer')
     },
-    toggleDarkMode() {
-      this.darkMode = !this.darkMode
-      if (process.client) {
-        document.documentElement.classList.toggle('dark-mode', this.darkMode)
-        localStorage.setItem('darkMode', this.darkMode)
-      }
-    },
     showToast(msg, type = 'success') {
       this.toast = { show: true, message: msg, type }
       setTimeout(() => this.toast.show = false, 3000)
@@ -1138,10 +815,9 @@ export default {
         const date = new Date().toISOString().split('T')[0]
         const data = {
           timestamp: new Date().toISOString(),
-          version: '2.1',
+          version: '3.0',
           totalWorks: this.totalCount,
           artists: this.artists,
-          imageSourceCache: this.imageSourceCache,
           customImages: this.customImages
         }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -1178,7 +854,6 @@ export default {
 
           const validArtists = data.artists.filter(a => typeof a.name === 'string' && a.name.trim()).map(a => ({
             name: a.name.trim(),
-            studio: a.studio || '',
             photo: a.photo || '',
             mainWorks: Array.isArray(a.mainWorks) ? a.mainWorks.filter(w => w && w.code) : [],
             compilations: Array.isArray(a.compilations) ? a.compilations.filter(w => w && w.code) : []
@@ -1187,10 +862,6 @@ export default {
           if (validArtists.length === 0) throw new Error('No valid artists found')
 
           this.artists = normalizeArtists(validArtists)
-
-          if (data.imageSourceCache) {
-            this.imageSourceCache = data.imageSourceCache
-          }
 
           if (data.customImages) {
             this.customImages = data.customImages
@@ -1211,12 +882,12 @@ export default {
       e.target.value = ''
     },
     openAddWorkModal() {
-      this.newWork = { artist: this.activeTab || '', code: '', type: 'mainWorks', releaseDate: '' }
+      this.newWork = { artist: this.activeTab || '', code: '', type: 'mainWorks' }
       this.showAddWorkModal = true
     },
     closeAddWorkModal() { this.showAddWorkModal = false },
     openAddArtistModal() {
-      this.newArtist = { name: '', studio: '', photo: '' }
+      this.newArtist = { name: '', photo: '' }
       this.showAddArtistModal = true
     },
     closeAddArtistModal() { this.showAddArtistModal = false },
@@ -1229,7 +900,7 @@ export default {
       const artist = this.artists.find(a => a.name === this.newWork.artist)
       if (!artist) return this.showToast('Artist not found', 'error')
       if (!artist[this.newWork.type]) artist[this.newWork.type] = []
-      artist[this.newWork.type].push({ code, releaseDate: this.newWork.releaseDate })
+      artist[this.newWork.type].push({ code })
       this.artists = [...this.artists]
       this.closeAddWorkModal()
       this.showToast(`✅ Added ${code}`, 'success')
@@ -1237,7 +908,7 @@ export default {
     addNewArtist() {
       if (!this.newArtist.name.trim()) return this.showToast('Artist name required', 'error')
       if (this.artists.some(a => a.name === this.newArtist.name)) return this.showToast('Artist already exists', 'error')
-      const newArtist = { name: this.newArtist.name.trim(), studio: this.newArtist.studio || '', photo: this.newArtist.photo || '', mainWorks: [], compilations: [] }
+      const newArtist = { name: this.newArtist.name.trim(), photo: this.newArtist.photo || '', mainWorks: [], compilations: [] }
       this.artists.push(newArtist)
       this.artists = [...this.artists]
       this.activeTab = newArtist.name
@@ -1269,13 +940,11 @@ export default {
         return
       }
 
-      // Basic URL validation
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         this.showToast('URL must start with http:// or https://', 'error')
         return
       }
 
-      // Check if URL looks like an image
       const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
       const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext))
 
@@ -1284,7 +953,6 @@ export default {
         if (!proceed) return
       }
 
-      // Validate image by trying to load it
       const img = new Image()
       const timeout = setTimeout(() => {
         this.showToast('Image URL took too long to load', 'error')
@@ -1293,7 +961,6 @@ export default {
       img.onload = () => {
         clearTimeout(timeout)
 
-        // Store the URL directly
         this.customImages = {
           ...this.customImages,
           [this.uploadingWork]: url
@@ -1302,7 +969,6 @@ export default {
         this.showToast(`✅ Custom image URL added for ${this.uploadingWork}`, 'success')
         this.closeUploadModal()
 
-        // Force refresh
         this.artists = [...this.artists]
       }
 
@@ -1318,13 +984,11 @@ export default {
       const file = event.target.files?.[0]
       if (!file) return
 
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         this.showToast('Please select an image file', 'error')
         return
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         this.showToast('Image too large (max 5MB)', 'error')
         return
@@ -1334,7 +998,6 @@ export default {
       reader.onload = (e) => {
         const base64 = e.target.result
 
-        // Store the custom image
         this.customImages = {
           ...this.customImages,
           [this.uploadingWork]: base64
@@ -1343,7 +1006,6 @@ export default {
         this.showToast(`✅ Custom image uploaded for ${this.uploadingWork}`, 'success')
         this.closeUploadModal()
 
-        // Force refresh by triggering reactivity
         this.artists = [...this.artists]
       }
 
@@ -1361,7 +1023,6 @@ export default {
         this.customImages = newCustomImages
         this.showToast(`Removed custom image for ${code}`, 'success')
 
-        // Force refresh
         this.artists = [...this.artists]
       }
     },
@@ -1376,25 +1037,386 @@ export default {
 <style scoped>
 @import '~/assets/css/works.css';
 
+/* Content Wrapper */
+.content-wrapper {
+  position: relative;
+  min-height: calc(100vh - 120px);
+}
+
+.view-page {
+  width: 100%;
+  min-height: 400px;
+}
+
+/* Sort Bar */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 16px 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sort-bar label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.sort-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sort-btn {
+  padding: 8px 16px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.sort-btn:hover {
+  border-color: #2196F3;
+  color: #2196F3;
+  background: rgba(33, 150, 243, 0.05);
+}
+
+.sort-btn.active {
+  border-color: #2196F3;
+  background: #2196F3;
+  color: white;
+  font-weight: 600;
+}
+
+/* Page Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
+  gap: 20px;
+}
+
+.page-title {
+  flex: 1;
+  text-align: center;
+}
+
+.page-title h2 {
+  margin: 0 0 4px 0;
+  font-size: 2rem;
+  color: #333;
+}
+
+.page-title p {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.back-btn {
+  background: #666;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.back-btn:hover {
+  background: #555;
+  transform: translateX(-4px);
+}
+
+.add-work-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.add-work-btn:hover {
+  background: #45a049;
+}
+
+.work-nav-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.nav-btn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: #1976D2;
+}
+
+.nav-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Works Section */
+.works-section {
+  margin-bottom: 48px;
+}
+
+.works-section h3 {
+  font-size: 1.5rem;
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+/* Work Detail Content */
+.work-detail-content {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 32px;
+}
+
+@media (max-width: 1200px) {
+  .work-detail-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+.work-detail-left {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.work-cover-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1a1a1a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.work-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.work-cover-image:hover {
+  transform: scale(1.05);
+}
+
+.cover-click-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.work-cover-container:hover .cover-click-hint {
+  opacity: 1;
+}
+
 .image-source-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  top: 12px;
+  right: 12px;
+  background: #4CAF50;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
   font-weight: bold;
-  text-transform: uppercase;
   z-index: 10;
 }
 
-.image-source-selector small {
-  display: block;
-  margin-top: 4px;
-  color: #4CAF50;
-  font-size: 0.85rem;
+.work-info-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.work-title {
+  font-size: 1.75rem;
+  margin: 0 0 20px 0;
+  cursor: pointer;
+  user-select: all;
+  color: #333;
+}
+
+.work-title:hover {
+  color: #2196F3;
+}
+
+.typo-warning {
+  color: #ff9800;
+  font-size: 1.2rem;
+  margin-left: 8px;
+}
+
+.work-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.action-btn {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: white;
+}
+
+.action-btn.edit {
+  background: #4CAF50;
+}
+
+.action-btn.edit:hover {
+  background: #45a049;
+}
+
+.action-btn.move {
+  background: #FF9800;
+}
+
+.action-btn.move:hover {
+  background: #F57C00;
+}
+
+.action-btn.upload {
+  background: #2196F3;
+}
+
+.action-btn.upload:hover {
+  background: #1976D2;
+}
+
+.action-btn.remove {
+  background: #f44336;
+}
+
+.action-btn.remove:hover {
+  background: #d32f2f;
+}
+
+.external-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.ext-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  color: white;
+}
+
+.ext-btn.njav {
+  background: #9C27B0;
+}
+
+.ext-btn.njav:hover {
+  background: #7B1FA2;
+}
+
+.ext-btn.missav {
+  background: #E91E63;
+}
+
+.ext-btn.missav:hover {
+  background: #C2185B;
+}
+
+.work-detail-right {
+  min-height: 400px;
+}
+
+.gallery-title {
+  font-size: 1.5rem;
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.gallery-item {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #1a1a1a;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gallery-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-item img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.3s;
+  background: #000;
 }
 
 .photo-placeholder {
@@ -1417,24 +1439,6 @@ export default {
   transform: translateY(-1px);
 }
 
-.action-btn-sidebar.upload {
-  background: #2196F3;
-  color: white;
-}
-
-.action-btn-sidebar.upload:hover {
-  background: #1976D2;
-}
-
-.action-btn-sidebar.remove {
-  background: #f44336;
-  color: white;
-}
-
-.action-btn-sidebar.remove:hover {
-  background: #d32f2f;
-}
-
 .file-upload-label {
   cursor: pointer;
   display: block;
@@ -1452,16 +1456,6 @@ export default {
 .file-upload-area:hover {
   border-color: #2196F3;
   background: #f0f7ff;
-}
-
-.dark-mode .file-upload-area {
-  background: #2a2a2a;
-  border-color: #555;
-}
-
-.dark-mode .file-upload-area:hover {
-  background: #1a2a3a;
-  border-color: #2196F3;
 }
 
 .upload-tabs {
@@ -1511,89 +1505,155 @@ export default {
   }
 }
 
-.dark-mode .upload-tabs {
-  border-bottom-color: #444;
-}
-
-.dark-mode .upload-tab {
-  color: #aaa;
-}
-
-.dark-mode .upload-tab:hover {
-  color: #2196F3;
-  background: rgba(33, 150, 243, 0.1);
-}
-
-.dark-mode .upload-tab.active {
-  color: #2196F3;
-}
-
-/* Z-Index Layering System */
 .modal {
-  z-index: 9000 !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
 }
 
 .modal-box {
-  z-index: 9001 !important;
-  position: relative;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 9001;
 }
 
-.work-modal {
-  z-index: 8000 !important;
-}
-
-.work-modal-content {
-  z-index: 8001 !important;
-  position: relative;
-}
-
-/* Upload modal should be highest among regular modals */
-div[v-if="showUploadModal"].modal {
-  z-index: 10000 !important;
-}
-
-/* Lightbox should be above everything */
 .lightbox {
-  z-index: 11000 !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11000;
 }
 
-.lightbox-content,
+.lightbox-content {
+  max-width: 90vw;
+  max-height: 90vh;
+  position: relative;
+  z-index: 11001;
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
 .lightbox-close,
 .lightbox-nav {
-  z-index: 11001 !important;
-  position: relative;
+  position: fixed;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11002;
+  transition: background 0.2s;
 }
 
-/* Toast should be visible above everything except lightbox */
+.lightbox-close {
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  font-size: 1.5rem;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 0, 0, 0.8);
+}
+
+.lightbox-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  font-size: 2rem;
+}
+
+.lightbox-nav:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.lightbox-prev {
+  left: 20px;
+}
+
+.lightbox-next {
+  right: 20px;
+}
+
+.lightbox-info {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.lightbox-code {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.lightbox-counter {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
 .toast {
-  z-index: 10500 !important;
-  position: fixed !important;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #4CAF50;
+  color: white;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10500;
+  font-weight: 500;
 }
 
-/* Work Modal Navigation Buttons */
-.work-modal-nav {
-  position: absolute !important;
-  z-index: 8003 !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+.toast.error {
+  background: #f44336;
 }
 
-.work-modal-prev {
-  left: 20px !important;
+.toast.info {
+  background: #2196F3;
 }
 
-.work-modal-next {
-  right: 20px !important;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
 }
 
-.work-modal-close {
-  position: absolute !important;
-  z-index: 8003 !important;
-  top: 20px !important;
-  right: 20px !important;
-}
-
-.work-modal-content {
-  position: relative !important;
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
