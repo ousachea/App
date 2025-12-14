@@ -7,6 +7,8 @@ export const DEFAULT_ARTISTS = [
 
   { name: 'Tsuji Imaru', mainWorks: ['CAWD-681','ONSG-085'] },
 
+  { name: 'Uno Kanaya', mainWorks: ['JUL-558','JUL-682','JUL-721','JUL-788','JUVR-131','JUL-809','JUL-861','JUL-893'] },
+
   { name: 'Haruna Noa', mainWorks: ['MIDA-351','MIDA-450','MDBK-320','DVAJ-698','116NHDTB-92304'] },
 
   { name: 'Mizuhara Misono', mainWorks: ['JUFE-603','BDST-1201','BDST-1202','BDST-012','355OPCYN-356','LULU-167','300NTK-728','CAWD-271'] },
@@ -175,7 +177,7 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['HND-511','HND-547','IQQQ-024','IPX-083','JUY-543','JUY-606','MIAE-226','NIMA-007','NITR-388','PPPD-686','URPW-039']
   },
 
-  { name: 'Kanno Sayuki', mainWorks: ['GVG-122'] },
+  { name: 'Kanno Sayuki', mainWorks: ['GVG-122','MDYD-789','MIDD-776'] },
 
   {
     name: 'Ruri Saijo',
@@ -214,7 +216,32 @@ export const DEFAULT_ARTISTS = [
 
   { name: 'Airi Hinata', mainWorks: ['NITR-223'] },
 
-  { name: 'Nana Fukada', mainWorks: ['EBOD-578'] },
+ { 
+  name: 'Nana Fukada', 
+  mainWorks: [
+    'MKCK-271',
+    'OFJE-150',
+    'SSNI-095',
+    'MKCK-200',
+    'SSNI-072',
+    'SSNI-049',
+    'SSNI-026',
+    'SSNI-007',
+    'EBOD-595',
+    'EBVR-001',
+    'EBOD-589',
+    'EBOD-585',
+    'EBOD-578',
+    'EBOD-572',
+    'EBOD-568',
+    'EBOD-564',
+    'REBDB-196',
+    'EBOD-554',
+    'MMND-133',
+    'MMND-131'
+  ] 
+},
+
 
   { name: 'Satomi Hibino', mainWorks: ['BF-475'] },
 

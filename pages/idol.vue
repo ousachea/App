@@ -142,12 +142,27 @@
                 <span v-if="hasSimilarCode(currentWork.code)" class="typo-warning">⚠️</span>
               </h2>
 
+              <!-- Additional Artists Section -->
+              <div v-if="currentWork.additionalArtists && currentWork.additionalArtists.length"
+                class="additional-artists">
+                <label>Also appears in:</label>
+                <div class="artist-chips">
+                  <span v-for="artistName in currentWork.additionalArtists" :key="artistName" class="artist-chip">
+                    {{ artistName }}
+                    <button @click="removeAdditionalArtist(currentWork, artistName)" class="chip-remove">✕</button>
+                  </span>
+                </div>
+              </div>
+
               <div class="work-actions">
                 <button @click="openEditWorkModal(currentWork)" class="action-btn edit">
                   ✏️ Edit
                 </button>
                 <button @click="openMoveWorkModal(currentWork)" class="action-btn move">
                   ➡️ Move
+                </button>
+                <button @click="openAddArtistToWorkModal(currentWork)" class="action-btn add-artist">
+                  👥 Add Artist
                 </button>
                 <button v-if="!hasCustomImage(currentWork.code)" @click="openUploadModal(currentWork.code)"
                   class="action-btn upload">
@@ -180,6 +195,29 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Artist to Work Modal -->
+    <div v-if="showAddArtistToWorkModal" class="modal" @click.self="closeAddArtistToWorkModal">
+      <div class="modal-box">
+        <h3>Add Artist to Work</h3>
+        <p style="margin-bottom: 16px; color: #666;">
+          Add this work to another artist's collection
+        </p>
+        <label>
+          Select Artist
+          <select v-model="addArtistToWorkData.targetArtist" class="artist-select">
+            <option value="">Choose artist...</option>
+            <option v-for="a in availableArtistsForWork" :key="a.name" :value="a.name">
+              {{ a.name }} ({{ (a.mainWorks?.length || 0) + (a.compilations?.length || 0) }} works)
+            </option>
+          </select>
+        </label>
+        <div class="modal-btns">
+          <button @click="executeAddArtistToWork" class="btn" :disabled="!addArtistToWorkData.targetArtist">Add</button>
+          <button @click="closeAddArtistToWorkModal" class="btn" style="background: #666">Cancel</button>
         </div>
       </div>
     </div>
@@ -387,16 +425,18 @@ export default {
   name: 'Works',
   data() {
     return {
-      currentView: 'artists', // 'artists', 'works', 'detail'
+      currentView: 'artists',
       activeTab: '',
-      artistSort: 'works-desc', // 'name-asc', 'name-desc', 'works-asc', 'works-desc'
+      artistSort: 'works-desc',
       toast: { show: false, message: '', type: 'success' },
       showAddWorkModal: false,
       showAddArtistModal: false,
       showEditWorkModal: false,
       showMoveWorkModal: false,
+      showAddArtistToWorkModal: false,
       editingWork: null,
       moveWorkData: { code: '', sourceArtist: '', targetArtist: '', type: '' },
+      addArtistToWorkData: { work: null, targetArtist: '' },
       newWork: { artist: '', code: '', type: 'mainWorks' },
       newArtist: { name: '', photo: '' },
       artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
@@ -466,6 +506,18 @@ export default {
     sortedArtistsForMove() {
       return this.artists
         .filter(a => a.name !== this.activeTab)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    },
+    availableArtistsForWork() {
+      if (!this.addArtistToWorkData.work) return []
+
+      const currentWork = this.addArtistToWorkData.work
+      const currentArtistName = this.activeTab
+      const additionalArtists = currentWork.additionalArtists || []
+      const excludedArtists = [currentArtistName, ...additionalArtists]
+
+      return this.artists
+        .filter(a => !excludedArtists.includes(a.name))
         .sort((a, b) => a.name.localeCompare(b.name))
     }
   },
@@ -668,6 +720,109 @@ export default {
       return newIndex >= 0 && newIndex < this.currentWorkList.length
     },
 
+    openAddArtistToWorkModal(work) {
+      this.addArtistToWorkData = { work, targetArtist: '' }
+      this.showAddArtistToWorkModal = true
+    },
+
+    closeAddArtistToWorkModal() {
+      this.showAddArtistToWorkModal = false
+      this.addArtistToWorkData = { work: null, targetArtist: '' }
+    },
+
+    executeAddArtistToWork() {
+      if (!this.addArtistToWorkData.targetArtist) {
+        return this.showToast('Select target artist', 'error')
+      }
+
+      const work = this.addArtistToWorkData.work
+      const targetArtistName = this.addArtistToWorkData.targetArtist
+      const targetArtist = this.artists.find(a => a.name === targetArtistName)
+
+      if (!targetArtist) {
+        return this.showToast('Artist not found', 'error')
+      }
+
+      const currentArtist = this.artists.find(a => a.name === this.activeTab)
+      let workType = 'mainWorks'
+      if (currentArtist?.compilations?.find(w => w.code === work.code)) {
+        workType = 'compilations'
+      }
+
+      const existsInTarget = targetArtist.mainWorks?.find(w => w.code === work.code) ||
+        targetArtist.compilations?.find(w => w.code === work.code)
+
+      if (existsInTarget) {
+        return this.showToast('Work already exists in target artist', 'error')
+      }
+
+      if (!targetArtist[workType]) {
+        targetArtist[workType] = []
+      }
+
+      const workCopy = { ...work }
+
+      if (!workCopy.additionalArtists) {
+        workCopy.additionalArtists = []
+      }
+
+      if (!workCopy.additionalArtists.includes(this.activeTab)) {
+        workCopy.additionalArtists.push(this.activeTab)
+      }
+
+      targetArtist[workType].push(workCopy)
+
+      if (!work.additionalArtists) {
+        work.additionalArtists = []
+      }
+      if (!work.additionalArtists.includes(targetArtistName)) {
+        work.additionalArtists.push(targetArtistName)
+      }
+
+      this.artists = [...this.artists]
+      this.closeAddArtistToWorkModal()
+      this.showToast(`✅ Added ${work.code} to ${targetArtistName}`, 'success')
+    },
+
+    removeAdditionalArtist(work, artistNameToRemove) {
+      if (!confirm(`Remove ${work.code} from ${artistNameToRemove}?`)) {
+        return
+      }
+
+      const artistToRemoveFrom = this.artists.find(a => a.name === artistNameToRemove)
+
+      if (artistToRemoveFrom) {
+        if (artistToRemoveFrom.mainWorks) {
+          artistToRemoveFrom.mainWorks = artistToRemoveFrom.mainWorks.filter(w => w.code !== work.code)
+        }
+        if (artistToRemoveFrom.compilations) {
+          artistToRemoveFrom.compilations = artistToRemoveFrom.compilations.filter(w => w.code !== work.code)
+        }
+      }
+
+      if (work.additionalArtists) {
+        work.additionalArtists = work.additionalArtists.filter(name => name !== artistNameToRemove)
+        if (work.additionalArtists.length === 0) {
+          delete work.additionalArtists
+        }
+      }
+
+      this.artists.forEach(artist => {
+        const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
+        allWorks.forEach(w => {
+          if (w.code === work.code && w.additionalArtists) {
+            w.additionalArtists = w.additionalArtists.filter(name => name !== artistNameToRemove)
+            if (w.additionalArtists.length === 0) {
+              delete w.additionalArtists
+            }
+          }
+        })
+      })
+
+      this.artists = [...this.artists]
+      this.showToast(`✅ Removed from ${artistNameToRemove}`, 'success')
+    },
+
     openLightbox(work, startIndex = 0) {
       const images = [
         this.getImageUrl(work.code, 'pl')
@@ -742,8 +897,31 @@ export default {
 
       sourceArtist[type] = sourceArtist[type].filter(w => w.code !== this.moveWorkData.code)
 
+      if (work.additionalArtists) {
+        work.additionalArtists = work.additionalArtists.filter(name => name !== this.moveWorkData.sourceArtist)
+        if (!work.additionalArtists.includes(this.moveWorkData.targetArtist)) {
+          work.additionalArtists.push(this.moveWorkData.targetArtist)
+        }
+      } else {
+        work.additionalArtists = []
+      }
+
       if (!targetArtist[type]) targetArtist[type] = []
       targetArtist[type].push(work)
+
+      this.artists.forEach(artist => {
+        const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
+        allWorks.forEach(w => {
+          if (w.code === work.code) {
+            if (w.additionalArtists) {
+              w.additionalArtists = w.additionalArtists.filter(name => name !== this.moveWorkData.sourceArtist)
+              if (!w.additionalArtists.includes(this.moveWorkData.targetArtist)) {
+                w.additionalArtists.push(this.moveWorkData.targetArtist)
+              }
+            }
+          }
+        })
+      })
 
       this.artists = [...this.artists]
       this.closeMoveWorkModal()
@@ -1097,6 +1275,69 @@ export default {
   font-weight: 600;
 }
 
+/* Additional Artists Section */
+.additional-artists {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.additional-artists label {
+  display: block;
+  font-weight: 600;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+.artist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: white;
+  border: 2px solid #2196F3;
+  border-radius: 20px;
+  color: #2196F3;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: #f44336;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.chip-remove:hover {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.action-btn.add-artist {
+  background: #9C27B0;
+}
+
+.action-btn.add-artist:hover {
+  background: #7B1FA2;
+}
+
 /* Page Header */
 .page-header {
   display: flex;
@@ -1296,6 +1537,10 @@ export default {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.work-actions .action-btn:nth-child(5) {
+  grid-column: 1 / -1;
 }
 
 .action-btn {
