@@ -185,11 +185,8 @@
               <h2 class="section-title">Purchase History</h2>
               <button @click="exportData('csv')" class="icon-btn" title="Export CSV">⬇</button>
             </div>
-            <div class="search-box history-search">
-              <input v-model="searchQuery" type="text" placeholder="Search purchases..." class="search-input">
-            </div>
             <div class="purchases-list">
-              <div v-for="purchase in filteredPurchases" :key="purchase.id" class="purchase-card"
+              <div v-for="purchase in purchases" :key="purchase.id" class="purchase-card"
                 :class="{ editing: editingId === purchase.id }">
 
                 <!-- View Mode -->
@@ -411,7 +408,6 @@ export default {
       purchaseCache: new Map(),
       formatCache: new Map(),
 
-      searchQuery: '',
       toasts: [],
       toastId: 0
     };
@@ -425,17 +421,6 @@ export default {
 
     isRefreshDisabled() {
       return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
-    },
-
-    filteredPurchases() {
-      const sorted = [...this.purchases].sort((a, b) => new Date(b.date) - new Date(a.date));
-      if (!this.searchQuery) return sorted;
-      const query = this.searchQuery.toLowerCase();
-      return sorted.filter(p =>
-        this.formatDate(p.date).toLowerCase().includes(query) ||
-        p.amount.toString().includes(query) ||
-        p.totalPaid.toString().includes(query)
-      );
     },
 
     memoizedChiPrice() {
@@ -1478,21 +1463,6 @@ body {
   flex: 1;
 }
 
-.search-input {
-  width: 100%;
-  padding: 6px 12px;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
-}
-
 /* Conversions */
 .conversion-grid {
   display: grid;
@@ -1531,10 +1501,6 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-}
-
-.history-search {
   margin-bottom: 16px;
 }
 
@@ -2162,11 +2128,6 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .history-search {
-    width: 100%;
     margin-bottom: 12px;
   }
 
