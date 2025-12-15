@@ -1,4 +1,4 @@
-<!-- pages/index.vue - GOLD TRACKER WITH MacOS DESIGN -->
+<!-- pages/index.vue - GOLD TRACKER SINGLE PAGE (NO TABS) -->
 
 <template>
   <div class="app">
@@ -22,328 +22,322 @@
           <div class="light green"></div>
         </div>
         <div class="title">Gold Tracker</div>
-        <div class="spacer"></div>
+        <button @click="handleRefresh" :disabled="loading || isRefreshDisabled" class="title-refresh-btn">
+          <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
+        </button>
       </div>
 
-      <!-- Main Content -->
+      <!-- Main Content (No Sidebar) -->
       <div class="window-content">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-          <nav class="nav-menu">
-            <button class="nav-item" :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">
-              <span class="nav-icon">◆</span>
-              <span class="nav-label">Overview</span>
-            </button>
-            <button class="nav-item" :class="{ active: activeTab === 'convert' }" @click="activeTab = 'convert'">
-              <span class="nav-icon">⇄</span>
-              <span class="nav-label">Convert</span>
-            </button>
-            <button class="nav-item" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">
-              <span class="nav-icon">⊟</span>
-              <span class="nav-label">History</span>
-            </button>
-            <button class="nav-item" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">
-              <span class="nav-icon">⚙</span>
-              <span class="nav-label">Settings</span>
-            </button>
-          </nav>
-
-          <div class="sidebar-footer">
-            <button @click="handleRefresh" :disabled="loading || isRefreshDisabled" class="refresh-btn">
-              <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
-            </button>
-          </div>
-        </aside>
-
-        <!-- Content -->
         <main class="content">
-          <!-- Page Header -->
-          <header class="page-header">
-            <h1 class="page-title">{{ getPageTitle }}</h1>
-            <div class="header-actions">
-              <div v-if="activeTab === 'history'" class="search-box">
-                <input v-model="searchQuery" type="text" placeholder="Search..." class="search-input">
+          <!-- Hero Card -->
+          <section class="hero-section">
+            <div class="card hero-card">
+              <div class="card-header">
+                <h1 class="card-title">Current Gold Price</h1>
+                <button @click="toggleCustomPriceMode" :class="['icon-btn', { active: isManualMode }]"
+                  title="Custom price">
+                  ⚙
+                </button>
               </div>
-              <div class="status-badge" :class="{ loading: loading }">
-                {{ refreshButtonText }}
-              </div>
-            </div>
-          </header>
 
-          <!-- Content Area -->
-          <div class="content-area">
-            <!-- Overview Tab -->
-            <section v-if="activeTab === 'overview'" class="tab-content">
-              <!-- Hero Card -->
-              <div class="card hero-card">
-                <div class="card-header">
-                  <h2 class="card-title">Current Price</h2>
-                  <button @click="toggleCustomPriceMode" :class="['icon-btn', { active: isManualMode }]"
-                    title="Custom price">
-                    ⚙
-                  </button>
+              <div class="card-content">
+                <div v-if="loading" class="loader"></div>
+                <div v-else class="price-section">
+                  <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
+                  <div class="price-label">per troy ounce</div>
+                  <div class="price-meta">{{ lastUpdated }}</div>
                 </div>
 
-                <div class="card-content">
-                  <div v-if="loading" class="loader"></div>
-                  <div v-else class="price-section">
-                    <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
-                    <div class="price-label">per troy ounce</div>
+                <Transition name="expand">
+                  <div v-if="isManualMode" class="custom-price-input">
+                    <input v-model.number="manualPrice" type="number" step="0.01" placeholder="Enter custom price"
+                      class="input">
+                    <button @click="clearManualPrice" class="btn-small">Reset</button>
                   </div>
+                </Transition>
+              </div>
+            </div>
+          </section>
 
-                  <Transition name="expand">
-                    <div v-if="isManualMode" class="custom-price-input">
-                      <input v-model.number="manualPrice" type="number" step="0.01" placeholder="Enter custom price"
-                        class="input">
-                      <button @click="clearManualPrice" class="btn-small">Reset</button>
+          <!-- Stats Grid -->
+          <section v-if="purchases.length > 0" class="stats-section">
+            <h2 class="section-title">Portfolio Overview</h2>
+            <div class="portfolio-card">
+              <div class="portfolio-row">
+                <div class="portfolio-item">
+                  <span class="portfolio-label">Total Invested</span>
+                  <span class="portfolio-value">{{ memoizedTotalInvested }}</span>
+                </div>
+                <div class="portfolio-divider"></div>
+                <div class="portfolio-item">
+                  <span class="portfolio-label">Current Value</span>
+                  <span class="portfolio-value">{{ memoizedCurrentValue }}</span>
+                </div>
+              </div>
+              <div class="portfolio-profit-row" :class="memoizedProfitLoss >= 0 ? 'gain' : 'loss'">
+                <div class="profit-icon">{{ memoizedProfitLoss >= 0 ? '↑' : '↓' }}</div>
+                <div class="profit-content">
+                  <div class="profit-label">{{ memoizedProfitLoss >= 0 ? 'Gain' : 'Loss' }}</div>
+                  <div class="profit-amount">{{ memoizedProfitLossDisplay }}</div>
+                  <div class="profit-percent">{{ memoizedProfitChangePercent }}</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Quick Calculator -->
+          <section class="calculator-section">
+            <h2 class="section-title">Quick Calculator</h2>
+            <div class="card">
+              <div class="card-content">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0"
+                      class="input" inputmode="decimal">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Unit</label>
+                    <select v-model="calculatorUnit" class="input">
+                      <option value="chi">Chi (ជី)</option>
+                      <option value="gram">Gram</option>
+                      <option value="damlung">Damlung (ដំឡឹង)</option>
+                      <option value="oz">Troy Ounce</option>
+                    </select>
+                  </div>
+                  <Transition name="fade">
+                    <div v-if="calculatorAmount > 0" class="result-display">
+                      <div class="result-label">Equals</div>
+                      <div class="result-value">{{ memoizedCalculatorResult }}</div>
                     </div>
                   </Transition>
                 </div>
-
-                <div class="card-footer">{{ lastUpdated }}</div>
               </div>
+            </div>
+          </section>
 
-              <!-- Stats Grid -->
-              <div v-if="purchases.length > 0" class="stats-grid">
-                <div class="stat-card">
-                  <div class="stat-label">Total Invested</div>
-                  <div class="stat-value">{{ memoizedTotalInvested }}</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-label">Current Value</div>
-                  <div class="stat-value">{{ memoizedCurrentValue }}</div>
-                </div>
-                <div class="stat-card" :class="memoizedProfitLoss >= 0 ? 'profit' : 'loss'">
-                  <div class="stat-label">{{ memoizedProfitLoss >= 0 ? 'Gain' : 'Loss' }}</div>
-                  <div class="stat-value">{{ memoizedProfitLossDisplay }}</div>
-                  <div class="stat-change">{{ memoizedProfitChangePercent }}</div>
-                </div>
-              </div>
-
-              <!-- Calculator & Form -->
-              <div class="cards-row">
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">Quick Calculator</h3>
+          <!-- Conversions -->
+          <section class="conversions-section">
+            <h2 class="section-title">Price by Unit</h2>
+            <div class="card">
+              <div class="card-content">
+                <div class="conversion-grid">
+                  <div class="conversion-item">
+                    <div class="conversion-label">Chi (ជី)</div>
+                    <div class="conversion-value">{{ memoizedChiPrice }}</div>
+                    <div class="conversion-unit">3.75g</div>
                   </div>
-                  <div class="card-content">
-                    <div class="form-group">
-                      <label class="form-label">Amount</label>
-                      <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0"
-                        class="input" inputmode="decimal">
+                  <div class="conversion-item">
+                    <div class="conversion-label">Gram</div>
+                    <div class="conversion-value">{{ memoizedGramPrice }}</div>
+                    <div class="conversion-unit">1g</div>
+                  </div>
+                  <div class="conversion-item">
+                    <div class="conversion-label">Damlung (ដំឡឹង)</div>
+                    <div class="conversion-value">{{ memoizedDamlungPrice }}</div>
+                    <div class="conversion-unit">37.5g</div>
+                  </div>
+                  <div class="conversion-item">
+                    <div class="conversion-label">Troy Ounce</div>
+                    <div class="conversion-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
+                    <div class="conversion-unit">31.1g</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Add Purchase -->
+          <section class="purchase-section">
+            <h2 class="section-title">Add Purchase</h2>
+            <div class="card">
+              <div class="card-content">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Amount (Chi)</label>
+                    <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
+                      class="input" inputmode="decimal">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Price (USD)</label>
+                    <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
+                      class="input" inputmode="decimal">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input v-model="newPurchase.date" type="date" class="input" :max="getCurrentDate()">
+                  </div>
+                </div>
+                <button @click="addPurchase" :disabled="!canAddPurchase()" class="btn btn-primary">
+                  Add Purchase
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Purchase History -->
+          <section v-if="purchases.length > 0" class="history-section">
+            <div class="history-header">
+              <h2 class="section-title">Purchase History</h2>
+              <button @click="exportData('csv')" class="icon-btn" title="Export CSV">⬇</button>
+            </div>
+            <div class="search-box history-search">
+              <input v-model="searchQuery" type="text" placeholder="Search purchases..." class="search-input">
+            </div>
+            <div class="purchases-list">
+              <div v-for="purchase in filteredPurchases" :key="purchase.id" class="purchase-card"
+                :class="{ editing: editingId === purchase.id }">
+
+                <!-- View Mode -->
+                <template v-if="editingId !== purchase.id">
+                  <div class="purchase-header">
+                    <div class="purchase-date">{{ formatDate(purchase.date) }}</div>
+                    <div class="purchase-amount">{{ purchase.amount }} CHI</div>
+                  </div>
+
+                  <div class="purchase-row">
+                    <div class="purchase-item">
+                      <span class="purchase-label">Total Paid</span>
+                      <span class="purchase-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</span>
                     </div>
-                    <div class="form-group">
-                      <label class="form-label">Unit</label>
-                      <select v-model="calculatorUnit" class="input">
-                        <option value="chi">Chi (ជី)</option>
-                        <option value="gram">Gram</option>
-                        <option value="damlung">Damlung (ដំឡឹង)</option>
-                        <option value="oz">Troy Ounce</option>
-                      </select>
+                    <div class="purchase-item">
+                      <span class="purchase-label">Price per Chi</span>
+                      <span class="purchase-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount)
+                        }}</span>
                     </div>
-                    <Transition name="fade">
-                      <div v-if="calculatorAmount > 0" class="result-box">
-                        {{ memoizedCalculatorResult }}
+                    <div class="purchase-item">
+                      <span class="purchase-label">Per Chi Today</span>
+                      <span class="purchase-value">{{ getWorthTodayPerChiCached(purchase) }}</span>
+                    </div>
+                    <div class="purchase-item">
+                      <span class="purchase-label">Worth Today</span>
+                      <span class="purchase-value">{{ getWorthTodayTotalCached(purchase) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="purchase-footer" :class="getProfitClassCached(purchase.id)">
+                    <div class="profit-info">
+                      <div class="profit-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</div>
+                      <div class="profit-display">{{ getProfitDisplayCached(purchase.id) }}</div>
+                      <div class="profit-percent">{{ getProfitPercentCached(purchase.id) }}</div>
+                    </div>
+                    <div class="purchase-actions">
+                      <button @click="startEdit(purchase)" class="action-btn sm">Edit</button>
+                      <button @click="deletePurchase(purchase.id)" class="action-btn sm danger">Delete</button>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Edit Mode -->
+                <template v-else>
+                  <div class="edit-mode">
+                    <h3 class="edit-title">Edit Purchase</h3>
+                    <div class="edit-form">
+                      <div class="edit-field">
+                        <label class="form-label">Date</label>
+                        <input v-model="editingPurchase.date" type="date" class="input-small">
                       </div>
-                    </Transition>
-                  </div>
-                </div>
-
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">Add Purchase</h3>
-                  </div>
-                  <div class="card-content">
-                    <div class="form-group">
-                      <label class="form-label">Amount (Chi)</label>
-                      <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
-                        class="input" inputmode="decimal">
+                      <div class="edit-field">
+                        <label class="form-label">Amount (Chi)</label>
+                        <input v-model.number="editingPurchase.amount" type="number" step="0.01" class="input-small">
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label">Total Paid (USD)</label>
+                        <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" class="input-small">
+                      </div>
                     </div>
-                    <div class="form-group">
-                      <label class="form-label">Price (USD)</label>
-                      <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
-                        class="input" inputmode="decimal">
+                    <div class="edit-actions">
+                      <button @click="saveEdit(purchase.id)" class="action-btn success">Save</button>
+                      <button @click="cancelEdit" class="action-btn">Cancel</button>
                     </div>
-                    <div class="form-group">
-                      <label class="form-label">Date</label>
-                      <input v-model="newPurchase.date" type="date" class="input" :max="getCurrentDate()">
-                    </div>
-                    <button @click="addPurchase" :disabled="!canAddPurchase()" class="btn btn-primary">
-                      Add Purchase
-                    </button>
                   </div>
-                </div>
+                </template>
               </div>
-            </section>
+            </div>
+          </section>
 
-            <!-- Convert Tab -->
-            <section v-if="activeTab === 'convert'" class="tab-content">
+          <!-- Settings -->
+          <section class="settings-section">
+            <h2 class="section-title">Settings</h2>
+            <div class="settings-grid">
               <div class="card">
                 <div class="card-header">
-                  <h2 class="card-title">Price Conversions</h2>
+                  <h3 class="card-title">API Configuration</h3>
                 </div>
-                <div class="card-content">
-                  <div class="conversion-grid">
-                    <div class="conversion-item">
-                      <div class="conversion-label">Chi (ជី)</div>
-                      <div class="conversion-value">{{ memoizedChiPrice }}</div>
-                      <div class="conversion-unit">3.75g</div>
+                <div class="card-content settings-content">
+                  <div class="setting-group">
+                    <label class="form-label">Gold API Key</label>
+                    <div class="api-input-wrapper">
+                      <input v-model="apiKeyInput" type="password" placeholder="Enter your API key..."
+                        class="input api-input">
+                      <button @click="toggleApiKeyVisibility" class="icon-btn-small"
+                        :title="showApiKey ? 'Hide' : 'Show'">
+                        {{ showApiKey ? '👁️' : '👁️‍🗨️' }}
+                      </button>
                     </div>
-                    <div class="conversion-item">
-                      <div class="conversion-label">Gram</div>
-                      <div class="conversion-value">{{ memoizedGramPrice }}</div>
-                      <div class="conversion-unit">1g</div>
+                    <div class="api-info">
+                      <div class="info-text">Get your free API key from <a href="https://www.goldapi.io" target="_blank"
+                          rel="noopener">goldapi.io</a></div>
                     </div>
-                    <div class="conversion-item">
-                      <div class="conversion-label">Damlung (ដំឡឹង)</div>
-                      <div class="conversion-value">{{ memoizedDamlungPrice }}</div>
-                      <div class="conversion-unit">37.5g</div>
-                    </div>
-                    <div class="conversion-item">
-                      <div class="conversion-label">Troy Ounce</div>
-                      <div class="conversion-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
-                      <div class="conversion-unit">31.1g</div>
-                    </div>
+                    <button @click="saveApiKey" class="btn btn-secondary">Update API Key</button>
                   </div>
                 </div>
               </div>
-            </section>
 
-            <!-- History Tab -->
-            <section v-if="activeTab === 'history'" class="tab-content">
               <div class="card">
                 <div class="card-header">
-                  <h2 class="card-title">Purchase History</h2>
-                  <div class="header-buttons">
-                    <button @click="exportData('csv')" class="icon-btn" title="Export CSV">⬇</button>
-                  </div>
+                  <h3 class="card-title">API Status</h3>
                 </div>
-
-                <div class="card-content">
-                  <div v-if="purchases.length === 0" class="empty-state">
-                    <p>No purchases yet. Add your first purchase to get started.</p>
+                <div class="card-content settings-content">
+                  <div class="setting-item">
+                    <span class="setting-label">Daily Limit</span>
+                    <span class="setting-value">{{ apiQuota.dailyLimit }} calls</span>
                   </div>
-
-                  <div v-else class="table-wrapper">
-                    <table class="data-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Amount</th>
-                          <th>Price/Chi</th>
-                          <th>Today</th>
-                          <th>Gain/Loss</th>
-                          <th>%</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="purchase in filteredPurchases" :key="purchase.id"
-                          :class="{ editing: editingId === purchase.id }">
-                          <td v-if="editingId !== purchase.id">{{ formatDate(purchase.date) }}</td>
-                          <td v-if="editingId !== purchase.id">{{ purchase.amount }} CHI</td>
-                          <td v-if="editingId !== purchase.id">{{ formatCurrencyDisplay(purchase.totalPaid /
-          purchase.amount) }}</td>
-                          <td v-if="editingId !== purchase.id">{{ getWorthTodayPerChiCached(purchase) }}</td>
-                          <td v-if="editingId !== purchase.id" :class="getProfitClassCached(purchase.id)">{{
-          getProfitDisplayCached(purchase.id) }}</td>
-                          <td v-if="editingId !== purchase.id" :class="getProfitClassCached(purchase.id)">{{
-          getProfitPercentCached(purchase.id) }}</td>
-
-                          <!-- Edit Mode -->
-                          <td v-if="editingId === purchase.id" colspan="5">
-                            <div class="edit-row">
-                              <input v-model.number="editingPurchase.amount" type="number" step="0.01"
-                                class="input-small">
-                              <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01"
-                                class="input-small">
-                              <input v-model="editingPurchase.date" type="date" class="input-small">
-                            </div>
-                          </td>
-
-                          <!-- Actions -->
-                          <td class="actions-cell">
-                            <template v-if="editingId !== purchase.id">
-                              <button @click="startEdit(purchase)" class="action-btn">Edit</button>
-                              <button @click="deletePurchase(purchase.id)" class="action-btn danger">Delete</button>
-                            </template>
-                            <template v-else>
-                              <button @click="saveEdit(purchase.id)" class="action-btn">Save</button>
-                              <button @click="cancelEdit" class="action-btn">Cancel</button>
-                            </template>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div class="setting-item">
+                    <span class="setting-label">Used Today</span>
+                    <span class="setting-value">{{ apiQuota.dailyCalls }} / {{ apiQuota.dailyLimit }}</span>
                   </div>
                 </div>
               </div>
-            </section>
 
-            <!-- Settings Tab -->
-            <section v-if="activeTab === 'settings'" class="tab-content">
-              <div class="settings-grid">
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">Price Updates</h3>
-                  </div>
-                  <div class="card-content settings-content">
-                    <div class="setting-item">
-                      <span class="setting-label">Auto Refresh</span>
-                      <span class="setting-value">Every 24 hours</span>
-                    </div>
-                    <div class="setting-item">
-                      <span class="setting-label">Daily Limit</span>
-                      <span class="setting-value">{{ apiQuota.dailyLimit }} calls</span>
-                    </div>
-                    <div class="setting-item">
-                      <span class="setting-label">Used Today</span>
-                      <span class="setting-value">{{ apiQuota.dailyCalls }} / {{ apiQuota.dailyLimit }}</span>
-                    </div>
-                    <button @click="handleRefresh" :disabled="loading || isRefreshDisabled" class="btn btn-primary">
-                      Refresh Now
-                    </button>
-                  </div>
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Data</h3>
                 </div>
-
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">Data Management</h3>
+                <div class="card-content settings-content">
+                  <div class="setting-item">
+                    <span class="setting-label">Total Purchases</span>
+                    <span class="setting-value">{{ purchases.length }}</span>
                   </div>
-                  <div class="card-content settings-content">
-                    <div class="setting-item">
-                      <span class="setting-label">Total Purchases</span>
-                      <span class="setting-value">{{ purchases.length }}</span>
-                    </div>
-                    <div class="setting-item">
-                      <span class="setting-label">Storage Used</span>
-                      <span class="setting-value">{{ (JSON.stringify(purchases).length / 1024).toFixed(2) }} KB</span>
-                    </div>
-                    <div class="button-group">
-                      <button @click="exportData('csv')" class="btn btn-secondary">Export CSV</button>
-                      <button @click="exportData('json')" class="btn btn-secondary">Export JSON</button>
-                    </div>
+                  <div class="setting-item">
+                    <span class="setting-label">Storage Used</span>
+                    <span class="setting-value">{{ (JSON.stringify(purchases).length / 1024).toFixed(2) }} KB</span>
                   </div>
-                </div>
-
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">About</h3>
-                  </div>
-                  <div class="card-content settings-content">
-                    <div class="setting-item">
-                      <span class="setting-label">Version</span>
-                      <span class="setting-value">3.0.0</span>
-                    </div>
-                    <div class="setting-item">
-                      <span class="setting-label">Last Updated</span>
-                      <span class="setting-value">{{ lastUpdated }}</span>
-                    </div>
+                  <div class="button-group">
+                    <button @click="exportData('csv')" class="btn btn-secondary">Export CSV</button>
+                    <button @click="exportData('json')" class="btn btn-secondary">Export JSON</button>
                   </div>
                 </div>
               </div>
-            </section>
-          </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">About</h3>
+                </div>
+                <div class="card-content settings-content">
+                  <div class="setting-item">
+                    <span class="setting-label">Version</span>
+                    <span class="setting-value">3.2.0</span>
+                  </div>
+                  <div class="setting-item">
+                    <span class="setting-label">Updated</span>
+                    <span class="setting-value">{{ lastUpdated }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </main>
       </div>
     </div>
@@ -352,7 +346,7 @@
 
 <script>
 export default {
-  name: 'GoldTrackerMacOS',
+  name: 'GoldTrackerSinglePage',
 
   head() {
     return {
@@ -375,6 +369,8 @@ export default {
       DAMLUNG_TO_OZ: 37.5 / 31.1035,
 
       apiKey: 'goldapi-3yrz5zhtl5zcyqg4-io',
+      apiKeyInput: '',
+      showApiKey: false,
       apiBaseUrl: 'https://www.goldapi.io/api',
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
@@ -412,7 +408,6 @@ export default {
       purchaseCache: new Map(),
       formatCache: new Map(),
 
-      activeTab: 'overview',
       searchQuery: '',
       toasts: [],
       toastId: 0
@@ -420,26 +415,9 @@ export default {
   },
 
   computed: {
-    getPageTitle() {
-      const titles = {
-        overview: 'Overview',
-        convert: 'Conversions',
-        history: 'History',
-        settings: 'Settings'
-      };
-      return titles[this.activeTab] || 'Overview';
-    },
-
     currentPrice() {
       if (this.isManualMode && this.manualPrice) return this.manualPrice;
       return this.goldPrice;
-    },
-
-    refreshButtonText() {
-      if (this.loading) return 'Updating...';
-      if (this.refreshCooldown > 0) return `${this.refreshCooldown}s`;
-      if (this.isRefreshDisabled) return 'Daily Limit';
-      return 'Updated';
     },
 
     isRefreshDisabled() {
@@ -573,6 +551,28 @@ export default {
 
     getProfitClassCached(purchaseId) {
       return this.getProfitValueCached(purchaseId) >= 0 ? 'profit' : 'loss';
+    },
+
+    getWorthTodayTotalCached(purchase) {
+      const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
+      const currentValue = ozEquivalent * this.currentPrice;
+      return this.formatCurrencyDisplay(currentValue);
+    },
+
+    toggleApiKeyVisibility() {
+      this.showApiKey = !this.showApiKey;
+    },
+
+    saveApiKey() {
+      if (!this.apiKeyInput.trim()) {
+        this.showToast('API key cannot be empty', 'error');
+        return;
+      }
+      this.apiKey = this.apiKeyInput.trim();
+      if (process.client) localStorage.setItem('apiKey', this.apiKey);
+      this.apiKeyInput = '';
+      this.showApiKey = false;
+      this.showToast('API key updated successfully', 'success');
     },
 
     toggleCustomPriceMode() {
@@ -819,6 +819,11 @@ export default {
           this.manualPrice = parseFloat(savedManual);
         }
 
+        const savedApiKey = localStorage.getItem('apiKey');
+        if (savedApiKey) {
+          this.apiKey = savedApiKey;
+        }
+
         this.loadPurchases();
         return !!saved;
       } catch (e) {
@@ -860,7 +865,7 @@ body {
 .app {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
   background: linear-gradient(135deg, #e8e8e8 0%, #f5f5f5 100%);
@@ -905,14 +910,13 @@ body {
 /* macOS Window */
 .window {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1000px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 90vh;
 }
 
 /* Title Bar */
@@ -955,91 +959,30 @@ body {
   font-weight: 600;
   color: #333;
   flex: 1;
-  text-align: center;
 }
 
-.spacer {
-  width: 70px;
-}
-
-/* Main Content */
-.window-content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Sidebar */
-.sidebar {
-  width: 180px;
-  background: #f6f6f6;
-  border-right: 1px solid #e5e5e5;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  gap: 12px;
-}
-
-.nav-menu {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nav-item {
-  padding: 8px 12px;
+.title-refresh-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
   background: none;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #666;
+  border-radius: 4px;
   cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  color: #666;
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: all 0.2s;
-  font-weight: 500;
+  justify-content: center;
 }
 
-.nav-item:hover {
+.title-refresh-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.05);
   color: #333;
 }
 
-.nav-item.active {
-  background: white;
-  color: #1a73e8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.nav-icon {
-  font-size: 16px;
-  opacity: 0.7;
-}
-
-.sidebar-footer {
-  padding-top: 12px;
-  border-top: 1px solid #e5e5e5;
-}
-
-.refresh-btn {
-  width: 100%;
-  padding: 8px 12px;
-  background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: #f0f0f0;
-  border-color: #d0d0d0;
-}
-
-.refresh-btn:disabled {
+.title-refresh-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1058,81 +1001,43 @@ body {
   }
 }
 
-/* Content */
-.content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.page-header {
-  padding: 24px;
-  border-bottom: 1px solid #e5e5e5;
-  background: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: #1d1d1d;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.search-box {
-  position: relative;
-}
-
-.search-input {
-  padding: 6px 12px;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 13px;
-  width: 200px;
-  transition: all 0.2s;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
-}
-
-.status-badge {
-  padding: 4px 12px;
-  background: #f0f0f0;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #666;
-  text-transform: uppercase;
-}
-
-.status-badge.loading {
-  background: #e3f2fd;
-  color: #1a73e8;
-}
-
-/* Content Area */
-.content-area {
+/* Main Content */
+.window-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
 }
 
-.tab-content {
+.content {
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+}
+
+/* Sections */
+.hero-section,
+.stats-section,
+.calculator-section,
+.conversions-section,
+.purchase-section,
+.history-section,
+.settings-section {
+  padding: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.hero-section {
+  background: white;
+}
+
+.stats-section {
+  background: white;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1d;
+  margin: 0 0 16px 0;
 }
 
 /* Cards */
@@ -1168,18 +1073,9 @@ body {
   padding: 16px;
 }
 
-.card-footer {
-  padding: 8px 16px;
-  background: #f9f9f9;
-  border-top: 1px solid #e5e5e5;
-  font-size: 12px;
-  color: #999;
-  text-align: right;
-}
-
 /* Hero Card */
-.hero-card {
-  grid-column: 1 / -1;
+.hero-card .card-content {
+  padding: 24px;
 }
 
 .price-section {
@@ -1199,6 +1095,12 @@ body {
   color: #999;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.price-meta {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 8px;
 }
 
 .loader {
@@ -1224,7 +1126,7 @@ body {
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
 }
 
@@ -1265,24 +1167,140 @@ body {
   margin-top: 4px;
 }
 
-/* Cards Row */
-.cards-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+/* Portfolio Card */
+.portfolio-card {
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.portfolio-row {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.portfolio-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.portfolio-label {
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.portfolio-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1d1d1d;
+}
+
+.portfolio-divider {
+  width: 1px;
+  height: 40px;
+  background: #e5e5e5;
+  margin: 0 20px;
+}
+
+.portfolio-profit-row {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  padding: 20px;
+  background: #f9f9f9;
+}
+
+.portfolio-profit-row.gain {
+  background: #f0fdf4;
+}
+
+.portfolio-profit-row.loss {
+  background: #fef2f2;
+}
+
+.profit-icon {
+  font-size: 28px;
+  font-weight: 700;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.portfolio-profit-row.gain .profit-icon {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.portfolio-profit-row.loss .profit-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.profit-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profit-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.profit-amount {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.portfolio-profit-row.gain .profit-amount {
+  color: #059669;
+}
+
+.portfolio-profit-row.loss .profit-amount {
+  color: #dc2626;
+}
+
+.profit-percent {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.portfolio-profit-row.gain .profit-percent {
+  color: #059669;
+}
+
+.portfolio-profit-row.loss .profit-percent {
+  color: #dc2626;
 }
 
 /* Forms */
-.form-group {
-  margin-bottom: 16px;
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  align-items: flex-end;
 }
 
-.form-group:last-child {
-  margin-bottom: 0;
+.form-group {
+  display: flex;
+  flex-direction: column;
 }
 
 .form-label {
-  display: block;
   font-size: 12px;
   font-weight: 600;
   color: #333;
@@ -1292,7 +1310,6 @@ body {
 }
 
 .input {
-  width: 100%;
   padding: 8px 12px;
   border: 1px solid #e5e5e5;
   border-radius: 6px;
@@ -1308,7 +1325,6 @@ body {
 }
 
 .input-small {
-  width: 100%;
   padding: 6px 10px;
   border: 1px solid #e5e5e5;
   border-radius: 4px;
@@ -1316,14 +1332,28 @@ body {
   font-family: inherit;
 }
 
-.result-box {
-  background: #f0f0f0;
+.result-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 12px;
+  background: #f0f0f0;
   border-radius: 6px;
-  font-weight: 600;
-  color: #1d1d1d;
   text-align: center;
-  margin-top: 12px;
+}
+
+.result-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.result-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1d1d;
 }
 
 /* Buttons */
@@ -1357,6 +1387,7 @@ body {
   background: #f0f0f0;
   color: #333;
   border: 1px solid #e5e5e5;
+  flex: 1;
 }
 
 .btn-secondary:hover {
@@ -1387,6 +1418,9 @@ body {
   font-size: 16px;
   transition: all 0.2s;
   color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn:hover {
@@ -1410,101 +1444,31 @@ body {
   gap: 8px;
 }
 
-/* Table */
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.data-table thead {
-  background: #f9f9f9;
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.data-table th {
-  padding: 12px;
-  text-align: left;
-  font-weight: 600;
-  color: #666;
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-}
-
-.data-table td {
-  padding: 12px;
-  border-bottom: 1px solid #e5e5e5;
-  color: #333;
-}
-
-.data-table tbody tr:hover {
-  background: #f9f9f9;
-}
-
-.data-table tr.editing {
-  background: #f0f7ff;
-}
-
-.edit-row {
-  display: flex;
-  gap: 8px;
-}
-
-.edit-row input {
+/* Search */
+.search-box {
+  position: relative;
   flex: 1;
-  padding: 6px 10px;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  font-size: 12px;
 }
 
-.actions-cell {
-  display: flex;
-  gap: 4px;
-}
-
-.action-btn {
-  padding: 4px 8px;
-  background: none;
+.search-input {
+  width: 100%;
+  padding: 6px 12px;
   border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  font-size: 11px;
-  cursor: pointer;
+  border-radius: 6px;
+  font-size: 13px;
   transition: all 0.2s;
-  color: #666;
 }
 
-.action-btn:hover {
-  background: #f0f0f0;
-  border-color: #d0d0d0;
-}
-
-.action-btn.danger:hover {
-  background: #ffebee;
-  border-color: #ef5350;
-  color: #c62828;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #999;
-  font-size: 14px;
-}
-
-.empty-state p {
-  margin: 0;
+.search-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
 }
 
 /* Conversions */
 .conversion-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 16px;
 }
 
@@ -1523,7 +1487,7 @@ body {
 }
 
 .conversion-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #1d1d1d;
   margin-bottom: 4px;
@@ -1534,10 +1498,220 @@ body {
   color: #999;
 }
 
+/* Purchase History */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.history-search {
+  margin-bottom: 16px;
+}
+
+.purchases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.purchase-card {
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.purchase-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: #d0d0d0;
+}
+
+.purchase-card.editing {
+  background: #f0f7ff;
+  border-color: #1a73e8;
+}
+
+.purchase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f9f9f9;
+}
+
+.purchase-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.purchase-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1d1d1d;
+}
+
+.purchase-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.purchase-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.purchase-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.purchase-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d1d1d;
+}
+
+.purchase-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.profit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.purchase-footer .profit-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.profit-display {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.purchase-footer.profit .profit-display {
+  color: #059669;
+}
+
+.purchase-footer.loss .profit-display {
+  color: #dc2626;
+}
+
+.purchase-footer .profit-percent {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.purchase-footer.profit .profit-percent {
+  color: #059669;
+}
+
+.purchase-footer.loss .profit-percent {
+  color: #dc2626;
+}
+
+.purchase-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Edit Mode */
+.edit-mode {
+  padding: 16px;
+}
+
+.edit-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d1d1d;
+}
+
+.edit-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.action-btn {
+  padding: 6px 10px;
+  background: #f0f0f0;
+  color: #333;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  background: #e8e8e8;
+  border-color: #d0d0d0;
+}
+
+.action-btn.sm {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.action-btn.danger:hover {
+  background: #ffebee;
+  border-color: #ef5350;
+  color: #c62828;
+}
+
+.action-btn.success {
+  background: #d1fae5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+
+.action-btn.success:hover {
+  background: #a7f3d0;
+  border-color: #6ee7b7;
+}
+
+/* Old Table Styles (kept for reference, can be removed) */
+
 /* Settings */
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
 
@@ -1545,6 +1719,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .setting-item {
@@ -1569,6 +1749,60 @@ body {
   font-size: 13px;
   color: #333;
   font-weight: 600;
+}
+
+.api-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.api-input {
+  flex: 1;
+}
+
+.icon-btn-small {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: #f0f0f0;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-btn-small:hover {
+  background: #e8e8e8;
+  border-color: #d0d0d0;
+}
+
+.api-info {
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e5e5;
+}
+
+.info-text {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.info-text a {
+  color: #1a73e8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.info-text a:hover {
+  text-decoration: underline;
 }
 
 /* Transitions */
@@ -1626,79 +1860,15 @@ body {
 @media (max-width: 1024px) {
   .window {
     max-width: 100%;
-    max-height: 100%;
     border-radius: 0;
   }
 
-  .window-content {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    flex-direction: row;
-    border-right: none;
-    border-bottom: 1px solid #e5e5e5;
-    height: auto;
-    padding: 8px;
-    gap: 8px;
-    overflow-x: auto;
-  }
-
-  .nav-menu {
-    flex-direction: row;
-    flex: 1;
-    gap: 2px;
-  }
-
-  .nav-item {
-    flex: 1;
-    padding: 10px 8px;
-    font-size: 12px;
-    min-width: 80px;
-  }
-
-  .nav-label {
-    display: inline;
-  }
-
-  .sidebar-footer {
-    display: none;
-  }
-
-  .content {
-    flex: 1;
-  }
-
-  .page-header {
-    padding: 16px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .page-title {
-    font-size: 24px;
-  }
-
-  .header-actions {
-    width: 100%;
-  }
-
-  .search-input {
-    width: 100%;
-  }
-
-  .content-area {
-    padding: 16px;
-  }
-
-  .stats-grid {
+  .form-row {
     grid-template-columns: 1fr;
   }
 
-  .cards-row {
-    grid-template-columns: 1fr;
+  .result-display {
+    margin-top: 8px;
   }
 
   .conversion-grid {
@@ -1725,7 +1895,6 @@ body {
   }
 
   .window {
-    height: 100vh;
     max-height: 100vh;
     border-radius: 0;
   }
@@ -1733,7 +1902,6 @@ body {
   .title-bar {
     height: 40px;
     padding: 0 12px;
-    gap: 8px;
   }
 
   .traffic-lights {
@@ -1749,92 +1917,30 @@ body {
     font-size: 12px;
   }
 
-  .spacer {
-    width: 50px;
+  .title-refresh-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
   }
 
-  .window-content {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    flex-direction: row;
-    border-bottom: 1px solid #e5e5e5;
-    border-right: none;
-    height: auto;
-    padding: 4px;
-    gap: 0;
-  }
-
-  .nav-menu {
-    flex-direction: row;
-    flex: 1;
-    gap: 0;
-  }
-
-  .nav-item {
-    flex: 1;
-    padding: 10px 4px;
-    font-size: 11px;
-    gap: 4px;
-    border-radius: 4px;
-  }
-
-  .nav-icon {
-    font-size: 14px;
-  }
-
-  .nav-label {
-    display: none;
-  }
-
-  .nav-item.active .nav-label {
-    display: inline;
-  }
-
-  .page-header {
+  .hero-section,
+  .stats-section,
+  .calculator-section,
+  .conversions-section,
+  .purchase-section,
+  .history-section,
+  .settings-section {
     padding: 12px;
-    gap: 8px;
+    border-bottom: 1px solid #f0f0f0;
   }
 
-  .page-title {
-    font-size: 20px;
-  }
-
-  .header-actions {
-    width: 100%;
-    gap: 8px;
-  }
-
-  .search-input {
-    width: 100%;
+  .section-title {
     font-size: 14px;
-    padding: 8px 10px;
-  }
-
-  .status-badge {
-    font-size: 10px;
-    padding: 4px 8px;
-    white-space: nowrap;
-  }
-
-  .content-area {
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .tab-content {
-    gap: 12px;
-  }
-
-  .card {
-    border-radius: 6px;
+    margin-bottom: 12px;
   }
 
   .card-header {
     padding: 12px;
-    gap: 8px;
   }
 
   .card-title {
@@ -1843,11 +1949,6 @@ body {
 
   .card-content {
     padding: 12px;
-  }
-
-  .card-footer {
-    padding: 6px 12px;
-    font-size: 11px;
   }
 
   .hero-card .card-content {
@@ -1864,7 +1965,6 @@ body {
 
   .stats-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
   }
 
   .stat-card {
@@ -1879,17 +1979,43 @@ body {
     font-size: 24px;
   }
 
-  .stat-change {
-    font-size: 11px;
+  .portfolio-row {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
   }
 
-  .cards-row {
+  .portfolio-divider {
+    width: 100%;
+    height: 1px;
+    margin: 0;
+  }
+
+  .portfolio-item {
+    width: 100%;
+  }
+
+  .portfolio-value {
+    font-size: 20px;
+  }
+
+  .portfolio-profit-row {
+    padding: 16px;
+  }
+
+  .profit-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+
+  .profit-amount {
+    font-size: 24px;
+  }
+
+  .form-row {
     grid-template-columns: 1fr;
     gap: 12px;
-  }
-
-  .form-group {
-    margin-bottom: 12px;
   }
 
   .form-label {
@@ -1909,27 +2035,13 @@ body {
     border-radius: 6px;
   }
 
-  .btn-primary {
-    width: 100%;
+  .result-display {
+    padding: 10px;
+    margin-top: 8px;
   }
 
-  .button-group {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .button-group .btn {
-    width: 100%;
-  }
-
-  .icon-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-  }
-
-  .header-buttons {
-    gap: 4px;
+  .result-value {
+    font-size: 18px;
   }
 
   .conversion-grid {
@@ -1942,7 +2054,7 @@ body {
   }
 
   .conversion-value {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .settings-grid {
@@ -1964,9 +2076,21 @@ body {
     margin-top: 4px;
   }
 
+  .api-input-wrapper {
+    width: 100%;
+  }
+
+  .api-input {
+    width: 100%;
+  }
+
+  .icon-btn-small {
+    width: 40px;
+    height: 40px;
+  }
+
   /* Table on mobile */
   .table-wrapper {
-    overflow-x: auto;
     border-radius: 6px;
     border: 1px solid #e5e5e5;
   }
@@ -1984,11 +2108,6 @@ body {
   .data-table td {
     padding: 10px 8px;
     font-size: 12px;
-  }
-
-  .data-table th:nth-child(n+4),
-  .data-table td:nth-child(n+4) {
-    text-align: right;
   }
 
   .edit-row {
@@ -2011,20 +2130,95 @@ body {
     white-space: nowrap;
   }
 
-  .empty-state {
-    padding: 24px 12px;
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .history-search {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .purchases-list {
+    gap: 10px;
+  }
+
+  .purchase-card {
+    border-radius: 6px;
+  }
+
+  .purchase-header {
+    padding: 10px 12px;
+  }
+
+  .purchase-date {
+    font-size: 12px;
+  }
+
+  .purchase-amount {
     font-size: 13px;
   }
 
-  .result-box {
-    padding: 10px;
-    margin-top: 10px;
-    font-size: 14px;
+  .purchase-row {
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px 12px;
+  }
+
+  .purchase-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .purchase-label {
+    font-size: 11px;
+  }
+
+  .purchase-value {
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .purchase-footer {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .purchase-actions {
+    width: 100%;
+  }
+
+  .action-btn.sm {
+    flex: 1;
+    padding: 6px 8px;
+  }
+
+  .edit-mode {
+    padding: 12px;
+  }
+
+  .edit-form {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .edit-actions {
+    gap: 6px;
+  }
+
+  .edit-actions .action-btn {
+    flex: 1;
   }
 
   .custom-price-input {
     flex-direction: column;
     gap: 8px;
+    margin-top: 12px;
   }
 
   .custom-price-input input {
