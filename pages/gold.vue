@@ -866,7 +866,7 @@ body {
   align-items: flex-start;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #e8e8e8 0%, #f5f5f5 100%);
+  background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
 }
 
 /* Toast Notifications */
