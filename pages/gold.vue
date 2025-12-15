@@ -42,7 +42,10 @@
               </div>
 
               <div class="card-content">
-                <div v-if="loading" class="loader"></div>
+                <div v-if="loading" class="loader-section">
+                  <div class="loader"></div>
+                  <div class="loader-text">Updating price...</div>
+                </div>
                 <div v-else class="price-section">
                   <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
                   <div class="price-label">per troy ounce</div>
@@ -767,14 +770,22 @@ export default {
       }
 
       this.loading = true;
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 8000);
+      });
+
       try {
-        const response = await fetch(`${this.apiBaseUrl}/XAU/USD`, {
+        const fetchPromise = fetch(`${this.apiBaseUrl}/XAU/USD`, {
           headers: {
             'x-access-token': this.apiKey,
             'Content-Type': 'application/json'
           },
           method: 'GET'
         });
+
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
 
         if (response.ok) {
           const data = await response.json();
@@ -798,9 +809,11 @@ export default {
           if (cached.data) {
             this.goldPrice = cached.data.price;
             this.lastUpdated = 'Cached';
+            this.showToast('Using cached price', 'info');
           } else {
             this.goldPrice = this.fallbackPrice;
             this.lastUpdated = 'Offline';
+            this.showToast('Using offline price', 'info');
           }
         }
         this.loading = false;
@@ -1111,6 +1124,21 @@ body {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 20px auto;
+}
+
+.loader-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+}
+
+.loader-text {
+  font-size: 13px;
+  color: #666;
+  margin-top: 12px;
+  font-weight: 500;
 }
 
 .custom-price-input {
