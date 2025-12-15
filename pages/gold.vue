@@ -1372,6 +1372,7 @@ body {
 /* Buttons */
 .btn {
   padding: 8px 16px;
+  margin: 12px 0 0 0;
   border: 1px solid transparent;
   border-radius: 6px;
   font-size: 13px;
