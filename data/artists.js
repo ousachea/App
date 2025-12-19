@@ -28,6 +28,7 @@ export const DEFAULT_ARTISTS = [
       'MIAA-392','MXGS-1306','NSFS-012'
     ]
   },
+  { name: 'Himari', mainWorks: ['MIDA-402 ','MIMK-231','MIDV-964'] },
 
   { name: 'Haruna Hana', mainWorks: ['JUFD-867','PKPT-015','TOEN-020','UFE-084','VRTM-446'] },
 
