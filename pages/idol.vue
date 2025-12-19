@@ -1849,7 +1849,7 @@ export default {
 
 .lightbox-info {
   position: absolute;
-  bottom: 20px;
+  bottom: -10%;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.7);
