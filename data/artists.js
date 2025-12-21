@@ -1,89 +1,88 @@
 export const DEFAULT_ARTISTS = [
-  {
-    name: 'Ai Sayama',
-    mainWorks: [
-      'JUFE-090','JUFE-101','JUY-717','MEYD-414','MEYD-576','MEYD-652',
-      'MEYD-978','PPPD-394','PPPD-603','WAAA-403','WAAA-542'
-    ]
-  },
-
-  {
-    name: 'Aika Yumeno',
-    mainWorks: [
-      'SNIS-413','SNIS-477','SNIS-659','SONE-874','SSNI-304',
-      'SONE-849','SONE-592','SONE-541',
-      'SSIS-582','SSIS-555','SSIS-494',
-      'SSNI-758','SSNI-732','SSNI-475','SSNI-368','SSNI-156'
-    ]
-  },
-
-  { name: 'Asakura Kokona', mainWorks: ['765ORECS-123','HMN-051','230ORECO-734'] },
-
-  { name: 'Asuna Kawai', mainWorks: ['ABF-119','ABF-268','ABF-278','ABW-268','PPT-128'] },
-
-  { name: 'Hana Himesaki',
-    mainWorks: [
-      '300MIUM-720','348NTR-024','ABP-892','ABP-943','ABP-971','ABW-019','ABW-256',
-      'CEMD-090','CEAD-475','FPRE-199','JUFE-264','KAM-213','LULU-076',
-      'MIAA-392','MXGS-1306','NSFS-012'
-    ]
-  },
-  { name: 'Himari', mainWorks: ['MIDA-402 ','MIMK-231','MIDV-964'] },
-
-  { name: 'Haruna Hana', mainWorks: ['JUFD-867','PKPT-015','TOEN-020','UFE-084','VRTM-446'] },
-
-  { name: 'Hikari Ogura', mainWorks: ['EBWH-222','EBWH-258','EBWH-264','EBWH-289'] },
-
-  { name: 'Hoshino Nami', mainWorks: ['SNIS-373','SNIS-462'] },
-
-  { name: 'Kanon Hinano', mainWorks: ['DLDSS-361','DLDSS-362','DLDSS-372','FWAY-086','IPZZ-736'] },
-
-  { name: 'Kiritani Matsuri', mainWorks: ['MEYD-624'] },
-
-  { name: 'Kiyohara Miyuu', mainWorks: ['SNOS-040','SONE-115','SONE-142','SONE-342','SONE-387','SONE-798'] },
-
-  { name: 'Koume Ena', mainWorks: ['CLUB-893','JUFE-131','KAM-196','MADV-609','MIMK-137'] },
-
-  { name: 'Mei Washio', mainWorks: ['SSIS-383','SSIS-558','SSIS-585'] },
-
-  { name: 'Mihara Honoka', mainWorks: ['FC2PPV-1178399','HUNTA-430','NHDTB-249'] },
-
-  { name: 'Mizuhara Misono', mainWorks: ['JUFE-603','BDST-1201','BDST-1202','BDST-012','355OPCYN-356','LULU-167','300NTK-728','CAWD-271'] },
-
   { name: 'Nagarekawa Rio', mainWorks: ['300MIUM-892'] },
-
-  { name: 'Ren Gojou', mainWorks: ['MIMK-263','SONE-394','SONE-486','SONE-532','SONE-748','SONE-837','SONE-888'] },
-
-  { name: 'Rei Kamiki', mainWorks: ['START-070','START-398','STARS-734'] },
-
-  { name: 'Shiiba Mikuru (Arioka Miu)',
-    mainWorks: ['DANDY-923','SCOP-863','AVSA-323','FJIN-018','SUKE-043','748SPAY-308','GDRD-003','200GANA-1962','AVSA-184','VEMA-241','JUTA-176','BBTU-051','LULU-163']
-  },
-
-  { name: 'Sunao Kokonoi', mainWorks: ['REAL-958'] },
-
-  {
-    name: 'Touka Rinne',
-    mainWorks: [
-      'JUY-603','JUY-984','KTB-303','MVSD-383','PPPD-715','PPPD-754',
-      'MIAA-095','DASD-596','JUFD-946','WANZ-900','CJOD-185','JUFS-981','HND-685','HND-659'
-    ]
-  },
-
-  { name: 'Tsuji Imaru', mainWorks: ['CAWD-681','ONSG-085'] },
-
-  { name: 'Umika Minamizawa', mainWorks: ['SNOS-009','SONE-590'] },
-
-  { name: 'Uno Kanaya', mainWorks: ['JUL-558','JUL-682','JUL-721','JUL-788','JUVR-131','JUL-809','JUL-861','JUL-893'] },
-
-  { name: 'Yoshine Yuria', mainWorks: ['JUFE-195','MIMK-249','NGOD-128'] },
-
-  { name: 'Yumeno Aika', mainWorks: ['SNIS-413','SNIS-477','SNIS-659','SNIS-876','SONE-874','SSNI-304'] },
-
-
- { name: 'Yuuri Oshikawa', mainWorks: ['VEC-340','PPPD-666','XVSR-487'] },
-
-
+  { name: 'Hana Himesaki', mainWorks: ['300MIUM-720','KAM-213','348NTR-024'] },
+  { name: 'Hoshino Nami', mainWorks: ['SNIS-462','SNIS-373'] },
+  { name: 'Kiritani Matsuri', mainWorks: ['MEYD-624'] },
+  { name: 'Kiyohara Miyuu', mainWorks: ['SONE-342'] },
+  { name: 'Haruna Hana', mainWorks: ['TOEN-020'] },
+  { name: 'Minato Haru', mainWorks: [
+    'SONE-978','SONE-914','SONE-865','MIRD-259','OFES-013','SONE-776',
+    'SONE-508','FWAY-060','SONE-503','SONE-155','SONE-188','SONE-063',
+    'SONE-021','SSIS-978','FWAY-002','SSIS-945','SSIS-890','SSIS-889',
+    'FC2PPV-3104502','FC2PPV-3087371','FC2PPV-4203485','JDKR-032','TZ-124'
+  ]},
+  { name: 'Moa Maeda', mainWorks: [
+    'ADN-334','MIMK-091','JUFE-300','WAAA-065','HND-991','PPPD-926',
+    'MSFH-034','MSFH-030','MSFH-024','MSFH-018','MSFH-014','MSFH-010'
+  ]},
+  { name: 'Mitsuki Momota', mainWorks: [
+    'MIDA-424','MIDA-026','REBD-854','OAE-253','FWAY-047','MIDV-869',
+    'MIDV-569','MIDA-346','MIDV-668','MIDV-831','MIDV-574','MIDV-577',
+    'MIDA-102','MIDA-190','MIDV-985','MIDV-637','MIDA-305','MIDA-139',
+    'MIDA-258','MIDV-769','MDVR-325','MIDV-905','MIDV-804','MIDA-214',
+    'MIDA-064','MDVR-317','MDVR-288','MIDA-385','NAAC-032','MIDV-698'
+  ]},
+  { name: 'Anzai Rara', mainWorks: [
+    'SSIS-025','SSIS-050','SSIS-103','SSIS-124','SSIS-136','SSIS-172',
+    'SSIS-203','SSIS-232','SSIS-262','SSIS-269','SSIS-357',
+    'SSNI-643','SSNI-671','SSNI-700','SSNI-727','SSNI-752',
+    'SSNI-777','SSNI-799','SSNI-822'
+  ]},
+  { name: 'RION', mainWorks: [
+    'SNIS-517','SNIS-539','SNIS-561','SNIS-594','SNIS-603','SNIS-623',
+    'SNIS-640','SNIS-656','SNIS-673','SNIS-692','SNIS-712','SNIS-731',
+    'SNIS-752','SNIS-774','SNIS-787','SNIS-811','SNIS-824','SNIS-895',
+    'SNIS-918','SNIS-939','SNIS-963','SNIS-985',
+    'SSNI-008','SSNI-029','SSNI-053','SSNI-100','SSNI-126','SSNI-151',
+    'SSNI-177','SSNI-204','SSNI-228','SSNI-241','SSNI-268','SSNI-290',
+    'EBOD-609'
+  ]},
+  { name: 'Utsunomiya Shion', mainWorks: [
+    'SOE-992','SNIS-009','SNIS-027','SNIS-048','SNIS-070','SNIS-091',
+    'SNIS-110','SNIS-129','SNIS-147','SNIS-166','AVOP-004','SNIS-205'
+  ]},
+  { name: 'Hitomi Tanaka', mainWorks: [
+    'MIMK-007','PPPD-663','PPPD-867','PPPD-996','MDYD-940','MDYD-971','MIDE-184'
+  ]},
+  { name: 'Ai Sayama', mainWorks: ['JUFE-101','JUFE-090','MEYD-652'] },
+  { name: 'Touka Rinne', mainWorks: ['KTB-303','PPPD-754','MVSD-383','JUY-603'] },
+  { name: 'Sakura Kirishima', mainWorks: ['MKMP-001','UMMA-001','DVAJ-360','FSET-797'] },
+  { name: 'Yuri Oshikawa', mainWorks: [
+    'PPPD-666','JUFE-351','MILLE-009','LULU-181','JUR-126','WANZ-388','BDA-059'
+  ]},
+  { name: 'Satomi Mioka', mainWorks: [
+    'BARE-009','HAWA-325','300MIUM-908','300MIUM-865','483DAM-016','MAAN-955','APNS-293'
+  ]},
+  { name: 'Asahi Mizuno', mainWorks: ['JUL-546','JUL-442','NITR-114'] },
+  { name: 'Miu Shiramine', mainWorks: ['PRED-685','ATID-641'] },
+  { name: 'Miina Wakatsuki', mainWorks: ['NGOD-113','SW-621','NITR-202'] },
+  { name: 'Meguri', mainWorks: ['JUR-531','PPPD-329'] },
+  { name: 'Ai Kano', mainWorks: ['JUQ-763','JUQ-106','JUQ-963'] },
+  { name: 'Koibuchi Momona', mainWorks: ['START-165'] },
+  { name: 'Anna Morikawa', mainWorks: ['PRED-018'] },
+  { name: 'Mary Tachibana', mainWorks: ['ROYD-175','NKKD-322'] },
+  { name: 'Marina Shiraishi', mainWorks: ['STAR-830','JUQ-941'] },
+  { name: 'Hikari Sena', mainWorks: ['BNST-023','WAAA-043','URKK-035'] },
+  { name: 'Saeko Matsushita', mainWorks: ['SHKD-713'] },
+  { name: 'Mio Kimijima', mainWorks: ['JUY-606','NITR-388','JUY-543'] },
+  { name: 'Kanno Sayuki', mainWorks: ['GVG-122'] },
+  { name: 'Ruri Saijo', mainWorks: ['PPPD-413','VEC-094','WANZ-103','IENE-596','TYOD-255'] },
+  { name: 'Nagi Hikaru', mainWorks: ['SONE-385'] },
+  { name: 'Yui Hatano', mainWorks: ['JJDA-058','NGOD-304'] },
+  { name: 'Sakura Nene', mainWorks: ['HEYZO-3675'] },
+  { name: 'Aiko Kimura', mainWorks: ['SONE-866','SONE-828'] },
+  { name: 'Saegusa Chitose', mainWorks: ['NGOD-150'] },
+  { name: 'Mina Fukuhara', mainWorks: ['CLUB-881'] },
+  { name: 'Aika Yumeno', mainWorks: ['SONE-874','SNIS-413','SNIS-477','SSNI-304','SNIS-659'] },
+  { name: 'Sena Kasumi', mainWorks: ['483PAK-006','200GANA-2156'] },
+  { name: 'Aoi', mainWorks: ['SNIS-977'] },
+  { name: 'Nanami Matsumoto', mainWorks: ['OFES-009','SSNI-110','JUY-858'] },
+  { name: 'JULIA', mainWorks: ['PRED-293'] },
+  { name: 'Airi Hinata', mainWorks: ['NITR-223'] },
+  { name: 'Nana Fukada', mainWorks: ['EBOD-578'] },
+  { name: 'Satomi Hibino', mainWorks: ['BF-475'] },
+  { name: 'Ema Yuina', mainWorks: ['CHN-096','BGN-031','ABP-433','ABP-471','ABP-447','ABP-460','ABP-484'] },
+  { name: 'Kana Kusakabe', mainWorks: ['HMN-519'] },
   {
 
     name: 'Collection',
