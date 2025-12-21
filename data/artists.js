@@ -45,17 +45,18 @@ export const DEFAULT_ARTISTS = [
     'MIMK-007','PPPD-663','PPPD-867','PPPD-996','MDYD-940','MDYD-971','MIDE-184'
   ]},
   { name: 'Ai Sayama', mainWorks: ['JUFE-101','JUFE-090','MEYD-652'] },
-  { name: 'Touka Rinne', mainWorks: ['KTB-303','PPPD-754','MVSD-383','JUY-603'] },
+  { name: 'Touka Rinne', mainWorks: ['KTB-303','PPPD-754','MVSD-383','JUY-603','MAAN-387'] },
   { name: 'Sakura Kirishima', mainWorks: ['MKMP-001','UMMA-001','DVAJ-360','FSET-797'] },
   { name: 'Yuri Oshikawa', mainWorks: [
-    'PPPD-666','JUFE-351','MILLE-009','LULU-181','JUR-126','WANZ-388','BDA-059'
+    'PPPD-666','JUFE-351','MILLE-009','LULU-181','JUR-126','WANZ-388','BDA-059','ECB-109','BSY-022'
   ]},
   { name: 'Satomi Mioka', mainWorks: [
-    'BARE-009','HAWA-325','300MIUM-908','300MIUM-865','483DAM-016','MAAN-955','APNS-293'
+    'BARE-009','HAWA-325','300MIUM-908','300MIUM-865','483DAM-016','MAAN-955','APNS-293','SRTD-349','SRTD-345','SPAY-241','SIRO-4820','LUXU-1572',
+    'ZOZO-165','APAA-387','BARE-009','GVH-477','MRPA-006','PKPD-217','UZU-004','SUN-071','MIUM-862','NHMSG-031','ORECO-079','MAAN-982','MAAN-836','BDST-027','AKDL-247','AKDL-213','AKDL-193','DFDM-041'
   ]},
   { name: 'Asahi Mizuno', mainWorks: ['JUL-546','JUL-442','NITR-114'] },
   { name: 'Miu Shiramine', mainWorks: ['PRED-685','ATID-641'] },
-  { name: 'Miina Wakatsuki', mainWorks: ['NGOD-113','SW-621','NITR-202'] },
+  { name: 'Miina Wakatsuki', mainWorks: ['NGOD-113','SW-621','NITR-202','NITR-209','FC2-PPV-1046522'] },
   { name: 'Meguri', mainWorks: ['JUR-531','PPPD-329'] },
   { name: 'Ai Kano', mainWorks: ['JUQ-763','JUQ-106','JUQ-963'] },
   { name: 'Koibuchi Momona', mainWorks: ['START-165'] },
@@ -74,7 +75,7 @@ export const DEFAULT_ARTISTS = [
   { name: 'Saegusa Chitose', mainWorks: ['NGOD-150'] },
   { name: 'Mina Fukuhara', mainWorks: ['CLUB-881'] },
   { name: 'Aika Yumeno', mainWorks: ['SONE-874','SNIS-413','SNIS-477','SSNI-304','SNIS-659'] },
-  { name: 'Sena Kasumi', mainWorks: ['483PAK-006','200GANA-2156'] },
+  { name: 'Sena Kasumi', mainWorks: ['200GANA-2156','STCV-240','SUKE-062','MIUM-495','STCV-232','PAK-006','BONY-007','KTKC-074','NNPJ-514','NDH-017','MFC-169','MIUM-801','NTK-637','MFC-117','MAAN-842','MAAN-632','SIRO-3954'] },
   { name: 'Aoi', mainWorks: ['SNIS-977'] },
   { name: 'Nanami Matsumoto', mainWorks: ['OFES-009','SSNI-110','JUY-858'] },
   { name: 'JULIA', mainWorks: ['PRED-293'] },
@@ -83,23 +84,17 @@ export const DEFAULT_ARTISTS = [
   { name: 'Satomi Hibino', mainWorks: ['BF-475'] },
   { name: 'Ema Yuina', mainWorks: ['CHN-096','BGN-031','ABP-433','ABP-471','ABP-447','ABP-460','ABP-484'] },
   { name: 'Kana Kusakabe', mainWorks: ['HMN-519'] },
+  { name: 'Shio Asami', mainWorks: ['DLDSS-406','DLDSS-402','DLDSS-381','DLDSS-361','DLDSS-372','DLDSS-362','DLDSS-343','DLDSS-342'] },
   {
-
     name: 'Collection',
     mainWorks: [...new Set([
-      '259LUXU-688','ABP-447','ARA-412','NNPJ-514','BONY-007','MFC-117','IND-063',
-      'MFC-169','MAAN-632','SUKE-053','FC2-PPV-2864495','ECB-109','JUFE-028','GES-038','VGD-192','NITR-209','CLUB-855','SUKE-043','HAWA-325','DLDSS-362',
-      'BDST-027','MAAN-982','DDHP-044','GANA-2100','GANA-2858','GANA-1026','GANA-1996',
-      'TOUKA-01','MAAN-387','NHMSG-031','ADN-630','APAA-387','NTK-391','MIUM-811',
-      'MIUM-681','MIUM-742','BSY-022','KTB-018','SIRO-3954','GANA-2156',
-      'STCV-240','NTK-637','AKDL-247','259LUXU-1511','259LUXU-1518','259LUXU-743',
-      '259LUXU-1571','259LUXU-1631','259LUXU-1618','259LUXU-1621','259LUXU-1610',
-      'SRTD-349','ORECO-079','MIUM-908','ION-162','MAAN-836','MIUM-865','SIRO-4820',
-      'FLC-004','PKPD-217','JAC-175','MIUM-862','SRTD-345','AKDL-213','AKDL-193',
-      'HMT-018','MAAN-955','GERK-350','SPAY-241','LUXU-1572','SUN-071','GANA-2705',
-      'HAWA-287','MRPA-006','UZU-004','ZOZO-165','GVH-477','BARE-009','DFDM-041',
-      'FC2-PPV-1046522','SSNI-362','MIUM-801','KTKC-074','IND-022','MIUM-495',
-      'SUKE-062','MAAN-842','JUL-442','JUL-872','ORECS-132'
+      '259LUXU-688','ABP-447','ARA-412','IND-063','SUKE-053','FC2-PPV-2864495','JUFE-028','GES-038','VGD-192','CLUB-855','SUKE-043','HAWA-325',
+      'DDHP-044','GANA-2100','GANA-2858','GANA-1026','GANA-1996',
+      'TOUKA-01','MAAN-387','ADN-630','NTK-391','MIUM-811',
+      'MIUM-681','MIUM-742','KTB-018','GANA-2156',
+      'NTK-637','259LUXU-1511','259LUXU-1518','259LUXU-743',
+      '259LUXU-1571','259LUXU-1631','259LUXU-1618','259LUXU-1621','259LUXU-1610','ION-162','FLC-004','JAC-175','HMT-018','GERK-350','GANA-2705',
+      'HAWA-287','SSNI-362','IND-022','JUL-442','JUL-872','ORECS-132'
     ])].sort()
   }
 ];
