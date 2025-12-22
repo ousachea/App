@@ -79,7 +79,7 @@
             <h2>{{ currentArtist?.name }}</h2>
             <p>{{ (currentArtist?.mainWorks?.length || 0) + (currentArtist?.compilations?.length || 0) }} works</p>
           </div>
-          <button @click="openAddWorkModal" class="add-work-btn">➕ Add</button>
+          <button @click="openAddWorkModal" class="add-work-btn">+</button>
         </div>
 
         <div v-if="currentArtist?.mainWorks?.length" class="works-section">
@@ -1435,14 +1435,9 @@ button {
 .view-page {
   width: 100%;
   min-height: 400px;
-  padding: 0 16px;
+
 }
 
-@media (min-width: 769px) {
-  .view-page {
-    padding: 0 24px;
-  }
-}
 
 /* ============================================================================
    SORT BAR
@@ -1507,26 +1502,26 @@ button {
    ============================================================================ */
 .artist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
+  grid-auto-rows: auto;
 }
 
-@media (min-width: 480px) {
+@media (max-width: 480px) {
   .artist-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
   }
 }
 
-@media (min-width: 768px) {
+@media (max-width: 768px) {
   .artist-grid {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
 }
 
 .artist-card-modern {
-  aspect-ratio: 3 / 2;
   position: relative;
   overflow: hidden;
   border-radius: 12px;
@@ -1536,7 +1531,8 @@ button {
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s;
-  min-height: 180px;
+  width: 100%;
+  aspect-ratio: 3 / 2;
 }
 
 .artist-card-modern:hover {
@@ -1730,11 +1726,11 @@ button {
 
 .works-grid-compact {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
 }
 
-@media (min-width: 480px) {
+@media (max-width: 480px) {
   .works-grid-compact {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 16px;
@@ -1743,13 +1739,13 @@ button {
 
 .work-thumbnail {
   position: relative;
+  aspect-ratio: 3 / 2;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   background: #1a1a1a;
   transition: all 0.2s;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  min-height: 140px;
 }
 
 .work-thumbnail:hover {
@@ -2081,21 +2077,19 @@ button {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  grid-auto-rows: 160px;
+  grid-auto-rows: auto;
 }
 
 @media (min-width: 480px) {
   .gallery-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 14px;
-    grid-auto-rows: 180px;
   }
 }
 
 @media (min-width: 768px) {
   .gallery-grid {
     grid-template-columns: repeat(5, 1fr);
-    grid-auto-rows: 200px;
   }
 }
 
@@ -2106,10 +2100,7 @@ button {
   cursor: pointer;
   background: #f5f5f5;
   transition: transform 0.2s, box-shadow 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 160px;
+  aspect-ratio: 3 / 2;
 }
 
 .gallery-item:hover {
