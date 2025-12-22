@@ -1,24 +1,17 @@
 <template>
   <div class="converter-container">
-    <PageSwitcher/>
     <div class="converter-card">
       <h2 class="converter-title">Fuel Efficiency Converter</h2>
       <p class="converter-description">Convert between MPG and L/100km with smart insights</p>
-      
+
       <!-- Conversion Mode Toggle -->
       <div class="mode-toggle">
-        <button 
-          @click="conversionMode = 'mpg-to-l100km'" 
-          :class="{ active: conversionMode === 'mpg-to-l100km' }"
-          class="toggle-btn"
-        >
+        <button @click="conversionMode = 'mpg-to-l100km'" :class="{ active: conversionMode === 'mpg-to-l100km' }"
+          class="toggle-btn">
           MPG → L/100km
         </button>
-        <button 
-          @click="conversionMode = 'l100km-to-mpg'" 
-          :class="{ active: conversionMode === 'l100km-to-mpg' }"
-          class="toggle-btn"
-        >
+        <button @click="conversionMode = 'l100km-to-mpg'" :class="{ active: conversionMode === 'l100km-to-mpg' }"
+          class="toggle-btn">
           L/100km → MPG
         </button>
       </div>
@@ -27,45 +20,30 @@
       <div class="presets-container">
         <p class="presets-label">Quick Select:</p>
         <div class="preset-buttons">
-          <button 
-            v-for="preset in vehiclePresets" 
-            :key="preset.name"
-            @click="applyPreset(preset)"
-            class="preset-btn"
-            :title="preset.description"
-          >
+          <button v-for="preset in vehiclePresets" :key="preset.name" @click="applyPreset(preset)" class="preset-btn"
+            :title="preset.description">
             {{ preset.icon }} {{ preset.name }}
           </button>
         </div>
       </div>
-      
+
       <div class="input-container">
         <label :for="inputId" class="input-label">
           {{ conversionMode === 'mpg-to-l100km' ? 'Miles Per Gallon' : 'Liters per 100 kilometers' }}
         </label>
         <div class="input-field">
-          <input
-            :id="inputId"
-            type="number"
-            v-model="inputValue"
-            :min="inputLimits.min"
-            :max="inputLimits.max"
-            :step="inputStep"
-            @input="debouncedValidateInput"
-            :placeholder="inputPlaceholder"
-            class="efficiency-input"
-            :class="{ 'warning': showWarning, 'error': showError }"
-            :aria-describedby="inputHelpId"
-          />
+          <input :id="inputId" type="number" v-model="inputValue" :min="inputLimits.min" :max="inputLimits.max"
+            :step="inputStep" @input="debouncedValidateInput" :placeholder="inputPlaceholder" class="efficiency-input"
+            :class="{ 'warning': showWarning, 'error': showError }" :aria-describedby="inputHelpId" />
           <span class="input-unit">{{ inputUnit }}</span>
         </div>
-        
+
         <!-- Input feedback -->
         <div v-if="showWarning || showError" class="input-feedback">
           <span class="feedback-icon">{{ showError ? '⚠️' : '💡' }}</span>
           <span class="feedback-text">{{ feedbackMessage }}</span>
         </div>
-        
+
         <!-- Help text -->
         <p :id="inputHelpId" class="input-help">
           {{ inputHelpText }}
@@ -73,22 +51,18 @@
       </div>
 
       <div class="divider"></div>
-  
+
       <div class="result-container">
-        <div 
-          class="efficiency-badge" 
-          :class="efficiencyClass"
-          role="status"
-          :aria-label="`Efficiency rating: ${efficiencyText}`"
-        >
+        <div class="efficiency-badge" :class="efficiencyClass" role="status"
+          :aria-label="`Efficiency rating: ${efficiencyText}`">
           {{ efficiencyText }}
         </div>
-        
+
         <div class="result-value" :class="{ 'calculating': isCalculating }">
           <span class="value" :aria-label="`Result: ${displayResult}`">{{ displayResult }}</span>
           <span class="unit">{{ outputUnit }}</span>
         </div>
-        
+
         <!-- Additional conversions -->
         <div v-if="showAdditionalConversions" class="additional-conversions">
           <div class="conversion-item">
@@ -96,7 +70,7 @@
             <span class="conversion-value">{{ kmPerLiter }}</span>
           </div>
         </div>
-        
+
         <!-- Vehicle comparison -->
         <div v-if="showComparison" class="comparison-section">
           <h4 class="comparison-title">Vehicle Comparison</h4>
@@ -105,7 +79,7 @@
             <span class="comparison-text">{{ comparisonText }}</span>
           </div>
         </div>
-        
+
         <div class="info-section">
           <p class="info-text">
             <span class="info-icon">ℹ️</span>
@@ -131,12 +105,8 @@
       <div v-if="calculationHistory.length > 0" class="history-section">
         <h4 class="history-title">Recent Calculations</h4>
         <div class="history-list">
-          <div 
-            v-for="(item, index) in calculationHistory.slice(0, 3)" 
-            :key="index"
-            class="history-item"
-            @click="loadFromHistory(item)"
-          >
+          <div v-for="(item, index) in calculationHistory.slice(0, 3)" :key="index" class="history-item"
+            @click="loadFromHistory(item)">
             <span class="history-input">{{ item.input }} {{ item.inputUnit }}</span>
             <span class="history-arrow">→</span>
             <span class="history-result">{{ item.result }} {{ item.outputUnit }}</span>
@@ -146,7 +116,7 @@
     </div>
   </div>
 </template>
-  
+
 <script>
 import PageSwitcher from '../components/PageSwitcher.vue';
 
@@ -182,153 +152,153 @@ export default {
     vehiclePresets() {
       return VEHICLE_PRESETS;
     },
-    
+
     inputId() {
       return `${this.conversionMode}-input`;
     },
-    
+
     inputHelpId() {
       return `${this.conversionMode}-help`;
     },
-    
+
     inputLimits() {
       return this.conversionMode === 'mpg-to-l100km' ? MPG_LIMITS : L100KM_LIMITS;
     },
-    
+
     inputStep() {
       return this.conversionMode === 'mpg-to-l100km' ? '1' : '0.1';
     },
-    
+
     inputUnit() {
       return this.conversionMode === 'mpg-to-l100km' ? 'MPG' : 'L/100km';
     },
-    
+
     outputUnit() {
       return this.conversionMode === 'mpg-to-l100km' ? 'L/100km' : 'MPG';
     },
-    
+
     inputPlaceholder() {
       return this.conversionMode === 'mpg-to-l100km' ? 'Enter MPG (e.g., 25)' : 'Enter L/100km (e.g., 8.5)';
     },
-    
+
     inputHelpText() {
-      const range = this.conversionMode === 'mpg-to-l100km' 
-        ? 'Typical range: 15-50 MPG' 
+      const range = this.conversionMode === 'mpg-to-l100km'
+        ? 'Typical range: 15-50 MPG'
         : 'Typical range: 4-15 L/100km';
       return `${range} • Lower L/100km = better efficiency`;
     },
-    
+
     infoText() {
       return this.conversionMode === 'mpg-to-l100km'
         ? 'Lower L/100km values indicate better fuel efficiency'
         : 'Higher MPG values indicate better fuel efficiency';
     },
-    
+
     showWarning() {
       const value = parseFloat(this.inputValue);
       if (isNaN(value)) return false;
-      
+
       if (this.conversionMode === 'mpg-to-l100km') {
         return value > 60 || value < 10;
       } else {
         return value > 20 || value < 3;
       }
     },
-    
+
     showError() {
       const value = parseFloat(this.inputValue);
       if (isNaN(value)) return true;
       return value < this.inputLimits.min || value > this.inputLimits.max;
     },
-    
+
     feedbackMessage() {
       if (this.showError) {
         return `Value must be between ${this.inputLimits.min} and ${this.inputLimits.max}`;
       }
       if (this.showWarning) {
-        return this.conversionMode === 'mpg-to-l100km' 
+        return this.conversionMode === 'mpg-to-l100km'
           ? 'This is unusually high/low for typical vehicles'
           : 'This represents unusually high/low fuel consumption';
       }
       return '';
     },
-    
+
     hasValidResult() {
       const value = parseFloat(this.inputValue);
       return !isNaN(value) && value >= this.inputLimits.min && value <= this.inputLimits.max;
     },
-    
+
     displayResult() {
       if (!this.hasValidResult) return "-";
-      
+
       const inputVal = parseFloat(this.inputValue);
       let result;
-      
+
       if (this.conversionMode === 'mpg-to-l100km') {
         result = CONVERSION_FACTOR / inputVal;
       } else {
         result = CONVERSION_FACTOR / inputVal;
       }
-      
+
       return result < 10 ? result.toFixed(1) : result.toFixed(0);
     },
-    
+
     kmPerLiter() {
       if (!this.hasValidResult) return "-";
-      
+
       const inputVal = parseFloat(this.inputValue);
       let l100km;
-      
+
       if (this.conversionMode === 'mpg-to-l100km') {
         l100km = CONVERSION_FACTOR / inputVal;
       } else {
         l100km = inputVal;
       }
-      
+
       const kmL = 100 / l100km;
       return kmL.toFixed(1);
     },
-    
+
     showAdditionalConversions() {
       return this.hasValidResult;
     },
-    
+
     showComparison() {
       return this.hasValidResult;
     },
-    
+
     comparisonText() {
       if (!this.hasValidResult) return "";
-      
+
       const inputVal = parseFloat(this.inputValue);
       let l100km = this.conversionMode === 'mpg-to-l100km' ? CONVERSION_FACTOR / inputVal : inputVal;
-      
+
       if (l100km <= 4) return "Excellent - Better than most hybrids";
       if (l100km <= 6) return "Great - Hybrid vehicle range";
       if (l100km <= 8) return "Good - Compact car range";
       if (l100km <= 12) return "Average - Mid-size vehicle range";
       return "High consumption - Large vehicle/truck range";
     },
-    
+
     efficiencyText() {
       if (!this.hasValidResult) return "Enter value";
-      
+
       const inputVal = parseFloat(this.inputValue);
       let l100km = this.conversionMode === 'mpg-to-l100km' ? CONVERSION_FACTOR / inputVal : inputVal;
-      
+
       if (l100km <= 4) return "Excellent";
       if (l100km <= 6) return "Great";
       if (l100km <= 8) return "Good";
       if (l100km <= 12) return "Average";
       return "Poor";
     },
-    
+
     efficiencyClass() {
       if (!this.hasValidResult) return "neutral";
-      
+
       const inputVal = parseFloat(this.inputValue);
       let l100km = this.conversionMode === 'mpg-to-l100km' ? CONVERSION_FACTOR / inputVal : inputVal;
-      
+
       if (l100km <= 4) return "excellent";
       if (l100km <= 6) return "great";
       if (l100km <= 8) return "good";
@@ -345,7 +315,7 @@ export default {
       }
       this.validateInput();
     },
-    
+
     debouncedValidateInput() {
       this.isCalculating = true;
       clearTimeout(this.debounceTimer);
@@ -354,14 +324,14 @@ export default {
         this.isCalculating = false;
       }, 300);
     },
-    
+
     validateInput() {
       const value = parseFloat(this.inputValue);
-      
+
       if (isNaN(value)) {
         return;
       }
-      
+
       // Clamp to limits
       if (value < this.inputLimits.min) {
         this.inputValue = this.inputLimits.min;
@@ -369,12 +339,12 @@ export default {
         this.inputValue = this.inputLimits.max;
       }
     },
-    
+
     shareResult() {
       if (!this.hasValidResult) return;
-      
+
       const shareText = `🚗 Fuel Efficiency: ${this.inputValue} ${this.inputUnit} = ${this.displayResult} ${this.outputUnit}`;
-      
+
       if (navigator.share) {
         navigator.share({
           title: 'Fuel Efficiency Conversion',
@@ -387,10 +357,10 @@ export default {
         });
       }
     },
-    
+
     saveToHistory() {
       if (!this.hasValidResult) return;
-      
+
       const historyItem = {
         input: this.inputValue,
         inputUnit: this.inputUnit,
@@ -399,14 +369,14 @@ export default {
         mode: this.conversionMode,
         timestamp: new Date().toLocaleTimeString()
       };
-      
+
       // Remove duplicates and limit to 10 items
-      this.calculationHistory = this.calculationHistory.filter(item => 
+      this.calculationHistory = this.calculationHistory.filter(item =>
         !(item.input === historyItem.input && item.mode === historyItem.mode)
       );
       this.calculationHistory.unshift(historyItem);
       this.calculationHistory = this.calculationHistory.slice(0, 10);
-      
+
       // Save to localStorage
       try {
         localStorage.setItem('fuelConverterHistory', JSON.stringify(this.calculationHistory));
@@ -414,16 +384,16 @@ export default {
         console.warn('Could not save to localStorage:', e);
       }
     },
-    
+
     loadFromHistory(item) {
       this.conversionMode = item.mode;
       this.inputValue = item.input;
     },
-    
+
     clearInput() {
       this.inputValue = '';
     },
-    
+
     loadHistory() {
       try {
         const saved = localStorage.getItem('fuelConverterHistory');
@@ -435,23 +405,24 @@ export default {
       }
     }
   },
-  
+
   mounted() {
     this.loadHistory();
   },
-  
+
   beforeUnmount() {
     clearTimeout(this.debounceTimer);
   }
 };
 </script>
-  
+
 <style scoped>
 .converter-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
   width: 100vw;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -918,151 +889,151 @@ export default {
   .converter-container {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   }
-  
+
   .converter-card {
     background: #000000;
     color: #ffffff;
   }
-  
+
   .converter-title {
     color: #f2f2f7;
   }
-  
+
   .converter-description {
     color: #98989d;
   }
-  
+
   .mode-toggle {
     background: #1c1c1e;
   }
-  
+
   .toggle-btn {
     color: #98989d;
   }
-  
+
   .toggle-btn.active {
     background: #2c2c2e;
     color: #0a84ff;
     box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
   }
-  
+
   .preset-btn {
     background: #1c1c1e;
     border-color: #4a4a4c;
     color: #f2f2f7;
   }
-  
+
   .preset-btn:hover {
     border-color: #0a84ff;
     background: #1a2332;
   }
-  
+
   .input-label {
     color: #98989d;
   }
-  
+
   .efficiency-input {
     background-color: #1c1c1e;
     border-color: #4a4a4c;
     color: #f2f2f7;
   }
-  
+
   .efficiency-input:focus {
     border-color: #0a84ff;
     background-color: #2c2c2e;
     box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.35);
     color: #ffffff;
   }
-  
+
   .input-unit {
     color: #98989d;
   }
-  
+
   .input-feedback {
     background: #1c1c1e;
   }
-  
+
   .feedback-text {
     color: #98989d;
   }
-  
+
   .input-help {
     color: #98989d;
   }
-  
+
   .divider {
     background: linear-gradient(to right, transparent, #4a4a4c, transparent);
   }
-  
+
   .result-value .value {
     color: #0a84ff;
   }
-  
+
   .result-value .unit {
     color: #98989d;
   }
-  
+
   .additional-conversions {
     background: #1c1c1e;
   }
-  
+
   .conversion-label {
     color: #98989d;
   }
-  
+
   .conversion-value {
     color: #f2f2f7;
   }
-  
+
   .comparison-section {
     background: #0d1421;
     border-left-color: #0a84ff;
   }
-  
+
   .comparison-title {
     color: #0a84ff;
   }
-  
+
   .comparison-text {
     color: #f2f2f7;
   }
-  
+
   .info-text {
     color: #98989d;
   }
-  
+
   .action-btn {
     background: #1c1c1e;
     border-color: #4a4a4c;
     color: #f2f2f7;
   }
-  
+
   .action-btn:hover:not(:disabled) {
     border-color: #0a84ff;
     background: #1a2332;
   }
-  
+
   .history-section {
     border-top-color: #4a4a4c;
   }
-  
+
   .history-title {
     color: #f2f2f7;
   }
-  
+
   .history-item {
     background: #1c1c1e;
     color: #f2f2f7;
   }
-  
+
   .history-item:hover {
     background: #2c2c2e;
   }
-  
+
   .history-arrow {
     color: #98989d;
   }
-  
+
   .history-result {
     color: #0a84ff;
   }
@@ -1074,121 +1045,121 @@ export default {
   .converter-card {
     padding: 16px;
   }
-  
+
   .converter-title {
     font-size: 28px;
     margin: 16px 0 8px 0;
   }
-  
+
   .converter-description {
     font-size: 16px;
     margin-bottom: 24px;
   }
-  
+
   .mode-toggle {
     margin-bottom: 24px;
     padding: 4px;
   }
-  
+
   .toggle-btn {
     padding: 12px 16px;
     font-size: 14px;
   }
-  
+
   .presets-container {
     margin-bottom: 24px;
   }
-  
+
   .presets-label {
     font-size: 14px;
     margin-bottom: 12px;
   }
-  
+
   .preset-buttons {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
-  
+
   .preset-btn {
     padding: 12px 8px;
     font-size: 12px;
   }
-  
+
   .input-container {
     margin-bottom: 32px;
   }
-  
+
   .input-label {
     font-size: 16px;
     margin-bottom: 10px;
   }
-  
+
   .efficiency-input {
     font-size: 20px;
     padding: 16px 60px 16px 16px;
   }
-  
+
   .input-unit {
     right: 16px;
     font-size: 16px;
   }
-  
+
   .result-value .value {
     font-size: 56px;
   }
-  
+
   .result-value .unit {
     font-size: 20px;
     margin-left: 8px;
   }
-  
+
   .efficiency-badge {
     font-size: 16px;
     padding: 10px 20px;
     margin-bottom: 20px;
   }
-  
+
   .action-buttons {
     grid-template-columns: 1fr;
     gap: 10px;
     margin-bottom: 24px;
   }
-  
+
   .additional-conversions {
     flex-direction: column;
     gap: 12px;
     padding: 12px 16px;
   }
-  
+
   .conversion-item {
     font-size: 14px;
     justify-content: center;
   }
-  
+
   .comparison-section {
     padding: 12px 16px;
     margin-bottom: 16px;
   }
-  
+
   .comparison-title {
     font-size: 14px;
   }
-  
+
   .comparison-text {
     font-size: 14px;
   }
-  
+
   .info-text {
     font-size: 14px;
   }
-  
+
   .history-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
     padding: 12px;
   }
-  
+
   .history-arrow {
     display: none;
   }
@@ -1198,15 +1169,15 @@ export default {
   .converter-card {
     padding: 40px;
   }
-  
+
   .result-container {
     min-height: 40vh;
   }
-  
+
   .preset-buttons {
     grid-template-columns: repeat(6, 1fr);
   }
-  
+
   .action-buttons {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1214,8 +1185,13 @@ export default {
 
 /* Animations */
 @keyframes gentle-pulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.02); }
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.02);
+  }
 }
 
 @keyframes slide-in {
@@ -1223,6 +1199,7 @@ export default {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1263,7 +1240,8 @@ export default {
 }
 
 .efficiency-input:focus {
-  outline: none; /* Already has custom focus styling */
+  outline: none;
+  /* Already has custom focus styling */
 }
 
 /* High contrast mode support */
@@ -1271,11 +1249,11 @@ export default {
   .converter-card {
     border: 2px solid;
   }
-  
+
   .efficiency-input {
     border-width: 3px;
   }
-  
+
   .toggle-btn,
   .preset-btn,
   .action-btn {
@@ -1288,14 +1266,15 @@ export default {
   .converter-container {
     padding: 0;
   }
-  
+
   .converter-card {
     box-shadow: none;
     border: 1px solid #ccc;
   }
-  
+
   .action-buttons,
   .history-section {
     display: none;
   }
-}</style>
+}
+</style>

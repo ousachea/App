@@ -1,9 +1,8 @@
 <template>
   <div class="terminal-container">
-    <PageSwitcher/>
     <!-- Header -->
     <h1 class="terminal-header">[ TEXT CASE CONVERTER ]</h1>
-    
+
     <div class="content-wrapper">
       <div class="input-container">
         <!-- Window Controls -->
@@ -13,86 +12,56 @@
           <div class="window-control maximize"></div>
           <div class="window-title">INPUT.TXT</div>
         </div>
-        
+
         <!-- Text Area -->
         <div class="textarea-wrapper">
-          <textarea 
-            v-model="inputText" 
-            class="terminal-textarea" 
-            placeholder="Paste your text here..."
-          ></textarea>
+          <textarea v-model="inputText" class="terminal-textarea" placeholder="Paste your text here..."></textarea>
         </div>
-        
+
         <!-- Character Count and Clear Button -->
         <div class="status-bar">
           <div class="char-count">CHARS: {{ inputText.length }}</div>
-          <button 
-            @click="clearText" 
-            class="terminal-button"
-          >CLEAR</button>
+          <button @click="clearText" class="terminal-button">CLEAR</button>
         </div>
       </div>
-      
+
       <!-- Convert Options -->
       <div class="convert-section">
         <div class="section-header">
           <span>CONVERT TO:</span>
         </div>
-        
+
         <div class="button-grid">
-          <button 
-            @click="convertTo('sentence')" 
-            class="option-button"
-          >&gt; Sentence case</button>
-          
-          <button 
-            @click="convertTo('title')" 
-            class="option-button"
-          >&gt; Title Case</button>
-          
-          <button 
-            @click="convertTo('capitalized')" 
-            class="option-button"
-          >&gt; Capitalized Case</button>
-          
-          <button 
-            @click="convertTo('lower')" 
-            class="option-button"
-          >&gt; lower case</button>
+          <button @click="convertTo('sentence')" class="option-button">&gt; Sentence case</button>
+
+          <button @click="convertTo('title')" class="option-button">&gt; Title Case</button>
+
+          <button @click="convertTo('capitalized')" class="option-button">&gt; Capitalized Case</button>
+
+          <button @click="convertTo('lower')" class="option-button">&gt; lower case</button>
         </div>
-        
+
         <div class="button-grid">
-          <button 
-            @click="convertTo('upper')" 
-            class="option-button"
-          >&gt; UPPER CASE</button>
-          
-          <button 
-            @click="convertTo('alternating')" 
-            class="option-button"
-          >altErNaTiNg caSe</button>
+          <button @click="convertTo('upper')" class="option-button">&gt; UPPER CASE</button>
+
+          <button @click="convertTo('alternating')" class="option-button">altErNaTiNg caSe</button>
         </div>
-        
+
         <div class="inverse-button-container">
-          <button 
-            @click="convertTo('inverse')" 
-            class="option-button inverse-button"
-          >&gt; InVeRsE CaSe</button>
+          <button @click="convertTo('inverse')" class="option-button inverse-button">&gt; InVeRsE CaSe</button>
         </div>
       </div>
-      
+
       <!-- Output Area -->
       <div class="output-header">
         <span>OUTPUT</span>
-        <button 
-          @click="copyToClipboard" 
-          class="terminal-button"
-        >COPY</button>
+        <button @click="copyToClipboard" class="terminal-button">COPY</button>
       </div>
-      
+
       <div class="output-container" ref="outputContainer">
         <div v-if="showCopyAlert" class="copy-alert">Text copied to clipboard!</div>
-        <pre v-if="outputText" class="output-text" :class="{ 'matrix-effect': matrixEffectActive }">{{ outputText }}</pre>
+        <pre v-if="outputText" class="output-text"
+          :class="{ 'matrix-effect': matrixEffectActive }">{{ outputText }}</pre>
         <div v-else class="matrix-rain" ref="matrixRain"></div>
       </div>
     </div>
@@ -119,11 +88,11 @@ const clearText = () => {
 
 const convertTo = (caseType) => {
   if (!inputText.value) return;
-  
+
   matrixEffectActive.value = true;
-  
+
   setTimeout(() => {
-    switch(caseType) {
+    switch (caseType) {
       case 'sentence':
         outputText.value = inputText.value.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
         break;
@@ -142,7 +111,7 @@ const convertTo = (caseType) => {
         outputText.value = inputText.value.toUpperCase();
         break;
       case 'alternating':
-        outputText.value = inputText.value.split('').map((char, index) => 
+        outputText.value = inputText.value.split('').map((char, index) =>
           index % 2 === 0 ? char.toLowerCase() : char.toUpperCase()
         ).join('');
         break;
@@ -153,7 +122,7 @@ const convertTo = (caseType) => {
         }).join('');
         break;
     }
-    
+
     // Turn off matrix effect after conversion
     setTimeout(() => {
       matrixEffectActive.value = false;
@@ -163,7 +132,7 @@ const convertTo = (caseType) => {
 
 const copyToClipboard = () => {
   if (!outputText.value) return;
-  
+
   navigator.clipboard.writeText(outputText.value)
     .then(() => {
       showCopyAlert.value = true;
@@ -179,42 +148,42 @@ const copyToClipboard = () => {
 // Matrix rain animation
 const setupMatrixRain = () => {
   if (!matrixRain.value) return;
-  
+
   const canvas = document.createElement('canvas');
   matrixRain.value.innerHTML = '';
   matrixRain.value.appendChild(canvas);
-  
+
   const ctx = canvas.getContext('2d');
   canvas.width = matrixRain.value.offsetWidth;
   canvas.height = matrixRain.value.offsetHeight;
-  
+
   const characters = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const columns = Math.floor(canvas.width / 20);
   const drops = [];
-  
+
   for (let i = 0; i < columns; i++) {
     drops[i] = Math.floor(Math.random() * canvas.height);
   }
-  
+
   const draw = () => {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     ctx.fillStyle = '#39ff14';
     ctx.font = '20px monospace';
-    
+
     for (let i = 0; i < drops.length; i++) {
       const text = characters[Math.floor(Math.random() * characters.length)];
       ctx.fillText(text, i * 20, drops[i] * 20);
-      
+
       if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
         drops[i] = 0;
       }
-      
+
       drops[i]++;
     }
   };
-  
+
   matrixInterval = setInterval(draw, 50);
 };
 
@@ -270,13 +239,11 @@ watch(outputText, (newValue) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.15),
-    rgba(0, 0, 0, 0.15) 1px,
-    transparent 1px,
-    transparent 2px
-  );
+  background: repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0.15),
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 2px);
   pointer-events: none;
   z-index: 10;
 }
@@ -318,7 +285,8 @@ watch(outputText, (newValue) => {
   background-color: #ff9f40;
 }
 
-.minimize, .maximize {
+.minimize,
+.maximize {
   background-color: #39ff14;
 }
 
@@ -459,11 +427,25 @@ watch(outputText, (newValue) => {
 }
 
 @keyframes matrixFlicker {
-  0% { opacity: 0; }
-  25% { opacity: 1; }
-  50% { opacity: 0; }
-  75% { opacity: 1; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+
+  75% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .matrix-rain {
@@ -494,13 +476,23 @@ watch(outputText, (newValue) => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 @media (max-width: 768px) {
@@ -508,7 +500,7 @@ watch(outputText, (newValue) => {
     flex: 1 1 100%;
     max-width: 100%;
   }
-  
+
   .terminal-header {
     font-size: 1.5rem;
   }

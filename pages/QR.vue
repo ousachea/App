@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <PageSwitcher />
+
     <div class="scanner-card">
       <div class="header">
         <div class="header-content">

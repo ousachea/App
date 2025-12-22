@@ -1,26 +1,12 @@
 <template>
   <div class="container">
-    <PageSwitcher/>
-
     <div class="card">
       <h1 class="title">Cambodia Carrier Checker</h1>
-      
+
       <div class="input-section">
-        <input
-          v-model="phoneNumber"
-          placeholder="Enter prefix"
-          @input="formatAndDetectCarrier"
-          class="input"
-          :class="{ error: invalidInput }"
-          maxlength="3"
-          type="text"
-          inputmode="numeric"
-        />
-        <button 
-          v-if="phoneNumber" 
-          @click="clearInput" 
-          class="clear-btn"
-        >
+        <input v-model="phoneNumber" placeholder="Enter prefix" @input="formatAndDetectCarrier" class="input"
+          :class="{ error: invalidInput }" maxlength="3" type="text" inputmode="numeric" />
+        <button v-if="phoneNumber" @click="clearInput" class="clear-btn">
           Clear
         </button>
       </div>
@@ -35,13 +21,8 @@
         <div v-for="(carrierData, name) in carriers" :key="name" class="carrier">
           <h3 class="carrier-name">{{ name }}</h3>
           <div class="prefixes">
-            <button
-              v-for="prefix in carrierData.prefixes"
-              :key="prefix"
-              @click="selectPrefix(prefix)"
-              class="prefix-btn"
-              :class="{ active: matchedPrefix === prefix }"
-            >
+            <button v-for="prefix in carrierData.prefixes" :key="prefix" @click="selectPrefix(prefix)"
+              class="prefix-btn" :class="{ active: matchedPrefix === prefix }">
               0{{ prefix }}
             </button>
           </div>
@@ -65,21 +46,21 @@ const carriers = {
   Cellcard: {
     color: '#FF9800',
     prefixes: [
-      '11', '12', '17', '61', '76', 
-      '77', '78', '79', '85', '89', 
+      '11', '12', '17', '61', '76',
+      '77', '78', '79', '85', '89',
       '92', '95', '99',
     ],
   },
   Smart: {
     color: '#00A859',
     prefixes: [
-      '10', '15', '16', '69', '70', 
+      '10', '15', '16', '69', '70',
       '81', '86', '87', '93', '96', '98',
     ],
   },
-  Metfone: { 
-    color: '#E60012', 
-    prefixes: ['88', '97'] 
+  Metfone: {
+    color: '#E60012',
+    prefixes: ['88', '97']
   },
 };
 
@@ -106,10 +87,10 @@ const formatAndDetectCarrier = () => {
     invalidInput.value = false;
     return;
   }
-  
+
   // Only use first 2 digits for carrier detection
   const input = phoneNumber.value.slice(0, 2).padStart(2, '0');
-  
+
   matchedPrefix.value = null;
   carrier.value = 'Unknown Carrier';
   invalidInput.value = false;
@@ -281,6 +262,7 @@ const formatAndDetectCarrier = () => {
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
