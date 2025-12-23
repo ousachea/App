@@ -22,19 +22,19 @@
         <div class="sort-bar">
           <label>Sort by:</label>
           <div class="sort-buttons">
-            <button :class="['sort-btn', { active: artistSort === 'name-asc' }]" @click="debouncedSort('name-asc')"
+            <button :class="['sort-btn', { active: artistSort === 'name-asc' }]" @click="handleSort('name-asc')"
               title="Name A-Z">
               A-Z
             </button>
-            <button :class="['sort-btn', { active: artistSort === 'name-desc' }]" @click="debouncedSort('name-desc')"
+            <button :class="['sort-btn', { active: artistSort === 'name-desc' }]" @click="handleSort('name-desc')"
               title="Name Z-A">
               Z-A
             </button>
-            <button :class="['sort-btn', { active: artistSort === 'works-desc' }]" @click="debouncedSort('works-desc')"
+            <button :class="['sort-btn', { active: artistSort === 'works-desc' }]" @click="handleSort('works-desc')"
               title="Most Works First">
               Most Works
             </button>
-            <button :class="['sort-btn', { active: artistSort === 'works-asc' }]" @click="debouncedSort('works-asc')"
+            <button :class="['sort-btn', { active: artistSort === 'works-asc' }]" @click="handleSort('works-asc')"
               title="Least Works First">
               Least Works
             </button>
@@ -541,20 +541,6 @@ class ImageDB {
   }
 }
 
-// ============================================================================
-// DEBOUNCE HELPER
-// ============================================================================
-const createDebounce = (func, delay) => {
-  let timeoutId = null
-  return (...args) => {
-    if (timeoutId) clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => {
-      func(...args)
-      timeoutId = null
-    }, delay)
-  }
-}
-
 export default {
   name: 'Works',
   data() {
@@ -605,21 +591,21 @@ export default {
 
       switch (this.artistSort) {
         case 'name-asc':
-          return artists.sort((a, b) => {
+          return [...artists].sort((a, b) => {
             if (a.name === 'Collection') return 1
             if (b.name === 'Collection') return -1
             return a.name.localeCompare(b.name)
           })
 
         case 'name-desc':
-          return artists.sort((a, b) => {
+          return [...artists].sort((a, b) => {
             if (a.name === 'Collection') return 1
             if (b.name === 'Collection') return -1
             return b.name.localeCompare(a.name)
           })
 
         case 'works-asc':
-          return artists.sort((a, b) => {
+          return [...artists].sort((a, b) => {
             if (a.name === 'Collection') return 1
             if (b.name === 'Collection') return -1
             const aCount = (a.mainWorks?.length || 0) + (a.compilations?.length || 0)
@@ -630,7 +616,7 @@ export default {
 
         case 'works-desc':
         default:
-          return artists.sort((a, b) => {
+          return [...artists].sort((a, b) => {
             if (a.name === 'Collection') return 1
             if (b.name === 'Collection') return -1
             const aCount = (a.mainWorks?.length || 0) + (a.compilations?.length || 0)
@@ -757,12 +743,15 @@ export default {
       })
     },
 
-    debouncedSort: createDebounce(function (sortType) {
+    handleSort(sortType) {
+      console.log('Sort clicked:', sortType, 'Current:', this.artistSort)
       this.artistSort = sortType
       if (process.client) {
         localStorage.setItem('artistSort', sortType)
       }
-    }, 150),
+      console.log('After update:', this.artistSort)
+      this.$forceUpdate()
+    },
 
     async saveCustomImagesToDB(images) {
       if (!this.customImagesLoaded) return
