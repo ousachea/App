@@ -1,193 +1,238 @@
 <template>
-  <div class="container">
+  <div class="app">
     <!-- HEADER -->
-    <header>
-      <div class="header-content">
-        <div class="header-left">
+    <header class="header">
+      <div class="header-inner">
+        <div>
           <h1>🎬 Works Tracker</h1>
-          <p class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</p>
+          <p class="text-muted">{{ artists.length }} artists · {{ totalCount }} works</p>
         </div>
-        <div class="header-controls">
-          <button @click="exportData" class="btn-export" title="Export data">💾 Export</button>
-          <button @click="triggerImport" class="btn-import" title="Import data">📥 Import</button>
-          <input ref="fileInput" type="file" accept=".json" style="display: none" @change="importData" />
-          <button @click="hardRefresh" class="btn-refresh" title="Hard refresh data">🔄 Refresh</button>
-          <button @click="openAddArtistModal" class="btn-add-artist">➕ Add Artist</button>
+        <div class="header-actions">
+          <button @click="exportData" class="btn btn-sm btn-success">💾</button>
+          <button @click="triggerImport" class="btn btn-sm btn-success">📥</button>
+          <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
+          <button @click="hardRefresh" class="btn btn-sm btn-warning">🔄</button>
+          <button @click="openAddArtistModal" class="btn btn-primary">➕ Add Artist</button>
         </div>
       </div>
     </header>
 
-    <!-- MAIN CONTENT -->
-    <div class="content-wrapper">
-      <!-- ARTISTS VIEW -->
-      <div class="view-page artists-page">
-        <div class="artist-grid">
-          <button v-for="artist in sortedArtists" :key="`artist-${artist.name}`" class="artist-card"
-            @click="selectArtist(artist.name)">
-            <div class="artist-image-wrapper">
-              <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name"
-                @error="showPlaceholder" @load="handleImageLoad" class="artist-image" />
-              <img v-else-if="getRandomArtistWork(artist)" :src="getImageUrl(getRandomArtistWork(artist).code, 'pl')"
-                :alt="artist.name" @error="showPlaceholder" @load="handleImageLoad" class="artist-image" />
-              <div v-else class="artist-placeholder">📷</div>
-
-              <div class="artist-overlay">
-                <h3 class="artist-name">{{ artist.name }}</h3>
-                <div class="artist-counts">
-                  <span v-if="artist.mainWorks?.length" class="count-badge main">
-                    {{ artist.mainWorks.length }} Main
-                  </span>
-                  <span v-if="artist.compilations?.length" class="count-badge comp">
-                    {{ artist.compilations.length }} Comp
-                  </span>
-                </div>
+    <!-- ARTISTS VIEW -->
+    <main v-if="currentView === 'artists'" class="main-content">
+      <div class="artist-grid">
+        <div v-for="artist in sortedArtists" :key="artist.name" class="artist-card" @click="selectArtist(artist.name)">
+          <div class="artist-img">
+            <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name" @error="hideImage"
+              @load="showImage" />
+            <img v-else-if="getRandomArtistWork(artist)" :src="getImageUrl(getRandomArtistWork(artist).code)"
+              :alt="artist.name" @error="hideImage" @load="showImage" />
+            <div v-else class="img-placeholder">📷</div>
+            <div class="artist-info">
+              <h3>{{ artist.name }}</h3>
+              <div class="artist-stats">
+                <span v-if="artist.mainWorks?.length">{{ artist.mainWorks.length }} Main</span>
+                <span v-if="artist.compilations?.length">{{ artist.compilations.length }} Comp</span>
               </div>
-              <button @click.stop="openArtistPhotoModal(artist.name)" class="btn-artist-photo"
-                title="Edit artist photo">📷</button>
             </div>
-          </button>
+            <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-photo-btn">📷</button>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
+
+    <!-- WORKS VIEW -->
+    <main v-else-if="currentView === 'works'" class="main-content">
+      <div class="page-nav">
+        <button @click="backToArtists" class="btn">← Back</button>
+        <div class="page-info">
+          <h2>{{ currentArtist.name }}</h2>
+          <p class="text-muted">{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }}
+            works</p>
+        </div>
+        <button @click="openAddWorkModal" class="btn btn-primary">➕ Add</button>
+      </div>
+
+      <section v-if="sortedMainWorks.length" class="works-section">
+        <h3 class="section-title">Main Works · {{ sortedMainWorks.length }}</h3>
+        <div class="works-grid">
+          <div v-for="work in sortedMainWorks" :key="work.code" class="work-card" @click="openWorkView(work)">
+            <div class="work-img">
+              <span v-if="hasSimilarCode(work.code)" class="work-badge warn">⚠️</span>
+              <span v-if="hasCustomImage(work.code)" class="work-badge custom">📷</span>
+              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" @load="showImage" />
+            </div>
+            <div class="work-code">{{ work.code }}</div>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="sortedCompilations.length" class="works-section">
+        <h3 class="section-title">Compilations · {{ sortedCompilations.length }}</h3>
+        <div class="works-grid">
+          <div v-for="work in sortedCompilations" :key="work.code" class="work-card" @click="openWorkView(work)">
+            <div class="work-img">
+              <span v-if="hasSimilarCode(work.code)" class="work-badge warn">⚠️</span>
+              <span v-if="hasCustomImage(work.code)" class="work-badge custom">📷</span>
+              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" @load="showImage" />
+            </div>
+            <div class="work-code">{{ work.code }}</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- DETAIL VIEW -->
+    <main v-else-if="currentView === 'detail'" class="main-content detail-view">
+      <div class="page-nav">
+        <button @click="backToWorks" class="btn">← Back</button>
+        <div class="work-nav">
+          <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="btn btn-sm">‹</button>
+          <span class="text-muted">{{ currentWorkIndex + 1 }} / {{ currentWorkList.length }}</span>
+          <button @click="navigateWork(1)" :disabled="!canNavigateWork(1)" class="btn btn-sm">›</button>
+        </div>
+      </div>
+
+      <div class="detail-container">
+        <aside class="detail-sidebar">
+          <div class="cover-box" @click="openLightbox(currentWork, 0)">
+            <img :src="getImageUrl(currentWork.code)" :alt="currentWork.code" @error="hideImage" @load="showImage" />
+            <div class="cover-overlay">Click to enlarge</div>
+          </div>
+
+          <div class="info-card">
+            <h2 class="detail-title" @click="copyToClipboard(currentWork.code)">
+              {{ currentWork.code }}
+              <span v-if="hasSimilarCode(currentWork.code)" class="warn-icon">⚠️</span>
+            </h2>
+
+            <div class="action-grid">
+              <button @click="openExternalLink(currentWork.code, 'njav')" class="btn btn-primary btn-block">🔗
+                NJAV</button>
+              <button @click="openExternalLink(currentWork.code, 'missav')" class="btn btn-primary btn-block">🔗
+                MissAV</button>
+              <button @click="openUploadModal(currentWork.code)" class="btn btn-warning btn-block">
+                {{ hasCustomImage(currentWork.code) ? '📷 Update' : '📷 Add' }}
+              </button>
+              <button v-if="hasCustomImage(currentWork.code)" @click="removeCustomImage(currentWork.code)"
+                class="btn btn-danger btn-block">
+                🗑️ Remove
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="detail-gallery">
+          <h3 class="section-title">Gallery · 20 images</h3>
+          <div class="gallery-grid">
+            <div v-for="i in 20" :key="i" class="gallery-thumb" @click="openLightbox(currentWork, i)">
+              <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`${currentWork.code} - ${i}`" @error="dimImage"
+                @load="showImage" />
+              <span class="thumb-num">{{ i }}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
 
     <!-- MODALS -->
-    <div v-if="showAddArtistModal" class="modal-overlay" @click.self="closeAddArtistModal">
+    <div v-if="showAddArtistModal" class="modal-backdrop" @click.self="closeAddArtistModal">
       <div class="modal">
         <div class="modal-header">
           <h3>Add Artist</h3>
-          <button @click="closeAddArtistModal" class="btn-close">✕</button>
+          <button @click="closeAddArtistModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
-          <label>
-            Name
-            <input v-model="newArtist.name" type="text" placeholder="e.g., Jane Doe" />
-          </label>
-          <label>
-            Photo URL (optional)
-            <input v-model="newArtist.photo" type="text" placeholder="https://..." />
-          </label>
+          <label>Name<input v-model="newArtist.name" placeholder="Artist name" /></label>
+          <label>Photo URL<input v-model="newArtist.photo" placeholder="https://..." /></label>
         </div>
         <div class="modal-footer">
-          <button @click="addNewArtist" class="btn-primary">Add</button>
-          <button @click="closeAddArtistModal" class="btn-secondary">Cancel</button>
+          <button @click="addNewArtist" class="btn btn-primary">Add</button>
+          <button @click="closeAddArtistModal" class="btn">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showAddWorkModal" class="modal-overlay" @click.self="closeAddWorkModal">
+    <div v-if="showAddWorkModal" class="modal-backdrop" @click.self="closeAddWorkModal">
       <div class="modal">
         <div class="modal-header">
           <h3>Add Work</h3>
-          <button @click="closeAddWorkModal" class="btn-close">✕</button>
+          <button @click="closeAddWorkModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
           <label>
             Artist
             <select v-model="newWork.artist">
-              <option value="">Select...</option>
+              <option value="">Select artist...</option>
               <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
             </select>
           </label>
-          <label>
-            Work Code
-            <input v-model="newWork.code" type="text" placeholder="e.g., SONE-978" />
-          </label>
+          <label>Work Code<input v-model="newWork.code" placeholder="SONE-978" /></label>
           <label>
             Type
-            <div class="radio-group">
-              <label class="radio-item">
-                <input v-model="newWork.type" type="radio" value="mainWorks" />
-                Main Work
-              </label>
-              <label class="radio-item">
-                <input v-model="newWork.type" type="radio" value="compilations" />
-                Compilation
-              </label>
+            <div class="radio-row">
+              <label><input v-model="newWork.type" type="radio" value="mainWorks" /> Main</label>
+              <label><input v-model="newWork.type" type="radio" value="compilations" /> Compilation</label>
             </div>
           </label>
         </div>
         <div class="modal-footer">
-          <button @click="addNewWork" class="btn-primary">Add</button>
-          <button @click="closeAddWorkModal" class="btn-secondary">Cancel</button>
+          <button @click="addNewWork" class="btn btn-primary">Add</button>
+          <button @click="closeAddWorkModal" class="btn">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showUploadModal" class="modal-overlay" @click.self="closeUploadModal">
+    <div v-if="showUploadModal" class="modal-backdrop" @click.self="closeUploadModal">
       <div class="modal">
         <div class="modal-header">
-          <h3>Add Custom Image</h3>
-          <button @click="closeUploadModal" class="btn-close">✕</button>
+          <h3>Custom Image</h3>
+          <button @click="closeUploadModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
-          <p class="upload-info">For <strong>{{ uploadingWork }}</strong></p>
-          <label>
-            Image URL
-            <input v-model="customImageUrl" type="text" placeholder="https://example.com/image.jpg"
-              @keyup.enter="handleCustomImageUrl" />
-          </label>
-          <div class="upload-hint">
-            <strong>💡 Tips:</strong>
-            <ul>
-              <li>Paste direct image URL</li>
-              <li>Must end with image extension (.jpg, .png, etc.)</li>
-              <li>URL saved as-is</li>
-            </ul>
-          </div>
+          <p class="text-muted">For <strong>{{ uploadingWork }}</strong></p>
+          <label>Image URL<input v-model="customImageUrl" placeholder="https://example.com/image.jpg"
+              @keyup.enter="handleCustomImageUrl" /></label>
         </div>
         <div class="modal-footer">
-          <button @click="handleCustomImageUrl" class="btn-primary" :disabled="!customImageUrl.trim()">
-            Add URL
-          </button>
-          <button @click="closeUploadModal" class="btn-secondary">Cancel</button>
+          <button @click="handleCustomImageUrl" class="btn btn-primary" :disabled="!customImageUrl.trim()">Add</button>
+          <button @click="closeUploadModal" class="btn">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showArtistPhotoModal" class="modal-overlay" @click.self="closeArtistPhotoModal">
+    <div v-if="showArtistPhotoModal" class="modal-backdrop" @click.self="closeArtistPhotoModal">
       <div class="modal">
         <div class="modal-header">
-          <h3>Edit Artist Photo</h3>
-          <button @click="closeArtistPhotoModal" class="btn-close">✕</button>
+          <h3>Artist Photo</h3>
+          <button @click="closeArtistPhotoModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
-          <p class="upload-info">For <strong>{{ editingArtistName }}</strong></p>
-          <label>
-            Photo URL
-            <input v-model="artistPhotoUrl" type="text" placeholder="https://example.com/photo.jpg"
-              @keyup.enter="updateArtistPhoto" />
-          </label>
+          <p class="text-muted">For <strong>{{ editingArtistName }}</strong></p>
+          <label>Photo URL<input v-model="artistPhotoUrl" placeholder="https://example.com/photo.jpg"
+              @keyup.enter="updateArtistPhoto" /></label>
         </div>
         <div class="modal-footer">
-          <button @click="updateArtistPhoto" class="btn-primary" :disabled="!artistPhotoUrl.trim()">
-            Update
-          </button>
-          <button @click="closeArtistPhotoModal" class="btn-secondary">Cancel</button>
+          <button @click="updateArtistPhoto" class="btn btn-primary" :disabled="!artistPhotoUrl.trim()">Update</button>
+          <button @click="closeArtistPhotoModal" class="btn">Cancel</button>
         </div>
       </div>
     </div>
 
     <!-- LIGHTBOX -->
     <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
-      <button class="lightbox-close" @click="closeLightbox">✕</button>
-      <button v-if="lightbox.images.length > 1" class="lightbox-prev" @click="prevImage">‹</button>
-      <button v-if="lightbox.images.length > 1" class="lightbox-next" @click="nextImage">›</button>
-
-      <div class="lightbox-content">
-        <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" @error="handleLightboxError" />
-      </div>
-
-      <div class="lightbox-info">
-        <span class="lightbox-code">{{ lightbox.code }}</span>
-        <span class="lightbox-counter">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</span>
+      <button class="lb-close" @click="closeLightbox">✕</button>
+      <button v-if="lightbox.images.length > 1" class="lb-nav lb-prev" @click="prevImage">‹</button>
+      <button v-if="lightbox.images.length > 1" class="lb-nav lb-next" @click="nextImage">›</button>
+      <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" @error="dimImage" />
+      <div class="lb-info">
+        <span>{{ lightbox.code }}</span>
+        <span class="text-muted">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</span>
       </div>
     </div>
 
     <!-- TOAST -->
     <transition name="fade">
-      <div v-if="toast.show" :class="['toast', toast.type]">
-        {{ toast.message }}
-      </div>
+      <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.message }}</div>
     </transition>
   </div>
 </template>
@@ -200,26 +245,14 @@ const codeParseCache = new Map()
 
 const parseWorkCode = (code) => {
   if (!code) return null
-  if (codeParseCache.has(code)) {
-    return codeParseCache.get(code)
-  }
+  if (codeParseCache.has(code)) return codeParseCache.get(code)
 
   const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '')
   const match = clean.match(/^([A-Z]+)(\d+)$/)
 
   const parsed = match
-    ? {
-      full: clean,
-      prefix: match[1].toLowerCase(),
-      number: match[2],
-      rawNumber: parseInt(match[2], 10)
-    }
-    : {
-      full: clean,
-      prefix: clean.toLowerCase(),
-      number: '001',
-      rawNumber: 1
-    }
+    ? { full: clean, prefix: match[1].toLowerCase(), number: match[2], rawNumber: parseInt(match[2], 10) }
+    : { full: clean, prefix: clean.toLowerCase(), number: '001', rawNumber: 1 }
 
   codeParseCache.set(code, parsed)
   return parsed
@@ -241,17 +274,14 @@ class ImageDB {
       }
 
       const request = indexedDB.open(this.dbName, 1)
-
       request.onerror = () => {
         console.warn('IndexedDB open failed')
         reject(new Error('IndexedDB failed'))
       }
-
       request.onsuccess = () => {
         this.db = request.result
         resolve(true)
       }
-
       request.onupgradeneeded = (event) => {
         const db = event.target.result
         if (!db.objectStoreNames.contains(this.storeName)) {
@@ -338,12 +368,7 @@ export default {
       currentWork: null,
       currentWorkList: [],
       currentWorkIndex: 0,
-      lightbox: {
-        show: false,
-        images: [],
-        currentIndex: 0,
-        code: ''
-      },
+      lightbox: { show: false, images: [], currentIndex: 0, code: '' },
       customImages: {},
       customImagesLoaded: false,
       showUploadModal: false,
@@ -351,15 +376,10 @@ export default {
       customImageUrl: '',
       imageDB: null,
       useLocalStorageFallback: false,
-      filteredArtists: [],
-      workNotes: {},
-      favorites: {},
-      workTags: {},
       artistPhotos: {},
       showArtistPhotoModal: false,
       editingArtistName: '',
-      artistPhotoUrl: '',
-      newTag: ''
+      artistPhotoUrl: ''
     }
   },
   computed: {
@@ -378,9 +398,7 @@ export default {
       return [...this.currentArtist.compilations].sort((a, b) => a.code.localeCompare(b.code))
     },
     sortedArtists() {
-      const sorted = [...this.artists]
-      sorted.sort((a, b) => a.name.localeCompare(b.name))
-      return sorted
+      return [...this.artists].sort((a, b) => a.name.localeCompare(b.name))
     }
   },
   watch: {
@@ -403,37 +421,11 @@ export default {
       deep: true
     },
     currentView() {
-      this.scrollToTop()
-    },
-    workNotes: {
-      handler(v) {
-        if (process.client) {
-          localStorage.setItem('workNotes', JSON.stringify(v))
-        }
-      },
-      deep: true
-    },
-    favorites: {
-      handler(v) {
-        if (process.client) {
-          localStorage.setItem('favorites', JSON.stringify(v))
-        }
-      },
-      deep: true
-    },
-    workTags: {
-      handler(v) {
-        if (process.client) {
-          localStorage.setItem('workTags', JSON.stringify(v))
-        }
-      },
-      deep: true
+      if (process.client) window.scrollTo({ top: 0, behavior: 'instant' })
     },
     artistPhotos: {
       handler(v) {
-        if (process.client) {
-          localStorage.setItem('artistPhotos', JSON.stringify(v))
-        }
+        if (process.client) localStorage.setItem('artistPhotos', JSON.stringify(v))
       },
       deep: true
     }
@@ -441,36 +433,12 @@ export default {
   mounted() {
     if (process.client) {
       this.imageDB = new ImageDB()
-
-      // Load all saved data
-      try {
-        const saved = localStorage.getItem('favorites')
-        if (saved) this.favorites = JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to load favorites:', e)
-      }
-
-      try {
-        const saved = localStorage.getItem('workTags')
-        if (saved) this.workTags = JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to load tags:', e)
-      }
-
       try {
         const saved = localStorage.getItem('artistPhotos')
         if (saved) this.artistPhotos = JSON.parse(saved)
       } catch (e) {
         console.warn('Failed to load artist photos:', e)
       }
-
-      try {
-        const saved = localStorage.getItem('workNotes')
-        if (saved) this.workNotes = JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to load notes:', e)
-      }
-
       this.initializeApp()
     }
   },
@@ -484,9 +452,7 @@ export default {
         } else {
           this.useLocalStorageFallback = true
           const savedCustomImages = localStorage.getItem('customImages')
-          if (savedCustomImages) {
-            this.customImages = JSON.parse(savedCustomImages)
-          }
+          if (savedCustomImages) this.customImages = JSON.parse(savedCustomImages)
         }
         this.customImagesLoaded = true
       } catch (e) {
@@ -494,9 +460,7 @@ export default {
         this.useLocalStorageFallback = true
         try {
           const savedCustomImages = localStorage.getItem('customImages')
-          if (savedCustomImages) {
-            this.customImages = JSON.parse(savedCustomImages)
-          }
+          if (savedCustomImages) this.customImages = JSON.parse(savedCustomImages)
         } catch (e2) {
           console.warn('localStorage fallback also failed:', e2)
         }
@@ -558,12 +522,6 @@ export default {
       }
     },
 
-    scrollToTop() {
-      if (process.client) {
-        window.scrollTo({ top: 0, behavior: 'instant' })
-      }
-    },
-
     selectArtist(name) {
       this.activeTab = name
       this.currentView = 'works'
@@ -581,9 +539,7 @@ export default {
 
     openWorkView(work) {
       const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
-      this.currentWorkList = isMain
-        ? (this.currentArtist.mainWorks || [])
-        : (this.currentArtist.compilations || [])
+      this.currentWorkList = isMain ? (this.currentArtist.mainWorks || []) : (this.currentArtist.compilations || [])
       this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
       this.currentWork = work
       this.currentView = 'detail'
@@ -594,7 +550,6 @@ export default {
       if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
         this.currentWorkIndex = newIndex
         this.currentWork = this.currentWorkList[newIndex]
-        this.scrollToTop()
       }
     },
 
@@ -604,9 +559,7 @@ export default {
     },
 
     getImageUrl(code, quality = 'pl') {
-      if (quality === 'pl' && this.customImages[code]) {
-        return this.customImages[code]
-      }
+      if (quality === 'pl' && this.customImages[code]) return this.customImages[code]
       const parsed = parseWorkCode(code)
       if (!parsed) return null
       const paddedNum = parsed.number.padStart(5, '0')
@@ -619,16 +572,15 @@ export default {
       return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
     },
 
-    showPlaceholder(e) {
-      const img = e.target
-      img.style.display = 'none'
+    hideImage(e) {
+      e.target.style.display = 'none'
     },
 
-    handleGalleryImageError(e) {
+    dimImage(e) {
       e.target.style.opacity = '0.2'
     },
 
-    handleImageLoad(e) {
+    showImage(e) {
       e.target.style.opacity = '1'
     },
 
@@ -637,26 +589,17 @@ export default {
     },
 
     openLightbox(work, startIndex = 0) {
-      const images = [this.getImageUrl(work.code, 'pl')]
+      const images = [this.getImageUrl(work.code)]
       for (let i = 1; i <= 20; i++) {
         images.push(this.getImageUrl(work.code, `jp-${i}`))
       }
-      this.lightbox = {
-        show: true,
-        images: images,
-        currentIndex: startIndex,
-        code: work.code
-      }
-      if (process.client) {
-        document.body.style.overflow = 'hidden'
-      }
+      this.lightbox = { show: true, images, currentIndex: startIndex, code: work.code }
+      if (process.client) document.body.style.overflow = 'hidden'
     },
 
     closeLightbox() {
       this.lightbox.show = false
-      if (process.client) {
-        document.body.style.overflow = ''
-      }
+      if (process.client) document.body.style.overflow = ''
     },
 
     nextImage() {
@@ -665,10 +608,6 @@ export default {
 
     prevImage() {
       this.lightbox.currentIndex = (this.lightbox.currentIndex - 1 + this.lightbox.images.length) % this.lightbox.images.length
-    },
-
-    handleLightboxError(e) {
-      e.target.style.opacity = '0.3'
     },
 
     openAddWorkModal() {
@@ -760,24 +699,17 @@ export default {
     openExternalLink(code, type = 'njav') {
       if (!code) return
       const formattedCode = code.toLowerCase().replace(/-/g, '-')
-      let url
-      if (type === 'missav') {
-        url = `https://missav.ws/en/${formattedCode}`
-      } else {
-        url = `https://www.njav.com/en/xvideos/${formattedCode}`
-      }
+      const url = type === 'missav'
+        ? `https://missav.ws/en/${formattedCode}`
+        : `https://www.njav.com/en/xvideos/${formattedCode}`
       window.open(url, '_blank', 'noopener,noreferrer')
     },
 
     async handleCustomImageUrl() {
       const url = this.customImageUrl.trim()
-      if (!url) {
-        this.showToast('Please enter an image URL', 'error')
-        return
-      }
+      if (!url) return this.showToast('Please enter an image URL', 'error')
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        this.showToast('URL must start with http:// or https://', 'error')
-        return
+        return this.showToast('URL must start with http:// or https://', 'error')
       }
 
       const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
@@ -794,10 +726,7 @@ export default {
 
       img.onload = () => {
         clearTimeout(timeout)
-        this.customImages = {
-          ...this.customImages,
-          [this.uploadingWork]: url
-        }
+        this.customImages = { ...this.customImages, [this.uploadingWork]: url }
         this.showToast(`✅ Custom image added for ${this.uploadingWork}`, 'success')
         this.closeUploadModal()
         this.artists = [...this.artists]
@@ -826,17 +755,9 @@ export default {
       setTimeout(() => this.toast.show = false, 3000)
     },
 
-    // EXPORT DATA
     exportData() {
       try {
-        const data = {
-          artists: this.artists,
-          customImages: this.customImages,
-          workNotes: this.workNotes,
-          favorites: this.favorites,
-          workTags: this.workTags,
-          artistPhotos: this.artistPhotos
-        }
+        const data = { artists: this.artists, customImages: this.customImages, artistPhotos: this.artistPhotos }
         const json = JSON.stringify(data, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
@@ -852,7 +773,6 @@ export default {
       }
     },
 
-    // IMPORT DATA
     triggerImport() {
       this.$refs.fileInput.click()
     },
@@ -867,23 +787,15 @@ export default {
           const content = e.target.result
           const data = JSON.parse(content)
 
-          // Validate imported data
           if (!data.artists || !Array.isArray(data.artists)) {
             this.showToast('Invalid backup file format', 'error')
             return
           }
 
-          // Import data
           this.artists = normalizeArtists(data.artists)
           this.customImages = data.customImages || {}
-          this.workNotes = data.workNotes || {}
-          this.favorites = data.favorites || {}
-          this.workTags = data.workTags || {}
           this.artistPhotos = data.artistPhotos || {}
-
-          // Save to localStorage
           localStorage.setItem('artists', JSON.stringify(this.artists))
-
           this.showToast('✅ Data imported successfully', 'success')
         }
         reader.readAsText(file)
@@ -894,52 +806,6 @@ export default {
       }
     },
 
-    // FAVORITES
-    toggleFavorite(code) {
-      if (this.favorites[code]) {
-        delete this.favorites[code]
-        this.showToast(`Removed from favorites`, 'success')
-      } else {
-        this.favorites = { ...this.favorites, [code]: true }
-        this.showToast(`Added to favorites`, 'success')
-      }
-      this.saveFavorites()
-    },
-
-    saveFavorites() {
-      localStorage.setItem('favorites', JSON.stringify(this.favorites))
-    },
-
-    // TAGS
-    addTag(code) {
-      const tag = this.newTag?.trim()
-      if (!tag) return
-
-      if (!this.workTags[code]) {
-        this.workTags = { ...this.workTags, [code]: [] }
-      }
-
-      if (!this.workTags[code].includes(tag)) {
-        this.workTags[code] = [...this.workTags[code], tag]
-        this.workTags = { ...this.workTags }
-        this.newTag = ''
-        this.saveTags()
-      }
-    },
-
-    removeTag(code, tag) {
-      if (this.workTags[code]) {
-        this.workTags[code] = this.workTags[code].filter(t => t !== tag)
-        this.workTags = { ...this.workTags }
-        this.saveTags()
-      }
-    },
-
-    saveTags() {
-      localStorage.setItem('workTags', JSON.stringify(this.workTags))
-    },
-
-    // ARTIST PHOTOS
     openArtistPhotoModal(artistName) {
       this.editingArtistName = artistName
       this.artistPhotoUrl = this.artistPhotos[artistName] || ''
@@ -977,51 +843,16 @@ export default {
       img.src = url
     },
 
-    // DUPLICATE DETECTOR (for similar codes)
-    getDuplicates() {
-      const allCodes = this.artists.flatMap(a => [...(a.mainWorks || []).map(w => w.code), ...(a.compilations || []).map(w => w.code)])
-      const duplicateMap = {}
-
-      allCodes.forEach(code => {
-        const similar = allCodes.filter(c => {
-          if (c === code) return false
-          const codeMatch = code.match(/^([A-Z]+)-?(\d+)$/)
-          const checkMatch = c.match(/^([A-Z]+)-?(\d+)$/)
-          if (!codeMatch || !checkMatch) return false
-          const [, prefix1, num1] = codeMatch
-          const [, prefix2, num2] = checkMatch
-          if (prefix1 !== prefix2) return false
-          const diff = Math.abs(parseInt(num1) - parseInt(num2))
-          return diff === 1 || diff === 2
-        })
-        if (similar.length > 0) duplicateMap[code] = similar
-      })
-
-      return duplicateMap
-    },
-
     async hardRefresh() {
       try {
         this.showToast('Refreshing data...', 'info')
-
-        // Clear everything
         localStorage.removeItem('artists')
-        localStorage.removeItem('favorites')
-        localStorage.removeItem('workTags')
         localStorage.removeItem('artistPhotos')
-
-        // Reset to default data
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
-        this.workNotes = {}
-        this.favorites = {}
-        this.workTags = {}
         this.artistPhotos = {}
-
-        // Save fresh data
         localStorage.setItem('artists', JSON.stringify(this.artists))
-
         this.showToast('✅ Data refreshed to default state', 'success')
       } catch (e) {
         console.error('Hard refresh failed:', e)
@@ -1033,562 +864,272 @@ export default {
 </script>
 
 <style scoped>
-/* RESET & BASE */
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-.container {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+.app {
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.header {
   background: #fff;
-  display: block;
-  overflow: hidden;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-/* HEADER */
-header {
-  padding: 20px;
-  border-bottom: 1px solid #e5e5e5;
-  background: #fafafa;
-}
-
-.header-content {
+.header-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  flex-wrap: wrap;
 }
 
-.header-left h1 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #1a1a1a;
+.header h1 {
+  font-size: 1.5rem;
+  color: #111827;
+  font-weight: 700;
 }
 
-.header-stats {
-  margin: 4px 0 0 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.header-controls {
+.header-actions {
   display: flex;
   gap: 8px;
+}
+
+.main-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.page-nav {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  margin-bottom: 32px;
+  gap: 16px;
 }
 
-.btn-export,
-.btn-import {
-  padding: 10px 14px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  min-height: 44px;
-  transition: background 0.2s;
+.page-info {
+  flex: 1;
+  text-align: center;
 }
 
-.btn-export:hover,
-.btn-import:hover {
-  background: #45a049;
+.page-info h2 {
+  font-size: 1.75rem;
+  color: #111827;
+  font-weight: 700;
 }
 
-.btn-refresh {
-  padding: 10px 14px;
-  background: #ff9800;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  min-height: 44px;
-  transition: background 0.2s;
+.work-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.btn-refresh:hover {
-  background: #f57c00;
-}
-
-.btn-add-artist {
-  padding: 10px 16px;
-  background: #2196F3;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  min-height: 44px;
-  transition: background 0.2s;
-}
-
-.btn-add-artist:hover {
-  background: #1976D2;
-}
-
-/* CONTENT WRAPPER */
-.content-wrapper {
-  padding: 24px 20px;
-  width: 100%;
-  max-width: 100%;
-}
-
-.view-page {
-  animation: fadeIn 0.2s;
-  width: 100%;
-  max-width: 100%;
-  display: block;
-}
-
-.artists-page {
-  width: 100%;
-  max-width: 100%;
-}
-
-.works-page {
-  width: 100%;
-  max-width: 100%;
-}
-
-.detail-page {
-  width: 100%;
-  max-width: 100%;
-  display: block;
-  overflow: hidden;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-/* EMPTY STATE */
-/* ARTIST GRID */
 .artist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 0;
-  width: 100%;
-  max-width: 100%;
-}
-
-@media (max-width: 480px) {
-  .artist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
-}
-
-@media (max-width: 768px) {
-  .artist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
 }
 
 .artist-card {
-  position: relative;
-  aspect-ratio: 3 / 2;
-  border: none;
-  border-radius: 10px;
-  overflow: hidden;
   cursor: pointer;
-  background: #000;
-  padding: 0;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  transition: all 0.3s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .artist-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
-.artist-image-wrapper {
+.artist-img {
   position: relative;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
   overflow: hidden;
 }
 
-.artist-image {
+.artist-img img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.artist-placeholder {
+.img-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
-  opacity: 0.3;
+  font-size: 3rem;
+  opacity: 0.2;
 }
 
-.artist-overlay {
+.artist-info {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-  padding: 16px 12px;
-  color: white;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  padding: 20px 16px;
+  color: #fff;
 }
 
-.artist-name {
-  margin: 0;
-  font-size: 1rem;
+.artist-info h3 {
+  font-size: 1.125rem;
   font-weight: 600;
-  line-height: 1.3;
   margin-bottom: 8px;
 }
 
-.artist-counts {
+.artist-stats {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.75rem;
+  opacity: 0.9;
 }
 
-.count-badge {
-  font-size: 0.7rem;
-  padding: 3px 6px;
+.artist-stats span {
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
-.page-header,
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e5e5e5;
-  gap: 12px;
-}
-
-.page-title {
-  flex: 1;
-  text-align: center;
-  min-width: 0;
-}
-
-.page-title h2 {
-  margin: 0 0 4px 0;
-  font-size: 1.3rem;
-  color: #1a1a1a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (min-width: 480px) {
-  .page-title h2 {
-    font-size: 1.6rem;
-  }
-}
-
-.page-title p {
-  margin: 0;
-  color: #666;
-  font-size: 0.85rem;
-}
-
-.btn-nav {
-  padding: 10px 14px;
-  background: #666;
-  color: white;
+.edit-photo-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  min-height: 44px;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.btn-nav:hover {
-  background: #555;
-}
-
-.btn-add-work {
-  padding: 10px 14px;
-  background: #4CAF50;
-  color: white;
-  border: none;
+  padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 1rem;
-  min-height: 44px;
-  min-width: 44px;
-  transition: background 0.2s;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-.btn-add-work:hover {
-  background: #45a049;
+.artist-card:hover .edit-photo-btn {
+  opacity: 1;
 }
 
-.nav-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.nav-counter {
-  font-size: 0.9rem;
-  color: #666;
-  min-width: 60px;
-  text-align: center;
-}
-
-.btn-arrow {
-  padding: 10px 12px;
-  background: #2196F3;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1.1rem;
-  min-height: 44px;
-  min-width: 44px;
-  transition: background 0.2s;
-  font-weight: bold;
-}
-
-.btn-arrow:hover:not(:disabled) {
-  background: #1976D2;
-}
-
-.btn-arrow:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-/* WORKS SECTION */
 .works-section {
-  margin-bottom: 0;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
+  margin-bottom: 48px;
 }
 
 .section-title {
-  font-size: 1.1rem;
-  margin: 0 0 16px 0;
-  color: #1a1a1a;
+  font-size: 1.25rem;
   font-weight: 600;
+  color: #111827;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
-  width: 100%;
-  max-width: 100%;
-}
-
-@media (min-width: 480px) {
-  .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 14px;
-  }
-}
-
-@media (min-width: 768px) {
-  .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  }
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
 
 .work-card {
   cursor: pointer;
   border-radius: 8px;
   overflow: hidden;
-  background: #f5f5f5;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .work-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
-.work-image-container {
+.work-img {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
   background: #000;
-  overflow: hidden;
 }
 
-.work-image-container img {
+.work-img img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.warning-badge,
-.custom-badge {
+.work-badge {
   position: absolute;
-  font-size: 0.9rem;
-  padding: 4px 6px;
-  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 8px;
   border-radius: 4px;
-  color: white;
+  font-size: 0.875rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
 }
 
-.warning-badge {
-  top: 6px;
-  right: 6px;
+.work-badge.warn {
+  top: 8px;
+  right: 8px;
 }
 
-.custom-badge {
-  bottom: 6px;
-  right: 6px;
+.work-badge.custom {
+  bottom: 8px;
+  right: 8px;
 }
 
 .work-code {
-  padding: 8px;
+  padding: 12px;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #333;
-  background: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #374151;
 }
 
-.work-tags {
-  padding: 4px 8px 0 8px;
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: center;
+.detail-view {
+  padding: 24px;
 }
 
-.tag {
-  font-size: 0.6rem;
-  background: #2196F3;
-  color: white;
-  padding: 2px 4px;
-  border-radius: 2px;
-  font-weight: 500;
-}
-
-.favorite-badge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: #ffeb3b;
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-}
-
-.btn-artist-photo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.artist-image-wrapper:hover .btn-artist-photo {
-  opacity: 1;
-}
-
-/* DETAIL PAGE */
-.detail-grid {
-  display: flex;
-  flex-direction: column;
+.detail-container {
+  display: grid;
+  grid-template-columns: 400px 1fr;
   gap: 32px;
-  margin-bottom: 0;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
 }
 
-@media (min-width: 1000px) {
-  .detail-grid {
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    grid-template-rows: auto auto;
-    overflow: hidden;
-  }
-
-  .detail-main {
-    grid-column: 1;
-    grid-row: 1 / 3;
-  }
-
-  .detail-gallery {
-    grid-column: 2;
-    grid-row: 1 / 3;
-  }
-}
-
-.detail-main {
+.detail-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 100%;
+  gap: 20px;
 }
 
-.main-cover {
+.cover-box {
   position: relative;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: #000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  width: 100%;
-  max-width: 100%;
+  cursor: pointer;
 }
 
-.cover-image {
+.cover-box img {
   width: 100%;
   height: auto;
-  object-fit: contain;
-  max-height: 500px;
-  cursor: pointer;
   display: block;
-  transition: transform 0.3s;
-}
-
-.cover-image:hover {
-  transform: scale(1.03);
 }
 
 .cover-overlay {
@@ -1596,253 +1137,76 @@ header {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
   text-align: center;
-  padding: 8px;
-  font-size: 0.8rem;
+  padding: 12px;
+  font-size: 0.875rem;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
-.main-cover:hover .cover-overlay {
+.cover-box:hover .cover-overlay {
   opacity: 1;
 }
 
-.work-info {
-  background: #f8f8f8;
-  padding: 16px;
-  border-radius: 8px;
-  width: 100%;
-  overflow: visible;
+.info-card {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.work-title {
-  margin: 0 0 16px 0;
-  font-size: 1.4rem;
-  color: #1a1a1a;
+.detail-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
   cursor: pointer;
   user-select: all;
-  word-break: break-word;
   transition: color 0.2s;
 }
 
-.work-title:hover {
-  color: #2196F3;
+.detail-title:hover {
+  color: #2563eb;
 }
 
-.work-title .warning {
+.warn-icon {
+  color: #f59e0b;
   margin-left: 8px;
-  color: #ff9800;
 }
 
-.work-meta {
-  margin-bottom: 16px;
-}
-
-.btn-favorite {
-  padding: 8px 12px;
-  background: white;
-  color: #ff9800;
-  border: 2px solid #ff9800;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  width: 100%;
-}
-
-.btn-favorite.active {
-  background: #ff9800;
-  color: white;
-}
-
-.btn-favorite:hover {
-  background: #ff9800;
-  color: white;
-}
-
-.work-tags-section,
-.work-notes-section {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.work-tags-section h4,
-.work-notes-section h4 {
-  margin: 0 0 8px 0;
-  font-size: 0.9rem;
-  color: #333;
-  font-weight: 600;
-}
-
-.tags-list {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
-.tag-large {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #2196F3;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.tag-remove {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.9rem;
-  font-weight: bold;
-}
-
-.tag-input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  margin-top: 4px;
-}
-
-.tag-input:focus {
-  outline: none;
-  border-color: #2196F3;
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
-}
-
-.notes-textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 80px;
-  max-height: 200px;
-}
-
-.notes-textarea:focus {
-  outline: none;
-  border-color: #2196F3;
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
-}
-
-.action-buttons {
+.action-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  margin-top: 16px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-@media (min-width: 480px) {
-  .action-buttons {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.btn-action {
-  padding: 12px 14px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: white;
-  min-height: 44px;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
-
-.btn-action.primary {
-  background: #2196F3;
-}
-
-.btn-action.primary:hover {
-  background: #1976D2;
-}
-
-.btn-action.danger {
-  background: #f44336;
-}
-
-.btn-action.danger:hover {
-  background: #d32f2f;
-}
-
-.btn-action.secondary {
-  background: #ff9800;
-  grid-column: 1 / -1;
-}
-
-.btn-action.secondary:hover {
-  background: #f57c00;
-}
-
-/* GALLERY */
 .detail-gallery {
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.gallery-title {
-  font-size: 1.1rem;
-  margin: 0 0 16px 0;
-  color: #1a1a1a;
-  font-weight: 600;
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  width: 100%;
-  max-width: 100%;
-}
-
-@media (max-width: 480px) {
-  .gallery-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-}
-
-@media (min-width: 768px) {
-  .gallery-grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
 }
 
 .gallery-thumb {
   position: relative;
   aspect-ratio: 3 / 2;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
+  background: #f3f4f6;
   cursor: pointer;
-  background: #f0f0f0;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 100%;
+  transition: transform 0.2s;
 }
 
 .gallery-thumb:hover {
   transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .gallery-thumb img {
@@ -1851,335 +1215,315 @@ header {
   object-fit: contain;
 }
 
-.thumb-number {
+.thumb-num {
   position: absolute;
-  bottom: 2px;
+  bottom: 4px;
   right: 4px;
-  font-size: 0.65rem;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  padding: 2px 4px;
-  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
 }
 
-/* MODALS */
-.modal-overlay {
+.btn {
+  padding: 10px 16px;
+  background: #6b7280;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #4b5563;
+}
+
+.btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background: #2563eb;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-success {
+  background: #10b981;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-warning {
+  background: #f59e0b;
+}
+
+.btn-warning:hover {
+  background: #d97706;
+}
+
+.btn-danger {
+  background: #ef4444;
+  grid-column: 1 / -1;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9000;
-  padding: 16px;
+  z-index: 1000;
+  padding: 20px;
 }
 
 .modal {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  max-width: 450px;
+  background: #fff;
+  border-radius: 16px;
+  max-width: 480px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  z-index: 9001;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.3);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-header h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: #1a1a1a;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
 }
 
-.btn-close {
+.close-btn {
   background: none;
   border: none;
   font-size: 1.5rem;
+  color: #6b7280;
   cursor: pointer;
-  color: #666;
   padding: 0;
-  min-height: auto;
-  min-width: auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
 }
 
-.btn-close:hover {
-  color: #333;
+.close-btn:hover {
+  background: #f3f4f6;
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .modal-body label {
   display: block;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   font-weight: 500;
-  color: #333;
+  color: #374151;
+  font-size: 0.875rem;
 }
 
 .modal-body input,
 .modal-body select {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
   margin-top: 6px;
+  transition: border-color 0.2s;
 }
 
 .modal-body input:focus,
 .modal-body select:focus {
   outline: none;
-  border-color: #2196F3;
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.radio-group {
+.radio-row {
   display: flex;
   gap: 16px;
   margin-top: 8px;
 }
 
-.radio-item {
+.radio-row label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  margin: 0;
   cursor: pointer;
   font-weight: 400;
-  margin: 0;
 }
 
-.radio-item input {
+.radio-row input {
   width: auto;
   margin: 0;
   cursor: pointer;
 }
 
-.upload-info {
-  margin: 0 0 16px 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.upload-hint {
-  margin: 12px 0 0 0;
-  padding: 12px;
-  background: #f5f5f5;
-  border-radius: 6px;
-  font-size: 0.8rem;
-}
-
-.upload-hint strong {
-  display: block;
-  margin-bottom: 6px;
-}
-
-.upload-hint ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.upload-hint li {
-  margin: 4px 0;
-}
-
 .modal-footer {
-  padding: 16px 20px;
-  border-top: 1px solid #e5e5e5;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
-.btn-primary,
-.btn-secondary {
+.modal-footer .btn {
   flex: 1;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  min-height: 44px;
-  transition: background 0.2s;
 }
 
-.btn-primary {
-  background: #2196F3;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #1976D2;
-}
-
-.btn-primary:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #e5e5e5;
-  color: #333;
-}
-
-.btn-secondary:hover {
-  background: #d5d5d5;
-}
-
-/* LIGHTBOX */
 .lightbox {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.98);
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 11000;
-  padding: 10px;
+  z-index: 2000;
+  padding: 20px;
 }
 
-.lightbox-content {
-  max-width: 100%;
-  max-height: 100%;
-  position: relative;
-  z-index: 11001;
-}
-
-.lightbox-content img {
-  max-width: 100%;
+.lightbox img {
+  max-width: 90%;
   max-height: 85vh;
   object-fit: contain;
+  border-radius: 8px;
 }
 
-.lightbox-close,
-.lightbox-prev,
-.lightbox-next {
+.lb-close {
   position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  color: white;
+  color: #fff;
   border: none;
   cursor: pointer;
-  z-index: 11002;
-  transition: background 0.2s;
-  min-height: 44px;
-  min-width: 44px;
-}
-
-.lightbox-close {
-  top: 12px;
-  right: 12px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  transition: background 0.2s;
 }
 
-.lightbox-close:hover {
-  background: rgba(255, 0, 0, 0.6);
+.lb-close:hover {
+  background: rgba(239, 68, 68, 0.8);
 }
 
-.lightbox-prev,
-.lightbox-next {
+.lb-nav {
+  position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  width: 50px;
-  height: 50px;
-  border-radius: 6px;
-  font-size: 1.8rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 2rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  transition: background 0.2s;
 }
 
-.lightbox-prev:hover,
-.lightbox-next:hover {
+.lb-nav:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.lightbox-prev {
-  left: 12px;
+.lb-prev {
+  left: 20px;
 }
 
-.lightbox-next {
-  right: 12px;
+.lb-next {
+  right: 20px;
 }
 
-.lightbox-info {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.lightbox-code {
-  font-weight: 600;
-}
-
-.lightbox-counter {
-  opacity: 0.8;
-}
-
-/* TOAST */
-.toast {
+.lb-info {
   position: fixed;
   bottom: 20px;
-  right: 16px;
-  background: #4CAF50;
-  color: white;
-  padding: 14px 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 12px 20px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 10500;
+  display: flex;
+  gap: 20px;
+  font-size: 0.875rem;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #10b981;
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
+  z-index: 3000;
   font-weight: 500;
-  font-size: 0.9rem;
-  max-width: 90vw;
-  animation: slideIn 0.3s;
+  font-size: 0.875rem;
+  max-width: 400px;
 }
 
-.toast.error {
-  background: #f44336;
+.toast-error {
+  background: #ef4444;
 }
 
-.toast.info {
-  background: #2196F3;
+.toast-info {
+  background: #2563eb;
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateY(100px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.text-muted {
+  color: #6b7280;
+  font-size: 0.875rem;
 }
 
 .fade-enter-active,
@@ -2192,18 +1536,47 @@ header {
   opacity: 0;
 }
 
-/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .detail-container {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-sidebar {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .artist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
-  .content-wrapper {
-    padding: 16px 12px;
+  .header-inner {
+    padding: 12px 16px;
   }
 
-  header {
-    padding: 16px;
+  .main-content {
+    padding: 20px 16px;
   }
 
-  .header-left h1 {
-    font-size: 1.5rem;
+  .artist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .works-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
   }
 }
 </style>
