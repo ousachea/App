@@ -8,6 +8,9 @@
           <p class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</p>
         </div>
         <div class="header-controls">
+          <button @click="exportData" class="btn-export" title="Export data">💾 Export</button>
+          <button @click="triggerImport" class="btn-import" title="Import data">📥 Import</button>
+          <input ref="fileInput" type="file" accept=".json" style="display: none" @change="importData" />
           <button @click="hardRefresh" class="btn-refresh" title="Hard refresh data">🔄 Refresh</button>
           <button @click="openAddArtistModal" class="btn-add-artist">➕ Add Artist</button>
         </div>
@@ -16,19 +19,15 @@
 
     <!-- MAIN CONTENT -->
     <div class="content-wrapper">
-      <!-- PAGE 1: ARTIST GRID -->
-      <div v-show="currentView === 'artists'" class="view-page artists-page">
-        <div v-if="artists.length === 0" class="empty-state">
-          <div class="empty-icon">🎨</div>
-          <p>No artists yet. Add your first artist!</p>
-        </div>
-
-        <div v-else class="artist-grid">
-          <button v-for="artist in sortedArtists" :key="artist.name" class="artist-card"
+      <!-- ARTISTS VIEW -->
+      <div class="view-page artists-page">
+        <div class="artist-grid">
+          <button v-for="artist in sortedArtists" :key="`artist-${artist.name}`" class="artist-card"
             @click="selectArtist(artist.name)">
-
             <div class="artist-image-wrapper">
-              <img v-if="getRandomArtistWork(artist)" :src="getImageUrl(getRandomArtistWork(artist).code, 'pl')"
+              <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name"
+                @error="showPlaceholder" @load="handleImageLoad" class="artist-image" />
+              <img v-else-if="getRandomArtistWork(artist)" :src="getImageUrl(getRandomArtistWork(artist).code, 'pl')"
                 :alt="artist.name" @error="showPlaceholder" @load="handleImageLoad" class="artist-image" />
               <div v-else class="artist-placeholder">📷</div>
 
@@ -43,103 +42,10 @@
                   </span>
                 </div>
               </div>
+              <button @click.stop="openArtistPhotoModal(artist.name)" class="btn-artist-photo"
+                title="Edit artist photo">📷</button>
             </div>
           </button>
-        </div>
-      </div>
-
-      <!-- PAGE 2: ARTIST WORKS -->
-      <div v-show="currentView === 'works'" class="view-page works-page">
-        <div class="page-header">
-          <button @click="backToArtists" class="btn-nav">← Artists</button>
-          <div class="page-title">
-            <h2>{{ currentArtist?.name }}</h2>
-            <p>{{ (currentArtist?.mainWorks?.length || 0) + (currentArtist?.compilations?.length || 0) }} works</p>
-          </div>
-          <button @click="openAddWorkModal" class="btn-add-work">➕</button>
-        </div>
-
-        <div v-if="currentArtist?.mainWorks?.length" class="works-section">
-          <h3 class="section-title">📌 Main Works</h3>
-          <div class="works-grid">
-            <div v-for="work in sortedMainWorks" :key="work.code" class="work-card" @click="openWorkView(work)">
-              <div class="work-image-container">
-                <img :src="getImageUrl(work.code, 'pl')" :alt="work.code" @error="showPlaceholder"
-                  @load="handleImageLoad" />
-                <div v-if="hasSimilarCode(work.code)" class="warning-badge">⚠️</div>
-                <div v-if="hasCustomImage(work.code)" class="custom-badge">✓</div>
-              </div>
-              <div class="work-code">{{ work.code }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="currentArtist?.compilations?.length" class="works-section">
-          <h3 class="section-title">📂 Compilations</h3>
-          <div class="works-grid">
-            <div v-for="work in sortedCompilations" :key="work.code" class="work-card" @click="openWorkView(work)">
-              <div class="work-image-container">
-                <img :src="getImageUrl(work.code, 'pl')" :alt="work.code" @error="showPlaceholder"
-                  @load="handleImageLoad" />
-                <div v-if="hasSimilarCode(work.code)" class="warning-badge">⚠️</div>
-                <div v-if="hasCustomImage(work.code)" class="custom-badge">✓</div>
-              </div>
-              <div class="work-code">{{ work.code }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAGE 3: WORK DETAIL -->
-      <div v-show="currentView === 'detail'" class="view-page detail-page">
-        <div class="detail-header">
-          <button @click="backToWorks" class="btn-nav">← Back</button>
-          <div class="nav-controls">
-            <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="btn-arrow">‹</button>
-            <span class="nav-counter">{{ currentWorkIndex + 1 }} / {{ currentWorkList.length }}</span>
-            <button @click="navigateWork(1)" :disabled="!canNavigateWork(1)" class="btn-arrow">›</button>
-          </div>
-        </div>
-
-        <div v-if="currentWork" class="detail-grid">
-          <!-- MAIN IMAGE -->
-          <div class="detail-main">
-            <div class="main-cover">
-              <img :src="getImageUrl(currentWork.code, 'pl')" :alt="currentWork.code"
-                @click="openLightbox(currentWork, 0)" @error="showPlaceholder" @load="handleImageLoad"
-                class="cover-image" />
-              <div class="cover-overlay">Click to enlarge</div>
-            </div>
-
-            <div class="work-info">
-              <h2 class="work-title" @click="copyToClipboard(currentWork.code)">
-                {{ currentWork.code }}
-                <span v-if="hasSimilarCode(currentWork.code)" class="warning">⚠️</span>
-              </h2>
-
-              <div class="action-buttons">
-                <button v-if="!hasCustomImage(currentWork.code)" @click="openUploadModal(currentWork.code)"
-                  class="btn-action primary">📤 Upload Image</button>
-                <button v-if="hasCustomImage(currentWork.code)" @click="removeCustomImage(currentWork.code)"
-                  class="btn-action danger">🗑️ Remove</button>
-                <button @click="openExternalLink(currentWork.code, 'missav')" class="btn-action secondary">
-                  🔗 Missav
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- GALLERY PREVIEW -->
-          <div class="detail-gallery">
-            <h3 class="gallery-title">Preview Gallery</h3>
-            <div class="gallery-grid">
-              <div v-for="i in 20" :key="i" class="gallery-thumb" @click="openLightbox(currentWork, i)">
-                <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`Preview ${i}`"
-                  @error="handleGalleryImageError" />
-                <span class="thumb-number">{{ i }}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -234,6 +140,29 @@
             Add URL
           </button>
           <button @click="closeUploadModal" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showArtistPhotoModal" class="modal-overlay" @click.self="closeArtistPhotoModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Edit Artist Photo</h3>
+          <button @click="closeArtistPhotoModal" class="btn-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="upload-info">For <strong>{{ editingArtistName }}</strong></p>
+          <label>
+            Photo URL
+            <input v-model="artistPhotoUrl" type="text" placeholder="https://example.com/photo.jpg"
+              @keyup.enter="updateArtistPhoto" />
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button @click="updateArtistPhoto" class="btn-primary" :disabled="!artistPhotoUrl.trim()">
+            Update
+          </button>
+          <button @click="closeArtistPhotoModal" class="btn-secondary">Cancel</button>
         </div>
       </div>
     </div>
@@ -421,7 +350,16 @@ export default {
       uploadingWork: null,
       customImageUrl: '',
       imageDB: null,
-      useLocalStorageFallback: false
+      useLocalStorageFallback: false,
+      filteredArtists: [],
+      workNotes: {},
+      favorites: {},
+      workTags: {},
+      artistPhotos: {},
+      showArtistPhotoModal: false,
+      editingArtistName: '',
+      artistPhotoUrl: '',
+      newTag: ''
     }
   },
   computed: {
@@ -466,11 +404,73 @@ export default {
     },
     currentView() {
       this.scrollToTop()
+    },
+    workNotes: {
+      handler(v) {
+        if (process.client) {
+          localStorage.setItem('workNotes', JSON.stringify(v))
+        }
+      },
+      deep: true
+    },
+    favorites: {
+      handler(v) {
+        if (process.client) {
+          localStorage.setItem('favorites', JSON.stringify(v))
+        }
+      },
+      deep: true
+    },
+    workTags: {
+      handler(v) {
+        if (process.client) {
+          localStorage.setItem('workTags', JSON.stringify(v))
+        }
+      },
+      deep: true
+    },
+    artistPhotos: {
+      handler(v) {
+        if (process.client) {
+          localStorage.setItem('artistPhotos', JSON.stringify(v))
+        }
+      },
+      deep: true
     }
   },
   mounted() {
     if (process.client) {
       this.imageDB = new ImageDB()
+
+      // Load all saved data
+      try {
+        const saved = localStorage.getItem('favorites')
+        if (saved) this.favorites = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to load favorites:', e)
+      }
+
+      try {
+        const saved = localStorage.getItem('workTags')
+        if (saved) this.workTags = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to load tags:', e)
+      }
+
+      try {
+        const saved = localStorage.getItem('artistPhotos')
+        if (saved) this.artistPhotos = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to load artist photos:', e)
+      }
+
+      try {
+        const saved = localStorage.getItem('workNotes')
+        if (saved) this.workNotes = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to load notes:', e)
+      }
+
       this.initializeApp()
     }
   },
@@ -826,17 +826,198 @@ export default {
       setTimeout(() => this.toast.show = false, 3000)
     },
 
+    // EXPORT DATA
+    exportData() {
+      try {
+        const data = {
+          artists: this.artists,
+          customImages: this.customImages,
+          workNotes: this.workNotes,
+          favorites: this.favorites,
+          workTags: this.workTags,
+          artistPhotos: this.artistPhotos
+        }
+        const json = JSON.stringify(data, null, 2)
+        const blob = new Blob([json], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `works-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+        this.showToast('✅ Data exported successfully', 'success')
+      } catch (e) {
+        console.error('Export failed:', e)
+        this.showToast('Failed to export data', 'error')
+      }
+    },
+
+    // IMPORT DATA
+    triggerImport() {
+      this.$refs.fileInput.click()
+    },
+
+    importData(event) {
+      try {
+        const file = event.target.files?.[0]
+        if (!file) return
+
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const content = e.target.result
+          const data = JSON.parse(content)
+
+          // Validate imported data
+          if (!data.artists || !Array.isArray(data.artists)) {
+            this.showToast('Invalid backup file format', 'error')
+            return
+          }
+
+          // Import data
+          this.artists = normalizeArtists(data.artists)
+          this.customImages = data.customImages || {}
+          this.workNotes = data.workNotes || {}
+          this.favorites = data.favorites || {}
+          this.workTags = data.workTags || {}
+          this.artistPhotos = data.artistPhotos || {}
+
+          // Save to localStorage
+          localStorage.setItem('artists', JSON.stringify(this.artists))
+
+          this.showToast('✅ Data imported successfully', 'success')
+        }
+        reader.readAsText(file)
+        event.target.value = ''
+      } catch (e) {
+        console.error('Import failed:', e)
+        this.showToast('Failed to import data. Invalid file format.', 'error')
+      }
+    },
+
+    // FAVORITES
+    toggleFavorite(code) {
+      if (this.favorites[code]) {
+        delete this.favorites[code]
+        this.showToast(`Removed from favorites`, 'success')
+      } else {
+        this.favorites = { ...this.favorites, [code]: true }
+        this.showToast(`Added to favorites`, 'success')
+      }
+      this.saveFavorites()
+    },
+
+    saveFavorites() {
+      localStorage.setItem('favorites', JSON.stringify(this.favorites))
+    },
+
+    // TAGS
+    addTag(code) {
+      const tag = this.newTag?.trim()
+      if (!tag) return
+
+      if (!this.workTags[code]) {
+        this.workTags = { ...this.workTags, [code]: [] }
+      }
+
+      if (!this.workTags[code].includes(tag)) {
+        this.workTags[code] = [...this.workTags[code], tag]
+        this.workTags = { ...this.workTags }
+        this.newTag = ''
+        this.saveTags()
+      }
+    },
+
+    removeTag(code, tag) {
+      if (this.workTags[code]) {
+        this.workTags[code] = this.workTags[code].filter(t => t !== tag)
+        this.workTags = { ...this.workTags }
+        this.saveTags()
+      }
+    },
+
+    saveTags() {
+      localStorage.setItem('workTags', JSON.stringify(this.workTags))
+    },
+
+    // ARTIST PHOTOS
+    openArtistPhotoModal(artistName) {
+      this.editingArtistName = artistName
+      this.artistPhotoUrl = this.artistPhotos[artistName] || ''
+      this.showArtistPhotoModal = true
+    },
+
+    closeArtistPhotoModal() {
+      this.showArtistPhotoModal = false
+      this.editingArtistName = ''
+      this.artistPhotoUrl = ''
+    },
+
+    updateArtistPhoto() {
+      const url = this.artistPhotoUrl.trim()
+      if (!url) return
+
+      const img = new Image()
+      const timeout = setTimeout(() => {
+        this.showToast('Image URL took too long to load', 'error')
+      }, 10000)
+
+      img.onload = () => {
+        clearTimeout(timeout)
+        this.artistPhotos = { ...this.artistPhotos, [this.editingArtistName]: url }
+        localStorage.setItem('artistPhotos', JSON.stringify(this.artistPhotos))
+        this.showToast(`✅ Artist photo updated`, 'success')
+        this.closeArtistPhotoModal()
+      }
+
+      img.onerror = () => {
+        clearTimeout(timeout)
+        this.showToast('Failed to load image URL', 'error')
+      }
+
+      img.src = url
+    },
+
+    // DUPLICATE DETECTOR (for similar codes)
+    getDuplicates() {
+      const allCodes = this.artists.flatMap(a => [...(a.mainWorks || []).map(w => w.code), ...(a.compilations || []).map(w => w.code)])
+      const duplicateMap = {}
+
+      allCodes.forEach(code => {
+        const similar = allCodes.filter(c => {
+          if (c === code) return false
+          const codeMatch = code.match(/^([A-Z]+)-?(\d+)$/)
+          const checkMatch = c.match(/^([A-Z]+)-?(\d+)$/)
+          if (!codeMatch || !checkMatch) return false
+          const [, prefix1, num1] = codeMatch
+          const [, prefix2, num2] = checkMatch
+          if (prefix1 !== prefix2) return false
+          const diff = Math.abs(parseInt(num1) - parseInt(num2))
+          return diff === 1 || diff === 2
+        })
+        if (similar.length > 0) duplicateMap[code] = similar
+      })
+
+      return duplicateMap
+    },
+
     async hardRefresh() {
       try {
         this.showToast('Refreshing data...', 'info')
 
         // Clear everything
         localStorage.removeItem('artists')
+        localStorage.removeItem('favorites')
+        localStorage.removeItem('workTags')
+        localStorage.removeItem('artistPhotos')
 
         // Reset to default data
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
+        this.workNotes = {}
+        this.favorites = {}
+        this.workTags = {}
+        this.artistPhotos = {}
 
         // Save fresh data
         localStorage.setItem('artists', JSON.stringify(this.artists))
@@ -862,6 +1043,8 @@ export default {
   max-width: 1400px;
   margin: 0 auto;
   background: #fff;
+  display: block;
+  overflow: hidden;
 }
 
 /* HEADER */
@@ -896,6 +1079,26 @@ header {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.btn-export,
+.btn-import {
+  padding: 10px 14px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 44px;
+  transition: background 0.2s;
+}
+
+.btn-export:hover,
+.btn-import:hover {
+  background: #45a049;
 }
 
 .btn-refresh {
@@ -937,10 +1140,32 @@ header {
 /* CONTENT WRAPPER */
 .content-wrapper {
   padding: 24px 20px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .view-page {
   animation: fadeIn 0.2s;
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+
+.artists-page {
+  width: 100%;
+  max-width: 100%;
+}
+
+.works-page {
+  width: 100%;
+  max-width: 100%;
+}
+
+.detail-page {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  overflow: hidden;
 }
 
 @keyframes fadeIn {
@@ -954,24 +1179,14 @@ header {
 }
 
 /* EMPTY STATE */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #666;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
 /* ARTIST GRID */
 .artist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 @media (max-width: 480px) {
@@ -1171,7 +1386,10 @@ header {
 
 /* WORKS SECTION */
 .works-section {
-  margin-bottom: 32px;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .section-title {
@@ -1185,6 +1403,8 @@ header {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
 }
 
 @media (min-width: 480px) {
@@ -1260,17 +1480,82 @@ header {
   text-overflow: ellipsis;
 }
 
+.work-tags {
+  padding: 4px 8px 0 8px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tag {
+  font-size: 0.6rem;
+  background: #2196F3;
+  color: white;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+.favorite-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #ffeb3b;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.btn-artist-photo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.artist-image-wrapper:hover .btn-artist-photo {
+  opacity: 1;
+}
+
 /* DETAIL PAGE */
 .detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 32px;
-  margin-bottom: 32px;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 @media (min-width: 1000px) {
   .detail-grid {
+    display: grid;
     grid-template-columns: 380px 1fr;
+    grid-template-rows: auto auto;
+    overflow: hidden;
+  }
+
+  .detail-main {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .detail-gallery {
+    grid-column: 2;
+    grid-row: 1 / 3;
   }
 }
 
@@ -1278,6 +1563,8 @@ header {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .main-cover {
@@ -1286,6 +1573,8 @@ header {
   overflow: hidden;
   background: #000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 100%;
 }
 
 .cover-image {
@@ -1324,6 +1613,8 @@ header {
   background: #f8f8f8;
   padding: 16px;
   border-radius: 8px;
+  width: 100%;
+  overflow: visible;
 }
 
 .work-title {
@@ -1345,11 +1636,115 @@ header {
   color: #ff9800;
 }
 
+.work-meta {
+  margin-bottom: 16px;
+}
+
+.btn-favorite {
+  padding: 8px 12px;
+  background: white;
+  color: #ff9800;
+  border: 2px solid #ff9800;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.btn-favorite.active {
+  background: #ff9800;
+  color: white;
+}
+
+.btn-favorite:hover {
+  background: #ff9800;
+  color: white;
+}
+
+.work-tags-section,
+.work-notes-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.work-tags-section h4,
+.work-notes-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.tags-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.tag-large {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #2196F3;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.tag-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.tag-input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  max-height: 200px;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
 .action-buttons {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-top: 16px;
 }
 
 @media (min-width: 480px) {
@@ -1398,7 +1793,10 @@ header {
 
 /* GALLERY */
 .detail-gallery {
-  min-height: 300px;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .gallery-title {
@@ -1412,6 +1810,8 @@ header {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
 }
 
 @media (max-width: 480px) {
@@ -1436,6 +1836,8 @@ header {
   background: #f0f0f0;
   transition: transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 100%;
 }
 
 .gallery-thumb:hover {
