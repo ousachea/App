@@ -395,7 +395,11 @@ export default {
       showArtistPhotoModal: false,
       editingArtistName: '',
       artistPhotoUrl: '',
-      coverWorks: {}
+      coverWorks: {
+        'Airi Hinata': 'VENU-662',
+        'Kanno Sayuki': 'MDYD-789',
+
+      }
     }
   },
   computed: {
@@ -680,20 +684,24 @@ export default {
     },
 
     getCoverWork(artist) {
-      // If cover work is set, return that specific work
+      // Priority 1: Check if cover work is set in coverWorks
       if (this.coverWorks[artist.name]) {
         const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
         const coverWork = allWorks.find(w => w.code === this.coverWorks[artist.name])
         if (coverWork) return coverWork
       }
 
-      // Otherwise, return first work
+      // Priority 2: Fall back to first work in mainWorks
       if (artist.mainWorks?.length > 0) {
         return artist.mainWorks[0]
       }
+
+      // Priority 3: Fall back to first work in compilations
       if (artist.compilations?.length > 0) {
         return artist.compilations[0]
       }
+
+      // No works available
       return null
     },
 
