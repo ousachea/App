@@ -24,8 +24,8 @@
           <div class="artist-img">
             <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name" @error="hideImage"
               @load="showImage" />
-            <img v-else-if="getRandomArtistWork(artist)" :src="getImageUrl(getRandomArtistWork(artist).code)"
-              :alt="artist.name" @error="hideImage" @load="showImage" />
+            <img v-else-if="getCoverWork(artist)" :src="getImageUrl(getCoverWork(artist).code)" :alt="artist.name"
+              @error="hideImage" @load="showImage" />
             <div v-else class="img-placeholder">📷</div>
             <div class="artist-info">
               <h3>{{ artist.name }}</h3>
@@ -59,9 +59,14 @@
             <div class="work-img">
               <span v-if="hasSimilarCode(work.code)" class="work-badge warn">⚠️</span>
               <span v-if="hasCustomImage(work.code)" class="work-badge custom">📷</span>
+              <span v-if="isCoverWork(currentArtist.name, work.code)" class="work-badge cover">★</span>
               <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" @load="showImage" />
             </div>
             <div class="work-code">{{ work.code }}</div>
+            <button @click.stop="setCoverWork(currentArtist.name, work.code)" class="btn-set-cover"
+              :class="{ active: isCoverWork(currentArtist.name, work.code) }">
+              {{ isCoverWork(currentArtist.name, work.code) ? '★ Cover' : 'Set Cover' }}
+            </button>
           </div>
         </div>
       </section>
@@ -73,9 +78,14 @@
             <div class="work-img">
               <span v-if="hasSimilarCode(work.code)" class="work-badge warn">⚠️</span>
               <span v-if="hasCustomImage(work.code)" class="work-badge custom">📷</span>
+              <span v-if="isCoverWork(currentArtist.name, work.code)" class="work-badge cover">★</span>
               <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" @load="showImage" />
             </div>
             <div class="work-code">{{ work.code }}</div>
+            <button @click.stop="setCoverWork(currentArtist.name, work.code)" class="btn-set-cover"
+              :class="{ active: isCoverWork(currentArtist.name, work.code) }">
+              {{ isCoverWork(currentArtist.name, work.code) ? '★ Cover' : 'Set Cover' }}
+            </button>
           </div>
         </div>
       </section>
@@ -103,9 +113,14 @@
             <h2 class="detail-title" @click="copyToClipboard(currentWork.code)">
               {{ currentWork.code }}
               <span v-if="hasSimilarCode(currentWork.code)" class="warn-icon">⚠️</span>
+              <span v-if="isCoverWork(currentArtist.name, currentWork.code)" class="cover-icon">★</span>
             </h2>
 
             <div class="action-grid">
+              <button @click="setCoverWork(currentArtist.name, currentWork.code)" class="btn btn-block"
+                :class="isCoverWork(currentArtist.name, currentWork.code) ? 'btn-success' : 'btn-secondary'">
+                {{ isCoverWork(currentArtist.name, currentWork.code) ? '★ Current Cover' : 'Set as Cover' }}
+              </button>
               <button @click="openExternalLink(currentWork.code, 'njav')" class="btn btn-primary btn-block">🔗
                 NJAV</button>
               <button @click="openExternalLink(currentWork.code, 'missav')" class="btn btn-primary btn-block">🔗
@@ -379,7 +394,8 @@ export default {
       artistPhotos: {},
       showArtistPhotoModal: false,
       editingArtistName: '',
-      artistPhotoUrl: ''
+      artistPhotoUrl: '',
+      coverWorks: {}
     }
   },
   computed: {
@@ -428,6 +444,12 @@ export default {
         if (process.client) localStorage.setItem('artistPhotos', JSON.stringify(v))
       },
       deep: true
+    },
+    coverWorks: {
+      handler(v) {
+        if (process.client) localStorage.setItem('coverWorks', JSON.stringify(v))
+      },
+      deep: true
     }
   },
   mounted() {
@@ -438,6 +460,12 @@ export default {
         if (saved) this.artistPhotos = JSON.parse(saved)
       } catch (e) {
         console.warn('Failed to load artist photos:', e)
+      }
+      try {
+        const saved = localStorage.getItem('coverWorks')
+        if (saved) this.coverWorks = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to load cover works:', e)
       }
       this.initializeApp()
     }
@@ -651,10 +679,31 @@ export default {
       this.showToast(`✅ Added ${newArtist.name}`, 'success')
     },
 
-    getRandomArtistWork(artist) {
-      const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
-      if (allWorks.length === 0) return null
-      return allWorks[Math.floor(Math.random() * allWorks.length)]
+    getCoverWork(artist) {
+      // If cover work is set, return that specific work
+      if (this.coverWorks[artist.name]) {
+        const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
+        const coverWork = allWorks.find(w => w.code === this.coverWorks[artist.name])
+        if (coverWork) return coverWork
+      }
+
+      // Otherwise, return first work
+      if (artist.mainWorks?.length > 0) {
+        return artist.mainWorks[0]
+      }
+      if (artist.compilations?.length > 0) {
+        return artist.compilations[0]
+      }
+      return null
+    },
+
+    setCoverWork(artistName, workCode) {
+      this.coverWorks = { ...this.coverWorks, [artistName]: workCode }
+      this.showToast(`✅ Set ${workCode} as cover for ${artistName}`, 'success')
+    },
+
+    isCoverWork(artistName, workCode) {
+      return this.coverWorks[artistName] === workCode
     },
 
     async addNewWork() {
@@ -757,7 +806,12 @@ export default {
 
     exportData() {
       try {
-        const data = { artists: this.artists, customImages: this.customImages, artistPhotos: this.artistPhotos }
+        const data = {
+          artists: this.artists,
+          customImages: this.customImages,
+          artistPhotos: this.artistPhotos,
+          coverWorks: this.coverWorks
+        }
         const json = JSON.stringify(data, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
@@ -795,6 +849,7 @@ export default {
           this.artists = normalizeArtists(data.artists)
           this.customImages = data.customImages || {}
           this.artistPhotos = data.artistPhotos || {}
+          this.coverWorks = data.coverWorks || {}
           localStorage.setItem('artists', JSON.stringify(this.artists))
           this.showToast('✅ Data imported successfully', 'success')
         }
@@ -848,10 +903,12 @@ export default {
         this.showToast('Refreshing data...', 'info')
         localStorage.removeItem('artists')
         localStorage.removeItem('artistPhotos')
+        localStorage.removeItem('coverWorks')
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
         this.artistPhotos = {}
+        this.coverWorks = {}
         localStorage.setItem('artists', JSON.stringify(this.artists))
         this.showToast('✅ Data refreshed to default state', 'success')
       } catch (e) {
@@ -959,7 +1016,7 @@ export default {
 .artist-img {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 2;
   background: #000;
   overflow: hidden;
 }
@@ -1022,6 +1079,7 @@ export default {
   font-size: 1rem;
   opacity: 0;
   transition: opacity 0.2s;
+  z-index: 10;
 }
 
 .artist-card:hover .edit-photo-btn {
@@ -1054,6 +1112,7 @@ export default {
   background: #fff;
   transition: all 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 .work-card:hover {
@@ -1061,11 +1120,16 @@ export default {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
+.work-card:hover .btn-set-cover {
+  opacity: 1;
+}
+
 .work-img {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
   background: #000;
+  overflow: hidden;
 }
 
 .work-img img {
@@ -1081,6 +1145,7 @@ export default {
   font-size: 0.875rem;
   background: rgba(0, 0, 0, 0.7);
   color: #fff;
+  z-index: 5;
 }
 
 .work-badge.warn {
@@ -1089,8 +1154,15 @@ export default {
 }
 
 .work-badge.custom {
-  bottom: 8px;
+  top: 36px;
   right: 8px;
+}
+
+.work-badge.cover {
+  top: 8px;
+  left: 8px;
+  background: rgba(255, 193, 7, 0.9);
+  color: #000;
 }
 
 .work-code {
@@ -1099,6 +1171,36 @@ export default {
   font-size: 0.875rem;
   font-weight: 600;
   color: #374151;
+}
+
+.btn-set-cover {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.btn-set-cover.active {
+  background: #ffc107;
+  color: #000;
+  opacity: 1;
+}
+
+.btn-set-cover:hover {
+  background: #ffc107;
+  color: #000;
 }
 
 .detail-view {
@@ -1124,11 +1226,13 @@ export default {
   background: #000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   cursor: pointer;
+  aspect-ratio: 3 / 2;
 }
 
 .cover-box img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 
@@ -1176,6 +1280,11 @@ export default {
   margin-left: 8px;
 }
 
+.cover-icon {
+  color: #ffc107;
+  margin-left: 8px;
+}
+
 .action-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1200,7 +1309,7 @@ export default {
   aspect-ratio: 3 / 2;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: #000;
   cursor: pointer;
   transition: transform 0.2s;
 }
@@ -1259,6 +1368,14 @@ export default {
 
 .btn-primary:hover:not(:disabled) {
   background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #6b7280;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
 }
 
 .btn-success {
