@@ -1,7 +1,7 @@
 // Works Tracker - All Artists Data (Clean - No Duplicates)
 // Generated: 2025-12-22T09:55:33.537Z
-// Total Artists: 63
-// Total Unique Works: 484
+// Total Artists: 62
+// Total Unique Works: 618
 
 export const DEFAULT_ARTISTS = [
   {
