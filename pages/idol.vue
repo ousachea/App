@@ -3,7 +3,10 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-inner">
-        <h1>Works</h1>
+        <div class="header-title">
+          <h1>Works</h1>
+          <span class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</span>
+        </div>
         <div class="header-actions">
           <button @click="exportData" title="Export" class="icon-btn">↓</button>
           <button @click="triggerImport" title="Import" class="icon-btn">↑</button>
@@ -15,6 +18,13 @@
 
     <!-- ARTISTS VIEW -->
     <main v-if="currentView === 'artists'" class="main">
+      <div class="view-header">
+        <h2>Artists</h2>
+        <div class="stats-pills">
+          <span class="pill">{{ totalMainWorks }} main</span>
+          <span class="pill">{{ totalCompilations }} compilations</span>
+        </div>
+      </div>
       <div class="artists-grid">
         <div v-for="artist in sortedArtists" :key="artist.name" class="artist-item" @click="selectArtist(artist.name)">
           <div class="artist-cover">
@@ -26,7 +36,7 @@
           </div>
           <div class="artist-meta">
             <h2>{{ artist.name }}</h2>
-            <p>{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }}</p>
+            <p>{{ getArtistWorkCount(artist) }} works</p>
           </div>
           <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-btn">📷</button>
         </div>
@@ -39,14 +49,19 @@
         <button @click="backToArtists" class="back-btn">← Back</button>
         <div class="title-block">
           <h1>{{ currentArtist.name }}</h1>
-          <span class="count">{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }}
-            works</span>
+          <div class="work-stats">
+            <span class="count">{{ getArtistWorkCount(currentArtist) }} total</span>
+            <span class="count-detail" v-if="currentArtist.mainWorks?.length">{{ currentArtist.mainWorks.length }}
+              main</span>
+            <span class="count-detail" v-if="currentArtist.compilations?.length">{{ currentArtist.compilations.length }}
+              compilations</span>
+          </div>
         </div>
         <button @click="openAddWorkModal" class="primary-btn">+ Add</button>
       </div>
 
       <section v-if="sortedMainWorks.length" class="works-section">
-        <h3>Main</h3>
+        <h3>Main ({{ sortedMainWorks.length }})</h3>
         <div class="works-grid">
           <div v-for="work in sortedMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
@@ -62,7 +77,7 @@
       </section>
 
       <section v-if="sortedCompilations.length" class="works-section">
-        <h3>Compilations</h3>
+        <h3>Compilations ({{ sortedCompilations.length }})</h3>
         <div class="works-grid">
           <div v-for="work in sortedCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
@@ -92,6 +107,9 @@
             <h2 @click="copyToClipboard(currentWork.code)" class="code-title">
               {{ currentWork.code }}
             </h2>
+            <div class="detail-type">
+              <span class="type-badge">{{ getWorkType(currentWork.code) }}</span>
+            </div>
             <div class="meta-row">
               <button @click="setCoverWork(currentArtist.name, currentWork.code)" class="set-cover-btn"
                 :class="{ active: isCoverWork(currentArtist.name, currentWork.code) }">
@@ -187,6 +205,7 @@
       <button v-if="lightbox.images.length > 1" class="lb-btn lb-prev" @click="prevImage">‹</button>
       <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
       <button v-if="lightbox.images.length > 1" class="lb-btn lb-next" @click="nextImage">›</button>
+      <div class="lb-counter">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</div>
     </div>
 
     <!-- TOAST -->
@@ -195,6 +214,7 @@
     </transition>
   </div>
 </template>
+
 <script>
 import { DEFAULT_ARTISTS } from '~/data/artists.js'
 import { normalizeArtists } from '~/utils/artistHelpers.js'
@@ -343,6 +363,12 @@ export default {
     totalCount() {
       return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
     },
+    totalMainWorks() {
+      return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0), 0)
+    },
+    totalCompilations() {
+      return this.artists.reduce((sum, a) => sum + (a.compilations?.length || 0), 0)
+    },
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
     },
@@ -356,9 +382,6 @@ export default {
     sortedCompilations() {
       if (!this.currentArtist?.compilations) return []
       return [...this.currentArtist.compilations].sort((a, b) => a.code.localeCompare(b.code))
-    },
-    sortedArtists() {
-      return [...this.artists].sort((a, b) => a.name.localeCompare(b.name))
     }
   },
   watch: {
@@ -477,6 +500,16 @@ export default {
           console.warn('Failed to save custom images to IndexedDB:', e)
         }
       }
+    },
+
+    getArtistWorkCount(artist) {
+      return (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0)
+    },
+
+    getWorkType(code) {
+      if (!this.currentArtist) return ''
+      const isMain = this.currentArtist.mainWorks?.some(w => w.code === code)
+      return isMain ? 'Main Work' : 'Compilation'
     },
 
     selectArtist(name) {
@@ -908,6 +941,7 @@ export default {
   }
 }
 </script>
+
 <style scoped>
 * {
   box-sizing: border-box;
@@ -941,17 +975,30 @@ export default {
 
 .header-inner {
   max-width: 1400px;
+  background-color: white;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .header h1 {
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.3px;
+}
+
+.header-stats {
+  font-size: 12px;
+  color: #555;
+  font-weight: 400;
 }
 
 .header-actions {
@@ -977,15 +1024,43 @@ export default {
 }
 
 .main {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 40px 24px;
+  width: 100%;
+  padding: 12px;
+}
+
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.view-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.pill {
+  padding: 4px 12px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #555;
+  font-weight: 500;
 }
 
 .artists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
 }
 
 .artist-item {
@@ -1096,12 +1171,24 @@ export default {
 .title-block h1 {
   font-size: 24px;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.work-stats {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  font-size: 13px;
 }
 
 .count {
-  font-size: 13px;
-  color: #555;
+  color: #000;
+  font-weight: 500;
+}
+
+.count-detail {
+  color: #777;
+  font-weight: 400;
 }
 
 .primary-btn {
@@ -1158,8 +1245,8 @@ export default {
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
 }
 
 .work-item {
@@ -1228,7 +1315,7 @@ export default {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 500px 1fr;
   gap: 48px;
 }
 
@@ -1281,6 +1368,23 @@ export default {
 .code-title:hover {
   border: 1px solid #000;
   background: #f5f5f5;
+}
+
+.detail-type {
+  margin-top: -8px;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-size: 11px;
+  color: #555;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .meta-row {
@@ -1377,8 +1481,8 @@ export default {
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
 }
 
 .gallery-item {
@@ -1563,6 +1667,19 @@ export default {
   right: 24px;
 }
 
+.lb-counter {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
@@ -1600,16 +1717,16 @@ export default {
   }
 
   .artists-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px;
   }
 
   .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
 
   .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
 
@@ -1622,6 +1739,10 @@ export default {
     font-size: 18px;
   }
 
+  .header-stats {
+    font-size: 11px;
+  }
+
   .main {
     padding: 24px 12px;
   }
@@ -1630,13 +1751,18 @@ export default {
     flex-direction: column;
   }
 
+  .work-stats {
+    flex-direction: column;
+    gap: 4px;
+  }
+
   .artists-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
   }
 
   .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 16px;
   }
 

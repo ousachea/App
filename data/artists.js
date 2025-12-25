@@ -29,7 +29,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['SONE-828', 'SONE-866', 'SNOS-066', 'SNOS-041', 'SIVR-458', 'SONE-788', 'SONE-783']
   },
   {
-    name: 'Airi Hinata', cover: '',
+    name: 'Airi Hinata', cover: 'VENU-662',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['NITR-223', 'VENU-668', 'VENU-662', 'JKSR-250', 'NDRA-029']
   },
@@ -76,7 +76,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['JUFD-867', 'PKPT-015', 'TOEN-020', 'UFE-084', 'VRTM-446']
   },
   {
-    name: 'Hana Himesaki', cover: '',
+    name: 'Hana Himesaki', cover: 'NSFS-012',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['348NTR-024', 'ABP-892', 'ABP-943', 'ABP-971', 'ABW-019', 'FPRE-199', 'JUFE-264', 'KAM-213', 'LULU-076', 'MIAA-392', 'MXGS-1306', 'NSFS-012', '300MIUM-720']
   },
@@ -111,12 +111,12 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['HMN-519', 'MIDE-752', 'JUQ-580', 'JUQ-905', 'EBOD-973', 'ADN-282', 'JUFE-485', 'JUR-216']
   },
   {
-    name: 'Kanno Sayuki', cover: '',
+    name: 'Kanno Sayuki', cover: 'MDYD-789',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['GVG-122', 'EBOD-137', 'MDYD-789']
   },
   {
-    name: 'Shio Asami/Kanon Hinano', cover: '',
+    name: 'Shio Asami/Kanon Hinano', cover: 'IPZZ-736',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['DLDSS-361', 'DLDSS-362', 'DLDSS-372', 'FWAY-086', 'IPZZ-736', 'DLDSS-406', 'DLDSS-402', 'DLDSS-381', 'DLDSS-343', 'DLDSS-342']
   },
@@ -162,7 +162,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['SSIS-383', 'SSIS-558', 'SSIS-585']
   },
   {
-    name: 'Honoka Mihara', cover: '',
+    name: 'Honoka Mihara', cover: 'NDRA-059',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['FC2PPV-1178399', 'HUNTA-430', 'NHDTB-249', 'SALO-028', 'ECB-119', 'NDRA-059', 'AKA-024']
   },
@@ -228,7 +228,7 @@ export const DEFAULT_ARTISTS = [
   },
   {
     name: 'Rei Kamiki', cover: '',
-    url: '',  // Custom cover
+    url: 'https://javtiful.com/media/videos/tmb/25787/1.jpg',  // Custom cover
     compilations: [''], mainWorks: ['START-070', 'START-398', 'STARS-734', 'STARS-979', 'REBDB-686', 'STARS-573', 'STARS-778']
   },
   {
@@ -247,14 +247,9 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['JUFD-430', 'NGOD-150', 'WAAA-026']
   },
   {
-    name: 'Ruri Saijo', cover: '',
+    name: 'Ruri Saijo', cover: 'JUFD-502',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['ATOM-150', 'IENE-596', 'IESP-605', 'JUFD-407', 'JUFD-502', 'NITR-056', 'PPPD-413', 'TYOD-255', 'VEC-094', 'VEC-135', 'WANZ-103']
-  },
-  {
-    name: 'Saegusa Chitose', cover: '',
-    url: '',  // Custom cover
-    compilations: [''], mainWorks: ['JUFD-430', 'NGOD-150', 'WAAA-026']
   },
   {
     name: 'Saeko Matsushita', cover: '',
@@ -277,7 +272,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['BF-475']
   },
   {
-    name: 'Satomi Mioka', cover: '',
+    name: 'Satomi Mioka', cover: 'APNS-293',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['230ORECO-189', '300MIUM-865', '300MIUM-908', '483DAM-016', 'APNS-293', 'HAWA-325', 'HUNTB-733', 'MAAN-955', 'RECS-283', 'SAN-406', 'BARE-009', 'SRTD-349', 'SRTD-345', 'SPAY-241', 'SIRO-4820', 'LUXU-1572', 'ZOZO-165', 'APAA-387', 'GVH-477', 'MRPA-006', 'PKPD-217', 'UZU-004', 'SUN-071', 'MIUM-862', 'NHMSG-031', 'ORECO-079', 'MAAN-982', 'MAAN-836', 'BDST-027', 'AKDL-247', 'AKDL-213', 'AKDL-193', 'DFDM-041']
   },
@@ -287,7 +282,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['AVSA-171', 'CEMD-090', 'BANK-013', 'CEAD-475', 'BNST-023', 'HOMA-108', 'JUFE-279', 'MIAA-395', 'PFES-002', 'SAN-019', 'URKK-035', 'WAAA-043']
   },
   {
-    name: 'Sena Kasumi', cover: '',
+    name: 'Sena Kasumi', cover: 'KTKC-074',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['200GANA-2156', '483PAK-006', 'STCV-240', 'SUKE-062', 'MIUM-495', 'STCV-232', 'PAK-006', 'BONY-007', 'KTKC-074', 'NNPJ-514', 'NDH-017', 'MFC-169', 'MIUM-801', 'NTK-637', 'MFC-117', 'MAAN-842', 'MAAN-632', 'SIRO-3954']
   },
