@@ -334,23 +334,15 @@ export default {
       artistPhotos: {},
       showArtistPhotoModal: false,
       editingArtistName: '',
-      artistPhotoUrl: '',
-      coverWorks: {
-        'Airi Hinata': 'VENU-662',
-        'Kanno Sayuki': 'MDYD-789',
-        'Shio Asami/Kanon Hinano': 'IPZZ-736',
-        'Ruri Saijo': 'TYOD-255',
-        'Hana Himesaki': 'NSFS-012',
-        'Sena Kasumi': 'BONY-007',
-        'Satomi Mioka': 'APNS-293',
-        'Honoka Mihara': 'NDRA-059',
-        'Minato Haru': 'SONE-865'
-      }
+      artistPhotoUrl: ''
     }
   },
   computed: {
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
+    },
+    sortedArtists() {
+      return [...this.artists].sort((a, b) => a.name.localeCompare(b.name))
     },
     sortedMainWorks() {
       if (!this.currentArtist?.mainWorks) return []
@@ -388,12 +380,6 @@ export default {
         if (process.client) localStorage.setItem('artistPhotos', JSON.stringify(v))
       },
       deep: true
-    },
-    coverWorks: {
-      handler(v) {
-        if (process.client) localStorage.setItem('coverWorks', JSON.stringify(v))
-      },
-      deep: true
     }
   },
   mounted() {
@@ -404,12 +390,6 @@ export default {
         if (saved) this.artistPhotos = JSON.parse(saved)
       } catch (e) {
         console.warn('Failed to load artist photos:', e)
-      }
-      try {
-        const saved = localStorage.getItem('coverWorks')
-        if (saved) this.coverWorks = JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to load cover works:', e)
       }
       this.initializeApp()
     }
@@ -620,9 +600,9 @@ export default {
     },
 
     getCoverWork(artist) {
-      if (this.coverWorks[artist.name]) {
+      if (artist.cover) {
         const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
-        const coverWork = allWorks.find(w => w.code === this.coverWorks[artist.name])
+        const coverWork = allWorks.find(w => w.code === artist.cover)
         if (coverWork) return coverWork
       }
 
@@ -638,12 +618,17 @@ export default {
     },
 
     setCoverWork(artistName, workCode) {
-      this.coverWorks = { ...this.coverWorks, [artistName]: workCode }
+      const artist = this.artists.find(a => a.name === artistName)
+      if (artist) {
+        artist.cover = workCode
+        this.artists = [...this.artists]
+      }
       this.showToast('Cover updated', 'success')
     },
 
     isCoverWork(artistName, workCode) {
-      return this.coverWorks[artistName] === workCode
+      const artist = this.artists.find(a => a.name === artistName)
+      return artist?.cover === workCode
     },
 
     async addNewWork() {
@@ -749,8 +734,7 @@ export default {
         const data = {
           artists: this.artists,
           customImages: this.customImages,
-          artistPhotos: this.artistPhotos,
-          coverWorks: this.coverWorks
+          artistPhotos: this.artistPhotos
         }
         const json = JSON.stringify(data, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
@@ -788,7 +772,6 @@ export default {
           this.artists = normalizeArtists(data.artists)
           this.customImages = data.customImages || {}
           this.artistPhotos = data.artistPhotos || {}
-          this.coverWorks = data.coverWorks || {}
           localStorage.setItem('artists', JSON.stringify(this.artists))
           this.showToast('Imported', 'success')
         }
@@ -841,12 +824,10 @@ export default {
         this.showToast('Refreshing...', 'info')
         localStorage.removeItem('artists')
         localStorage.removeItem('artistPhotos')
-        localStorage.removeItem('coverWorks')
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
         this.artistPhotos = {}
-        this.coverWorks = {}
         localStorage.setItem('artists', JSON.stringify(this.artists))
         this.showToast('Reset to default', 'success')
       } catch (e) {
