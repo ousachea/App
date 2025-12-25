@@ -398,7 +398,13 @@ export default {
       coverWorks: {
         'Airi Hinata': 'VENU-662',
         'Kanno Sayuki': 'MDYD-789',
-
+        'Shio Asami/Kanon Hinano': 'IPZZ-736',
+        'Ruri Saijo': 'TYOD-255',
+        'Hana Himesaki': 'NSFS-012',
+        'Sena Kasumi': 'BONY-007',
+        'Satomi Mioka': 'APNS-293',
+        'Honoka Mihara': 'NDRA-059',
+        'Minato Haru': 'SONE-865'
       }
     }
   },
