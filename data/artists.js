@@ -39,7 +39,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['PRED-018']
   },
   {
-    name: 'Rara Anzai | Rion | Shion Utsunomiya', cover: '',
+    name: 'Rara Anzai | Rion | Shion Utsunomiya', cover: 'SSNI-727',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['OAE-095', 'OAE-100', 'OAE-104', 'MMND-128', 'OAE-105', 'OAE-123', 'TUKAHB-33397', 'OAE-134', 'OAE-166', 'SIVR-010', 'SIVR-008', 'AVOP-004', 'SNIS-009', 'SNIS-027', 'SNIS-048', 'SNIS-070', 'SNIS-091', 'SNIS-110', 'SNIS-129', 'SNIS-147', 'SNIS-166', 'SNIS-205', 'SOE-992', 'ONSD-850', 'ONSD-899', 'SNIS-517', 'SNIS-539', 'SNIS-561', 'SNIS-594', 'SNIS-603', 'SNIS-623', 'SNIS-640', 'SNIS-656', 'SNIS-673', 'SNIS-692', 'SNIS-712', 'SNIS-731', 'SNIS-752', 'SNIS-774', 'SNIS-787', 'SNIS-811', 'SNIS-824', 'SNIS-895', 'SNIS-918', 'SNIS-939', 'SNIS-963', 'SNIS-985', 'SSNI-008', 'SSNI-029', 'SSNI-053', 'EBOD-609', 'SSNI-100', 'SSNI-126', 'SSNI-151', 'SSNI-177', 'SSNI-204', 'SSNI-228', 'SSNI-241', 'SSNI-268', 'SSNI-290', 'OFJE-104', 'OFJE-144', 'OFJE-255', 'SSIS-025', 'SSIS-050', 'SSIS-103', 'SSIS-124', 'SSIS-136', 'SSIS-172', 'SSIS-203', 'SSIS-232', 'SSIS-262', 'SSIS-269', 'SSIS-357', 'SSNI-643', 'SSNI-671', 'SSNI-700', 'SSNI-727', 'SSNI-752', 'SSNI-777', 'SSNI-799', 'SSNI-822', 'OFJE-279', 'OFJE-288', 'OFJE-354', 'OFJE-410']
   },
@@ -132,7 +132,7 @@ export const DEFAULT_ARTISTS = [
   },
   {
     name: 'Koibuchi Momona', cover: '',
-    url: '',  // Custom cover
+    url: 'https://pics.dmm.co.jp/mono/movie/adult/1start165/1start165pl.jpg',  // Custom cover
     compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231']
   },
   {
@@ -177,7 +177,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['CLUB-881']
   },
   {
-    name: 'Minato Haru', cover: '',
+    name: 'Minato Haru', cover: 'SONE-865',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['FC2PPV-3087371', 'FC2PPV-3104502', 'FC2PPV-4203485', 'FWAY-002', 'FWAY-060', 'JDKR-032', 'MIRD-259', 'OFES-013', 'SNOS-001', 'SONE-021', 'SONE-063', 'SONE-155', 'SONE-188', 'SONE-503', 'SONE-508', 'SONE-776', 'SONE-865', 'SONE-914', 'SONE-978', 'SSIS-889', 'SSIS-890', 'SSIS-945', 'SSIS-978', 'TZ-124']
   },
