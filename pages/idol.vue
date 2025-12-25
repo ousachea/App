@@ -3,232 +3,180 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-inner">
-        <div>
-          <h1>🎬 Works Tracker</h1>
-          <p class="text-muted">{{ artists.length }} artists · {{ totalCount }} works</p>
-        </div>
+        <h1>Works</h1>
         <div class="header-actions">
-          <button @click="exportData" class="btn btn-sm btn-success">💾</button>
-          <button @click="triggerImport" class="btn btn-sm btn-success">📥</button>
+          <button @click="exportData" title="Export" class="icon-btn">↓</button>
+          <button @click="triggerImport" title="Import" class="icon-btn">↑</button>
           <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
-          <button @click="hardRefresh" class="btn btn-sm btn-warning">🔄</button>
-          <button @click="openAddArtistModal" class="btn btn-primary">➕ Add Artist</button>
+          <button @click="hardRefresh" title="Reset" class="icon-btn">⟳</button>
         </div>
       </div>
     </header>
 
     <!-- ARTISTS VIEW -->
-    <main v-if="currentView === 'artists'" class="main-content">
-      <div class="artist-grid">
-        <div v-for="artist in sortedArtists" :key="artist.name" class="artist-card" @click="selectArtist(artist.name)">
-          <div class="artist-img">
-            <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name" @error="hideImage"
-              @load="showImage" />
+    <main v-if="currentView === 'artists'" class="main">
+      <div class="artists-grid">
+        <div v-for="artist in sortedArtists" :key="artist.name" class="artist-item" @click="selectArtist(artist.name)">
+          <div class="artist-cover">
+            <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name"
+              @error="hideImage" />
             <img v-else-if="getCoverWork(artist)" :src="getImageUrl(getCoverWork(artist).code)" :alt="artist.name"
-              @error="hideImage" @load="showImage" />
-            <div v-else class="img-placeholder">📷</div>
-            <div class="artist-info">
-              <h3>{{ artist.name }}</h3>
-              <div class="artist-stats">
-                <span v-if="artist.mainWorks?.length">{{ artist.mainWorks.length }} Main</span>
-                <span v-if="artist.compilations?.length">{{ artist.compilations.length }} Comp</span>
-              </div>
-            </div>
-            <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-photo-btn">📷</button>
+              @error="hideImage" />
+            <div v-else class="placeholder">—</div>
           </div>
+          <div class="artist-meta">
+            <h2>{{ artist.name }}</h2>
+            <p>{{ (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0) }}</p>
+          </div>
+          <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-btn">📷</button>
         </div>
       </div>
     </main>
 
     <!-- WORKS VIEW -->
-    <main v-else-if="currentView === 'works'" class="main-content">
-      <div class="page-nav">
-        <button @click="backToArtists" class="btn">← Back</button>
-        <div class="page-info">
-          <h2>{{ currentArtist.name }}</h2>
-          <p class="text-muted">{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }}
-            works</p>
+    <main v-else-if="currentView === 'works'" class="main">
+      <div class="works-header">
+        <button @click="backToArtists" class="back-btn">← Back</button>
+        <div class="title-block">
+          <h1>{{ currentArtist.name }}</h1>
+          <span class="count">{{ (currentArtist.mainWorks?.length || 0) + (currentArtist.compilations?.length || 0) }}
+            works</span>
         </div>
-        <button @click="openAddWorkModal" class="btn btn-primary">➕ Add</button>
+        <button @click="openAddWorkModal" class="primary-btn">+ Add</button>
       </div>
 
       <section v-if="sortedMainWorks.length" class="works-section">
-        <h3 class="section-title">Main Works · {{ sortedMainWorks.length }}</h3>
+        <h3>Main</h3>
         <div class="works-grid">
-          <div v-for="work in sortedMainWorks" :key="work.code" class="work-card" @click="openWorkView(work)">
-            <div class="work-img">
-              <span v-if="hasSimilarCode(work.code)" class="work-badge warn">⚠️</span>
-              <span v-if="hasCustomImage(work.code)" class="work-badge custom">📷</span>
-              <span v-if="isCoverWork(currentArtist.name, work.code)" class="work-badge cover">★</span>
-              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" @load="showImage" />
+          <div v-for="work in sortedMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
+            <div class="work-cover">
+              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" />
+              <div class="work-badges">
+                <span v-if="isCoverWork(currentArtist.name, work.code)" class="badge cover">★</span>
+                <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
+              </div>
             </div>
-            <div class="work-code">{{ work.code }}</div>
-            <button @click.stop="setCoverWork(currentArtist.name, work.code)" class="btn-set-cover"
-              :class="{ active: isCoverWork(currentArtist.name, work.code) }">
-              {{ isCoverWork(currentArtist.name, work.code) ? '★ Cover' : 'Set Cover' }}
-            </button>
+            <p>{{ work.code }}</p>
           </div>
         </div>
       </section>
 
       <section v-if="sortedCompilations.length" class="works-section">
-        <h3 class="section-title">Compilations · {{ sortedCompilations.length }}</h3>
+        <h3>Compilations</h3>
         <div class="works-grid">
-          <div v-for="work in sortedCompilations" :key="work.code" class="work-card" @click="openWorkView(work)">
-            <div class="work-img">
-              <span v-if="hasSimilarCode(work.code)" class="work-badge warn">⚠️</span>
-              <span v-if="hasCustomImage(work.code)" class="work-badge custom">📷</span>
-              <span v-if="isCoverWork(currentArtist.name, work.code)" class="work-badge cover">★</span>
-              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" @load="showImage" />
+          <div v-for="work in sortedCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
+            <div class="work-cover">
+              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" />
+              <div class="work-badges">
+                <span v-if="isCoverWork(currentArtist.name, work.code)" class="badge cover">★</span>
+                <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
+              </div>
             </div>
-            <div class="work-code">{{ work.code }}</div>
-            <button @click.stop="setCoverWork(currentArtist.name, work.code)" class="btn-set-cover"
-              :class="{ active: isCoverWork(currentArtist.name, work.code) }">
-              {{ isCoverWork(currentArtist.name, work.code) ? '★ Cover' : 'Set Cover' }}
-            </button>
+            <p>{{ work.code }}</p>
           </div>
         </div>
       </section>
     </main>
 
     <!-- DETAIL VIEW -->
-    <main v-else-if="currentView === 'detail'" class="main-content detail-view">
-      <div class="page-nav">
-        <button @click="backToWorks" class="btn">← Back</button>
-        <div class="work-nav">
-          <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="btn btn-sm">‹</button>
-          <span class="text-muted">{{ currentWorkIndex + 1 }} / {{ currentWorkList.length }}</span>
-          <button @click="navigateWork(1)" :disabled="!canNavigateWork(1)" class="btn btn-sm">›</button>
-        </div>
-      </div>
+    <main v-else-if="currentView === 'detail'" class="main detail">
+      <button @click="backToWorks" class="back-btn">← Back</button>
 
-      <div class="detail-container">
-        <aside class="detail-sidebar">
-          <div class="cover-box" @click="openLightbox(currentWork, 0)">
-            <img :src="getImageUrl(currentWork.code)" :alt="currentWork.code" @error="hideImage" @load="showImage" />
-            <div class="cover-overlay">Click to enlarge</div>
+      <div class="detail-grid">
+        <div class="detail-left">
+          <div class="cover-large" @click="openLightbox(currentWork, 0)">
+            <img :src="getImageUrl(currentWork.code)" :alt="currentWork.code" @error="hideImage" />
           </div>
 
-          <div class="info-card">
-            <h2 class="detail-title" @click="copyToClipboard(currentWork.code)">
+          <div class="detail-meta">
+            <h2 @click="copyToClipboard(currentWork.code)" class="code-title">
               {{ currentWork.code }}
-              <span v-if="hasSimilarCode(currentWork.code)" class="warn-icon">⚠️</span>
-              <span v-if="isCoverWork(currentArtist.name, currentWork.code)" class="cover-icon">★</span>
             </h2>
-
-            <div class="action-grid">
-              <button @click="setCoverWork(currentArtist.name, currentWork.code)" class="btn btn-block"
-                :class="isCoverWork(currentArtist.name, currentWork.code) ? 'btn-success' : 'btn-secondary'">
-                {{ isCoverWork(currentArtist.name, currentWork.code) ? '★ Current Cover' : 'Set as Cover' }}
-              </button>
-              <button @click="openExternalLink(currentWork.code, 'njav')" class="btn btn-primary btn-block">🔗
-                NJAV</button>
-              <button @click="openExternalLink(currentWork.code, 'missav')" class="btn btn-primary btn-block">🔗
-                MissAV</button>
-              <button @click="openUploadModal(currentWork.code)" class="btn btn-warning btn-block">
-                {{ hasCustomImage(currentWork.code) ? '📷 Update' : '📷 Add' }}
-              </button>
-              <button v-if="hasCustomImage(currentWork.code)" @click="removeCustomImage(currentWork.code)"
-                class="btn btn-danger btn-block">
-                🗑️ Remove
+            <div class="meta-row">
+              <button @click="setCoverWork(currentArtist.name, currentWork.code)" class="set-cover-btn"
+                :class="{ active: isCoverWork(currentArtist.name, currentWork.code) }">
+                {{ isCoverWork(currentArtist.name, currentWork.code) ? '★ Cover' : 'Set Cover' }}
               </button>
             </div>
+            <div class="button-group">
+              <button @click="openExternalLink(currentWork.code, 'njav')" class="link-btn">NJAV</button>
+              <button @click="openExternalLink(currentWork.code, 'missav')" class="link-btn">MissAV</button>
+              <button @click="openUploadModal(currentWork.code)" class="link-btn">{{ hasCustomImage(currentWork.code) ?
+            'Update' : 'Add Image' }}</button>
+            </div>
+            <div class="nav-row" v-if="currentWorkList.length > 1">
+              <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="nav-btn">‹</button>
+              <span class="nav-count">{{ currentWorkIndex + 1 }} / {{ currentWorkList.length }}</span>
+              <button @click="navigateWork(1)" :disabled="!canNavigateWork(1)" class="nav-btn">›</button>
+            </div>
           </div>
-        </aside>
+        </div>
 
-        <section class="detail-gallery">
-          <h3 class="section-title">Gallery · 20 images</h3>
+        <div class="detail-right">
+          <h3>Gallery</h3>
           <div class="gallery-grid">
-            <div v-for="i in 20" :key="i" class="gallery-thumb" @click="openLightbox(currentWork, i)">
-              <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`${currentWork.code} - ${i}`" @error="dimImage"
-                @load="showImage" />
-              <span class="thumb-num">{{ i }}</span>
+            <div v-for="i in 20" :key="i" class="gallery-item" @click="openLightbox(currentWork, i)">
+              <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`${currentWork.code} - ${i}`"
+                @error="dimImage" />
+              <span>{{ i }}</span>
             </div>
           </div>
-        </section>
+        </div>
       </div>
     </main>
 
     <!-- MODALS -->
-    <div v-if="showAddArtistModal" class="modal-backdrop" @click.self="closeAddArtistModal">
+    <div v-if="showAddArtistModal" class="modal-overlay" @click.self="closeAddArtistModal">
       <div class="modal">
-        <div class="modal-header">
-          <h3>Add Artist</h3>
-          <button @click="closeAddArtistModal" class="close-btn">✕</button>
-        </div>
-        <div class="modal-body">
-          <label>Name<input v-model="newArtist.name" placeholder="Artist name" /></label>
-          <label>Photo URL<input v-model="newArtist.photo" placeholder="https://..." /></label>
-        </div>
-        <div class="modal-footer">
-          <button @click="addNewArtist" class="btn btn-primary">Add</button>
-          <button @click="closeAddArtistModal" class="btn">Cancel</button>
+        <h3>Add Artist</h3>
+        <input v-model="newArtist.name" placeholder="Name" class="input" />
+        <input v-model="newArtist.photo" placeholder="Photo URL" class="input" />
+        <div class="modal-actions">
+          <button @click="addNewArtist" class="primary-btn">Add</button>
+          <button @click="closeAddArtistModal" class="secondary-btn">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showAddWorkModal" class="modal-backdrop" @click.self="closeAddWorkModal">
+    <div v-if="showAddWorkModal" class="modal-overlay" @click.self="closeAddWorkModal">
       <div class="modal">
-        <div class="modal-header">
-          <h3>Add Work</h3>
-          <button @click="closeAddWorkModal" class="close-btn">✕</button>
+        <h3>Add Work</h3>
+        <select v-model="newWork.artist" class="input">
+          <option value="">Select artist...</option>
+          <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
+        </select>
+        <input v-model="newWork.code" placeholder="Code (e.g., SONE-978)" class="input" />
+        <div class="radio-group">
+          <label><input v-model="newWork.type" type="radio" value="mainWorks" /> Main</label>
+          <label><input v-model="newWork.type" type="radio" value="compilations" /> Compilation</label>
         </div>
-        <div class="modal-body">
-          <label>
-            Artist
-            <select v-model="newWork.artist">
-              <option value="">Select artist...</option>
-              <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
-            </select>
-          </label>
-          <label>Work Code<input v-model="newWork.code" placeholder="SONE-978" /></label>
-          <label>
-            Type
-            <div class="radio-row">
-              <label><input v-model="newWork.type" type="radio" value="mainWorks" /> Main</label>
-              <label><input v-model="newWork.type" type="radio" value="compilations" /> Compilation</label>
-            </div>
-          </label>
-        </div>
-        <div class="modal-footer">
-          <button @click="addNewWork" class="btn btn-primary">Add</button>
-          <button @click="closeAddWorkModal" class="btn">Cancel</button>
+        <div class="modal-actions">
+          <button @click="addNewWork" class="primary-btn">Add</button>
+          <button @click="closeAddWorkModal" class="secondary-btn">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showUploadModal" class="modal-backdrop" @click.self="closeUploadModal">
+    <div v-if="showUploadModal" class="modal-overlay" @click.self="closeUploadModal">
       <div class="modal">
-        <div class="modal-header">
-          <h3>Custom Image</h3>
-          <button @click="closeUploadModal" class="close-btn">✕</button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted">For <strong>{{ uploadingWork }}</strong></p>
-          <label>Image URL<input v-model="customImageUrl" placeholder="https://example.com/image.jpg"
-              @keyup.enter="handleCustomImageUrl" /></label>
-        </div>
-        <div class="modal-footer">
-          <button @click="handleCustomImageUrl" class="btn btn-primary" :disabled="!customImageUrl.trim()">Add</button>
-          <button @click="closeUploadModal" class="btn">Cancel</button>
+        <h3>Custom Image</h3>
+        <p class="modal-label">{{ uploadingWork }}</p>
+        <input v-model="customImageUrl" placeholder="Image URL" class="input" @keyup.enter="handleCustomImageUrl" />
+        <div class="modal-actions">
+          <button @click="handleCustomImageUrl" class="primary-btn" :disabled="!customImageUrl.trim()">Add</button>
+          <button @click="closeUploadModal" class="secondary-btn">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="showArtistPhotoModal" class="modal-backdrop" @click.self="closeArtistPhotoModal">
+    <div v-if="showArtistPhotoModal" class="modal-overlay" @click.self="closeArtistPhotoModal">
       <div class="modal">
-        <div class="modal-header">
-          <h3>Artist Photo</h3>
-          <button @click="closeArtistPhotoModal" class="close-btn">✕</button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted">For <strong>{{ editingArtistName }}</strong></p>
-          <label>Photo URL<input v-model="artistPhotoUrl" placeholder="https://example.com/photo.jpg"
-              @keyup.enter="updateArtistPhoto" /></label>
-        </div>
-        <div class="modal-footer">
-          <button @click="updateArtistPhoto" class="btn btn-primary" :disabled="!artistPhotoUrl.trim()">Update</button>
-          <button @click="closeArtistPhotoModal" class="btn">Cancel</button>
+        <h3>Artist Photo</h3>
+        <p class="modal-label">{{ editingArtistName }}</p>
+        <input v-model="artistPhotoUrl" placeholder="Photo URL" class="input" @keyup.enter="updateArtistPhoto" />
+        <div class="modal-actions">
+          <button @click="updateArtistPhoto" class="primary-btn" :disabled="!artistPhotoUrl.trim()">Update</button>
+          <button @click="closeArtistPhotoModal" class="secondary-btn">Cancel</button>
         </div>
       </div>
     </div>
@@ -236,13 +184,9 @@
     <!-- LIGHTBOX -->
     <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
       <button class="lb-close" @click="closeLightbox">✕</button>
-      <button v-if="lightbox.images.length > 1" class="lb-nav lb-prev" @click="prevImage">‹</button>
-      <button v-if="lightbox.images.length > 1" class="lb-nav lb-next" @click="nextImage">›</button>
-      <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" @error="dimImage" />
-      <div class="lb-info">
-        <span>{{ lightbox.code }}</span>
-        <span class="text-muted">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</span>
-      </div>
+      <button v-if="lightbox.images.length > 1" class="lb-btn lb-prev" @click="prevImage">‹</button>
+      <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
+      <button v-if="lightbox.images.length > 1" class="lb-btn lb-next" @click="nextImage">›</button>
     </div>
 
     <!-- TOAST -->
@@ -283,16 +227,12 @@ class ImageDB {
   async init() {
     return new Promise((resolve, reject) => {
       if (!window.indexedDB) {
-        console.warn('IndexedDB not supported')
         resolve(false)
         return
       }
 
       const request = indexedDB.open(this.dbName, 1)
-      request.onerror = () => {
-        console.warn('IndexedDB open failed')
-        reject(new Error('IndexedDB failed'))
-      }
+      request.onerror = () => reject(new Error('IndexedDB failed'))
       request.onsuccess = () => {
         this.db = request.result
         resolve(true)
@@ -409,9 +349,6 @@ export default {
     }
   },
   computed: {
-    totalCount() {
-      return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
-    },
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
     },
@@ -445,9 +382,6 @@ export default {
         this.saveCustomImagesToDB(v)
       },
       deep: true
-    },
-    currentView() {
-      if (process.client) window.scrollTo({ top: 0, behavior: 'instant' })
     },
     artistPhotos: {
       handler(v) {
@@ -618,10 +552,6 @@ export default {
       e.target.style.opacity = '0.2'
     },
 
-    showImage(e) {
-      e.target.style.opacity = '1'
-    },
-
     hasCustomImage(code) {
       return !!this.customImages[code]
     },
@@ -679,41 +609,37 @@ export default {
     },
 
     addNewArtist() {
-      if (!this.newArtist.name.trim()) return this.showToast('Artist name required', 'error')
-      if (this.artists.some(a => a.name === this.newArtist.name)) return this.showToast('Artist already exists', 'error')
+      if (!this.newArtist.name.trim()) return this.showToast('Name required', 'error')
+      if (this.artists.some(a => a.name === this.newArtist.name)) return this.showToast('Artist exists', 'error')
       const newArtist = { name: this.newArtist.name.trim(), photo: this.newArtist.photo || '', mainWorks: [], compilations: [] }
       this.artists.push(newArtist)
       this.artists = [...this.artists]
       this.activeTab = newArtist.name
       this.closeAddArtistModal()
-      this.showToast(`✅ Added ${newArtist.name}`, 'success')
+      this.showToast(`Added ${newArtist.name}`, 'success')
     },
 
     getCoverWork(artist) {
-      // Priority 1: Check if cover work is set in coverWorks
       if (this.coverWorks[artist.name]) {
         const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
         const coverWork = allWorks.find(w => w.code === this.coverWorks[artist.name])
         if (coverWork) return coverWork
       }
 
-      // Priority 2: Fall back to first work in mainWorks
       if (artist.mainWorks?.length > 0) {
         return artist.mainWorks[0]
       }
 
-      // Priority 3: Fall back to first work in compilations
       if (artist.compilations?.length > 0) {
         return artist.compilations[0]
       }
 
-      // No works available
       return null
     },
 
     setCoverWork(artistName, workCode) {
       this.coverWorks = { ...this.coverWorks, [artistName]: workCode }
-      this.showToast(`✅ Set ${workCode} as cover for ${artistName}`, 'success')
+      this.showToast('Cover updated', 'success')
     },
 
     isCoverWork(artistName, workCode) {
@@ -721,10 +647,10 @@ export default {
     },
 
     async addNewWork() {
-      if (!this.newWork.artist || !this.newWork.code) return this.showToast('Fill required fields', 'error')
+      if (!this.newWork.artist || !this.newWork.code) return this.showToast('Required fields', 'error')
       const code = this.newWork.code.toUpperCase()
       if (this.artists.some(a => a.mainWorks?.some(w => w.code === code) || a.compilations?.some(w => w.code === code))) {
-        return this.showToast('Code already exists', 'error')
+        return this.showToast('Code exists', 'error')
       }
       const artist = this.artists.find(a => a.name === this.newWork.artist)
       if (!artist) return this.showToast('Artist not found', 'error')
@@ -732,7 +658,7 @@ export default {
       artist[this.newWork.type].push({ code })
       this.artists = [...this.artists]
       this.closeAddWorkModal()
-      this.showToast(`✅ Added ${code}`, 'success')
+      this.showToast(`Added ${code}`, 'success')
     },
 
     hasSimilarCode(code) {
@@ -755,7 +681,7 @@ export default {
       navigator.clipboard.writeText(code).then(() => {
         this.showToast(`Copied: ${code}`, 'success')
       }).catch(() => {
-        this.showToast('Failed to copy', 'error')
+        this.showToast('Copy failed', 'error')
       })
     },
 
@@ -770,52 +696,52 @@ export default {
 
     async handleCustomImageUrl() {
       const url = this.customImageUrl.trim()
-      if (!url) return this.showToast('Please enter an image URL', 'error')
+      if (!url) return this.showToast('Enter URL', 'error')
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        return this.showToast('URL must start with http:// or https://', 'error')
+        return this.showToast('Must start with http:// or https://', 'error')
       }
 
       const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
       const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext))
       if (!hasImageExtension) {
-        const proceed = confirm('URL does not end with a common image extension. Continue anyway?')
+        const proceed = confirm('URL does not end with image extension. Continue?')
         if (!proceed) return
       }
 
       const img = new Image()
       const timeout = setTimeout(() => {
-        this.showToast('Image URL took too long to load', 'error')
+        this.showToast('Load timeout', 'error')
       }, 10000)
 
       img.onload = () => {
         clearTimeout(timeout)
         this.customImages = { ...this.customImages, [this.uploadingWork]: url }
-        this.showToast(`✅ Custom image added for ${this.uploadingWork}`, 'success')
+        this.showToast('Image added', 'success')
         this.closeUploadModal()
         this.artists = [...this.artists]
       }
 
       img.onerror = () => {
         clearTimeout(timeout)
-        this.showToast('Failed to load image from URL. Check if URL is correct and publicly accessible.', 'error')
+        this.showToast('Failed to load image', 'error')
       }
 
       img.src = url
     },
 
     async removeCustomImage(code) {
-      if (confirm(`Remove custom image for ${code}?`)) {
+      if (confirm(`Remove custom image?`)) {
         const newCustomImages = { ...this.customImages }
         delete newCustomImages[code]
         this.customImages = newCustomImages
-        this.showToast(`Removed custom image for ${code}`, 'success')
+        this.showToast('Removed', 'success')
         this.artists = [...this.artists]
       }
     },
 
     showToast(msg, type = 'success') {
       this.toast = { show: true, message: msg, type }
-      setTimeout(() => this.toast.show = false, 3000)
+      setTimeout(() => this.toast.show = false, 2500)
     },
 
     exportData() {
@@ -831,13 +757,12 @@ export default {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `works-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
+        a.download = `works-tracker-${new Date().toISOString().split('T')[0]}.json`
         a.click()
         URL.revokeObjectURL(url)
-        this.showToast('✅ Data exported successfully', 'success')
+        this.showToast('Exported', 'success')
       } catch (e) {
-        console.error('Export failed:', e)
-        this.showToast('Failed to export data', 'error')
+        this.showToast('Export failed', 'error')
       }
     },
 
@@ -856,7 +781,7 @@ export default {
           const data = JSON.parse(content)
 
           if (!data.artists || !Array.isArray(data.artists)) {
-            this.showToast('Invalid backup file format', 'error')
+            this.showToast('Invalid format', 'error')
             return
           }
 
@@ -865,13 +790,12 @@ export default {
           this.artistPhotos = data.artistPhotos || {}
           this.coverWorks = data.coverWorks || {}
           localStorage.setItem('artists', JSON.stringify(this.artists))
-          this.showToast('✅ Data imported successfully', 'success')
+          this.showToast('Imported', 'success')
         }
         reader.readAsText(file)
         event.target.value = ''
       } catch (e) {
-        console.error('Import failed:', e)
-        this.showToast('Failed to import data. Invalid file format.', 'error')
+        this.showToast('Import failed', 'error')
       }
     },
 
@@ -893,20 +817,20 @@ export default {
 
       const img = new Image()
       const timeout = setTimeout(() => {
-        this.showToast('Image URL took too long to load', 'error')
+        this.showToast('Load timeout', 'error')
       }, 10000)
 
       img.onload = () => {
         clearTimeout(timeout)
         this.artistPhotos = { ...this.artistPhotos, [this.editingArtistName]: url }
         localStorage.setItem('artistPhotos', JSON.stringify(this.artistPhotos))
-        this.showToast(`✅ Artist photo updated`, 'success')
+        this.showToast('Updated', 'success')
         this.closeArtistPhotoModal()
       }
 
       img.onerror = () => {
         clearTimeout(timeout)
-        this.showToast('Failed to load image URL', 'error')
+        this.showToast('Load failed', 'error')
       }
 
       img.src = url
@@ -914,7 +838,7 @@ export default {
 
     async hardRefresh() {
       try {
-        this.showToast('Refreshing data...', 'info')
+        this.showToast('Refreshing...', 'info')
         localStorage.removeItem('artists')
         localStorage.removeItem('artistPhotos')
         localStorage.removeItem('coverWorks')
@@ -924,10 +848,9 @@ export default {
         this.artistPhotos = {}
         this.coverWorks = {}
         localStorage.setItem('artists', JSON.stringify(this.artists))
-        this.showToast('✅ Data refreshed to default state', 'success')
+        this.showToast('Reset to default', 'success')
       } catch (e) {
-        console.error('Hard refresh failed:', e)
-        this.showToast('Failed to refresh data', 'error')
+        this.showToast('Refresh failed', 'error')
       }
     }
   }
@@ -941,493 +864,511 @@ export default {
   padding: 0;
 }
 
+:root {
+  --bg: #fff;
+  --bg-alt: #f5f5f5;
+  --text: #000;
+  --text-light: #555;
+  --border: #ccc;
+  --accent: #000;
+}
+
 .app {
   min-height: 100vh;
-  background: #f8f9fa;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .header {
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 2px solid var(--text);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: var(--bg);
 }
 
 .header-inner {
-  max-width: 1600px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 16px 24px;
+  padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
 }
 
 .header h1 {
-  font-size: 1.5rem;
-  color: #111827;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
 }
 
 .header-actions {
   display: flex;
-  gap: 8px;
-}
-
-.main-content {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-.page-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  gap: 16px;
-}
-
-.page-info {
-  flex: 1;
-  text-align: center;
-}
-
-.page-info h2 {
-  font-size: 1.75rem;
-  color: #111827;
-  font-weight: 700;
-}
-
-.work-nav {
-  display: flex;
-  align-items: center;
   gap: 12px;
 }
 
-.artist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-.artist-card {
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #000;
+  background: transparent;
   cursor: pointer;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #fff;
-  transition: all 0.3s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 16px;
+  color: var(--text);
+  transition: all 0.2s;
+  border-radius: 2px;
 }
 
-.artist-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+.icon-btn:hover {
+  background: #000;
+  color: #fff;
 }
 
-.artist-img {
+.main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.artists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 32px;
+}
+
+.artist-item {
+  cursor: pointer;
+  position: relative;
+}
+
+.artist-item:hover .artist-cover {
+  border: 2px solid #000;
+}
+
+.artist-cover {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
   background: #000;
+  border-radius: 2px;
   overflow: hidden;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
 }
 
-.artist-img img {
+.artist-item:hover .artist-cover {
+  filter: brightness(0.95);
+}
+
+.artist-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.img-placeholder {
-  width: 100%;
-  height: 100%;
+.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3rem;
-  opacity: 0.2;
+  width: 100%;
+  height: 100%;
+  font-size: 32px;
+  color: #ddd;
+  font-weight: 300;
 }
 
-.artist-info {
+.artist-meta {
+  padding: 0;
+}
+
+.artist-meta h2 {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.artist-meta p {
+  font-size: 12px;
+  color: #555;
+}
+
+.edit-btn {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
-  padding: 20px 16px;
-  color: #fff;
-}
-
-.artist-info h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.artist-stats {
-  display: flex;
-  gap: 8px;
-  font-size: 0.75rem;
-  opacity: 0.9;
-}
-
-.artist-stats span {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.edit-photo-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.7);
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 2px;
+  background: #000;
   color: #fff;
   border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 14px;
   opacity: 0;
   transition: opacity 0.2s;
   z-index: 10;
 }
 
-.artist-card:hover .edit-photo-btn {
+.artist-item:hover .edit-btn {
   opacity: 1;
+}
+
+.works-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 48px;
+  gap: 20px;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  padding: 8px 0;
+  transition: color 0.2s;
+}
+
+.back-btn:hover {
+  color: #000;
+}
+
+.title-block {
+  flex: 1;
+  text-align: center;
+}
+
+.title-block h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.count {
+  font-size: 13px;
+  color: #555;
+}
+
+.primary-btn {
+  padding: 8px 16px;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.primary-btn:hover {
+  background: #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondary-btn {
+  padding: 8px 16px;
+  background: transparent;
+  color: #000;
+  border: 1px solid #000;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+  background: #000;
+  color: #fff;
 }
 
 .works-section {
   margin-bottom: 48px;
 }
 
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
+.works-section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
   margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e5e7eb;
 }
 
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 20px;
 }
 
-.work-card {
+.work-item {
   cursor: pointer;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #fff;
-  transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
 }
 
-.work-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+.work-item:hover .work-cover {
+  border: 2px solid #000;
 }
 
-.work-card:hover .btn-set-cover {
-  opacity: 1;
-}
-
-.work-img {
+.work-cover {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
   background: #000;
+  border-radius: 2px;
   overflow: hidden;
+  margin-bottom: 8px;
+  transition: filter 0.2s;
 }
 
-.work-img img {
+.work-item:hover .work-cover {
+  filter: brightness(0.95);
+}
+
+.work-cover img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  background: #000;
 }
 
-.work-badge {
+.work-badges {
   position: absolute;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.875rem;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 2px 4px;
   background: rgba(0, 0, 0, 0.7);
   color: #fff;
-  z-index: 5;
+  border-radius: 2px;
 }
 
-.work-badge.warn {
-  top: 8px;
-  right: 8px;
-}
-
-.work-badge.custom {
-  top: 36px;
-  right: 8px;
-}
-
-.work-badge.cover {
-  top: 8px;
-  left: 8px;
-  background: rgba(255, 193, 7, 0.9);
-  color: #000;
-}
-
-.work-code {
-  padding: 12px;
-  text-align: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-.btn-set-cover {
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 12px;
+.badge.cover {
   background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 500;
-  opacity: 0;
-  transition: all 0.2s;
-  z-index: 10;
-  white-space: nowrap;
 }
 
-.btn-set-cover.active {
-  background: #ffc107;
-  color: #000;
-  opacity: 1;
+.badge.warn {
+  background: rgba(255, 100, 100, 0.8);
 }
 
-.btn-set-cover:hover {
-  background: #ffc107;
-  color: #000;
+.work-item>p {
+  font-size: 12px;
+  color: #333;
+  font-family: 'Monaco', 'Courier', monospace;
 }
 
-.detail-view {
+.detail {
   padding: 24px;
 }
 
-.detail-container {
+.detail-grid {
   display: grid;
-  grid-template-columns: 400px 1fr;
-  gap: 32px;
+  grid-template-columns: 380px 1fr;
+  gap: 48px;
 }
 
-.detail-sidebar {
+.detail-left {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-.cover-box {
+.cover-large {
   position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
+  width: 100%;
   aspect-ratio: 3 / 2;
+  background: #000;
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  border: 1px solid #000;
 }
 
-.cover-box img {
+.cover-large:hover {
+  border: 2px solid #000;
+}
+
+.cover-large img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  display: block;
 }
 
-.cover-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  text-align: center;
-  padding: 12px;
-  font-size: 0.875rem;
-  opacity: 0;
-  transition: opacity 0.2s;
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.cover-box:hover .cover-overlay {
-  opacity: 1;
-}
-
-.info-card {
-  background: #fff;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.detail-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 20px;
+.code-title {
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
   user-select: all;
-  transition: color 0.2s;
+  font-family: 'Monaco', 'Courier', monospace;
+  transition: all 0.2s;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border: 1px solid transparent;
 }
 
-.detail-title:hover {
-  color: #2563eb;
+.code-title:hover {
+  border: 1px solid #000;
+  background: #f5f5f5;
 }
 
-.warn-icon {
-  color: #f59e0b;
-  margin-left: 8px;
+.meta-row {
+  display: flex;
+  gap: 8px;
 }
 
-.cover-icon {
-  color: #ffc107;
-  margin-left: 8px;
+.set-cover-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #000;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
 }
 
-.action-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.set-cover-btn:hover {
+  background: #000;
+  color: #fff;
+}
+
+.set-cover-btn.active {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.link-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #000;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.link-btn:hover {
+  background: #000;
+  color: #fff;
+}
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
-.detail-gallery {
-  background: #fff;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.nav-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #000;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: #000;
+  color: #fff;
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-count {
+  font-size: 12px;
+  color: #555;
+  min-width: 40px;
+  text-align: center;
+}
+
+.detail-right h3 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 20px;
 }
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
 }
 
-.gallery-thumb {
+.gallery-item {
   position: relative;
   aspect-ratio: 3 / 2;
-  border-radius: 8px;
-  overflow: hidden;
   background: #000;
+  border-radius: 2px;
+  overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s;
+  border: 1px solid #000;
 }
 
-.gallery-thumb:hover {
-  transform: scale(1.05);
+.gallery-item:hover {
+  border: 2px solid #000;
 }
 
-.gallery-thumb img {
+.gallery-item img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  background: #000;
 }
 
-.thumb-num {
+.gallery-item span {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.7);
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.6);
   color: #fff;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 1px 3px;
 }
 
-.btn {
-  padding: 10px 16px;
-  background: #6b7280;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn:hover {
-  background: #4b5563;
-}
-
-.btn:disabled {
-  background: #d1d5db;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 8px 12px;
-  font-size: 0.875rem;
-}
-
-.btn-primary {
-  background: #2563eb;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.btn-secondary {
-  background: #6b7280;
-}
-
-.btn-secondary:hover {
-  background: #4b5563;
-}
-
-.btn-success {
-  background: #10b981;
-}
-
-.btn-success:hover {
-  background: #059669;
-}
-
-.btn-warning {
-  background: #f59e0b;
-}
-
-.btn-warning:hover {
-  background: #d97706;
-}
-
-.btn-danger {
-  background: #ef4444;
-  grid-column: 1 / -1;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
-}
-
-.btn-block {
-  width: 100%;
-}
-
-.modal-backdrop {
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1436,108 +1377,73 @@ export default {
 }
 
 .modal {
-  background: #fff;
-  border-radius: 16px;
-  max-width: 480px;
+  background: var(--bg);
+  border-radius: 2px;
+  max-width: 400px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border: 2px solid #000;
 }
 
-.modal-header h3 {
-  font-size: 1.25rem;
+.modal h3 {
+  font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  margin-bottom: 16px;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.close-btn:hover {
-  background: #f3f4f6;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.modal-body label {
+.modal-label {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 8px;
   display: block;
-  margin-bottom: 20px;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.875rem;
 }
 
-.modal-body input,
-.modal-body select {
+.input {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  margin-top: 6px;
-  transition: border-color 0.2s;
+  padding: 10px;
+  border: 1px solid #000;
+  border-radius: 2px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+  font-family: inherit;
 }
 
-.modal-body input:focus,
-.modal-body select:focus {
+.input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border: 2px solid #000;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
-.radio-row {
+.radio-group {
   display: flex;
   gap: 16px;
-  margin-top: 8px;
+  margin-bottom: 12px;
 }
 
-.radio-row label {
+.radio-group label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0;
-  cursor: pointer;
-  font-weight: 400;
-}
-
-.radio-row input {
-  width: auto;
-  margin: 0;
+  gap: 6px;
+  font-size: 13px;
   cursor: pointer;
 }
 
-.modal-footer {
-  padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
+.radio-group input {
+  cursor: pointer;
+}
+
+.modal-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  margin-top: 16px;
 }
 
-.modal-footer .btn {
+.modal-actions .primary-btn {
+  flex: 1;
+}
+
+.modal-actions .secondary-btn {
   flex: 1;
 }
 
@@ -1559,107 +1465,77 @@ export default {
   max-width: 90%;
   max-height: 85vh;
   object-fit: contain;
-  border-radius: 8px;
 }
 
 .lb-close {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 48px;
-  height: 48px;
+  top: 24px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
   border: none;
   cursor: pointer;
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 18px;
   transition: background 0.2s;
 }
 
 .lb-close:hover {
-  background: rgba(239, 68, 68, 0.8);
+  background: rgba(255, 255, 255, 0.3);
 }
 
-.lb-nav {
+.lb-btn {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  width: 44px;
+  height: 44px;
   border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
   cursor: pointer;
-  font-size: 2rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 18px;
   transition: background 0.2s;
 }
 
-.lb-nav:hover {
-  background: rgba(255, 255, 255, 0.2);
+.lb-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .lb-prev {
-  left: 20px;
+  left: 24px;
 }
 
 .lb-next {
-  right: 20px;
-}
-
-.lb-info {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 12px 20px;
-  border-radius: 8px;
-  display: flex;
-  gap: 20px;
-  font-size: 0.875rem;
+  right: 24px;
 }
 
 .toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: #10b981;
-  color: #fff;
-  padding: 16px 24px;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 16px;
+  border-radius: 2px;
+  font-size: 12px;
   z-index: 3000;
-  font-weight: 500;
-  font-size: 0.875rem;
-  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .toast-error {
-  background: #ef4444;
+  background: #d32f2f;
 }
 
 .toast-info {
-  background: #2563eb;
-}
-
-.text-muted {
-  color: #6b7280;
-  font-size: 0.875rem;
+  background: #1976d2;
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
 }
 
 .fade-enter,
@@ -1668,46 +1544,57 @@ export default {
 }
 
 @media (max-width: 1024px) {
-  .detail-container {
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .detail-sidebar {
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .artist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .header-inner {
-    padding: 12px 16px;
-  }
-
-  .main-content {
-    padding: 20px 16px;
-  }
-
-  .artist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
+  .artists-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 24px;
   }
 
   .works-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
-
-  .action-grid {
-    grid-template-columns: 1fr;
   }
 
   .gallery-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-inner {
+    padding: 16px 12px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+  }
+
+  .main {
+    padding: 24px 12px;
+  }
+
+  .works-header {
+    flex-direction: column;
+  }
+
+  .artists-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+
+  .works-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 16px;
+  }
+
+  .detail-grid {
+    gap: 24px;
+  }
+
+  .detail-left {
+    max-width: 100%;
   }
 }
 </style>
