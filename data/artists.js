@@ -4,7 +4,13 @@
 // Total Unique Works: 484
 
 export const DEFAULT_ARTISTS = [
-  { name: 'Ai Kano', cover: 'VENU-662', compilations: ['JUQ-106'], mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963'] },
+  {
+    name: 'Ai Kano',
+    cover: 'VENU-662',
+    url: 'https://pics.dmm.co.jp/digital/video/juq00106/juq00106pl.jpg',  // Custom cover
+    compilations: ['JUQ-106'],
+    mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963']
+  },
   { name: 'Ai Sayama', mainWorks: ['JUFE-090', 'JUFE-101', 'JUY-717', 'MEYD-414', 'MEYD-576', 'MEYD-652', 'MEYD-978', 'PPPD-394', 'PPPD-603', 'WAAA-403'] },
   { name: 'Aika Yumeno', mainWorks: ['SNIS-413', 'SNIS-477', 'SNIS-659', 'SONE-874', 'SSNI-304'] },
   { name: 'Aiko Kimura', mainWorks: ['SONE-828', 'SONE-866', 'SNOS-066', 'SNOS-041', 'SIVR-458', 'SONE-788', 'SONE-783'] },
@@ -13,7 +19,13 @@ export const DEFAULT_ARTISTS = [
   { name: 'Rara Anzai | Rion | Shion Utsunomiya', mainWorks: ['OAE-095', 'OAE-100', 'OAE-104', 'MMND-128', 'OAE-105', 'OAE-123', 'TUKAHB-33397', 'OAE-134', 'OAE-166', 'SIVR-010', 'SIVR-008', 'AVOP-004', 'SNIS-009', 'SNIS-027', 'SNIS-048', 'SNIS-070', 'SNIS-091', 'SNIS-110', 'SNIS-129', 'SNIS-147', 'SNIS-166', 'SNIS-205', 'SOE-992', 'ONSD-850', 'ONSD-899', 'SNIS-517', 'SNIS-539', 'SNIS-561', 'SNIS-594', 'SNIS-603', 'SNIS-623', 'SNIS-640', 'SNIS-656', 'SNIS-673', 'SNIS-692', 'SNIS-712', 'SNIS-731', 'SNIS-752', 'SNIS-774', 'SNIS-787', 'SNIS-811', 'SNIS-824', 'SNIS-895', 'SNIS-918', 'SNIS-939', 'SNIS-963', 'SNIS-985', 'SSNI-008', 'SSNI-029', 'SSNI-053', 'EBOD-609', 'SSNI-100', 'SSNI-126', 'SSNI-151', 'SSNI-177', 'SSNI-204', 'SSNI-228', 'SSNI-241', 'SSNI-268', 'SSNI-290', 'OFJE-104', 'OFJE-144', 'OFJE-255', 'SSIS-025', 'SSIS-050', 'SSIS-103', 'SSIS-124', 'SSIS-136', 'SSIS-172', 'SSIS-203', 'SSIS-232', 'SSIS-262', 'SSIS-269', 'SSIS-357', 'SSNI-643', 'SSNI-671', 'SSNI-700', 'SSNI-727', 'SSNI-752', 'SSNI-777', 'SSNI-799', 'SSNI-822', 'OFJE-279', 'OFJE-288', 'OFJE-354', 'OFJE-410'] },
   { name: 'Aoi', mainWorks: ['SNIS-977'] },
   { name: 'Asahi Mizuno', mainWorks: ['JUL-442', 'JUL-546', 'NITR-114'] },
-  { name: 'Asuna Kawai', mainWorks: ['ABF-119', 'ABF-268', 'ABF-278', 'ABW-268', 'PPT-128', 'ABF-084', 'PPX-009', 'ABW-175', 'ABW-256'] },
+  {
+    name: 'Asuna Kawai',
+    cover: 'VENU-662',
+    url: 'https://image.mgstage.com/images/prestige/abf/009/pb_e_abf-009.jpg',  // Custom cover
+    compilations: ['JUQ-106'],
+    mainWorks: ['ABF-119', 'ABF-268', 'ABF-278', 'ABW-268', 'PPT-128', 'ABF-084', 'PPX-009', 'ABW-175', 'ABW-256']
+  },
   { name: 'Collection', mainWorks: ['259LUXU-1511', '259LUXU-1518', '259LUXU-1571', '259LUXU-1610', '259LUXU-1618', '259LUXU-1621', '259LUXU-1631', '259LUXU-688', '259LUXU-743', 'ADN-630', 'ARA-412', 'CLUB-855', 'DDHP-044', 'FC2-PPV-2864495', 'FLC-004', 'GANA-1026', 'GANA-1996', 'GANA-2100', 'GANA-2156', 'GANA-2705', 'GANA-2858', 'GERK-350', 'GES-038', 'HAWA-287', 'HMT-018', 'IND-022', 'IND-063', 'ION-162', 'JAC-175', 'JUFE-028', 'JUL-872', 'KTB-018', 'MIUM-681', 'MIUM-742', 'MIUM-811', 'MIUM-865', 'MIUM-908', 'NTK-391', 'ORECS-132', 'SSNI-362', 'SUKE-043', 'SUKE-053', 'TOUKA-01', 'VGD-192'] },
   { name: 'Ema Yuina', mainWorks: ['ABP-433', 'ABP-447', 'ABP-460', 'ABP-471', 'ABP-484', 'BGN-031', 'CHN-096'] },
   { name: 'Hana Haruna ', mainWorks: ['JUFD-867', 'PKPT-015', 'TOEN-020', 'UFE-084', 'VRTM-446'] },

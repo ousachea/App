@@ -195,7 +195,6 @@
     </transition>
   </div>
 </template>
-
 <script>
 import { DEFAULT_ARTISTS } from '~/data/artists.js'
 import { normalizeArtists } from '~/utils/artistHelpers.js'
@@ -334,10 +333,16 @@ export default {
       artistPhotos: {},
       showArtistPhotoModal: false,
       editingArtistName: '',
-      artistPhotoUrl: ''
+      artistPhotoUrl: '',
+      coverImageUrl: '',
+      showArtistUrlModal: false,
+      artistCustomUrl: ''
     }
   },
   computed: {
+    totalCount() {
+      return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
+    },
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
     },
@@ -785,18 +790,52 @@ export default {
     openArtistPhotoModal(artistName) {
       this.editingArtistName = artistName
       this.artistPhotoUrl = this.artistPhotos[artistName] || ''
+      const artist = this.artists.find(a => a.name === artistName)
+      this.coverImageUrl = artist?.url || ''
       this.showArtistPhotoModal = true
+    },
+
+    openArtistUrl(url) {
+      if (!url) return
+      window.open(url, '_blank', 'noopener,noreferrer')
     },
 
     closeArtistPhotoModal() {
       this.showArtistPhotoModal = false
       this.editingArtistName = ''
       this.artistPhotoUrl = ''
+      this.coverImageUrl = ''
+    },
+
+    openArtistUrlModal(artistName) {
+      this.editingArtistName = artistName
+      const artist = this.artists.find(a => a.name === artistName)
+      this.artistCustomUrl = artist?.url || ''
+      this.showArtistUrlModal = true
+    },
+
+    closeArtistUrlModal() {
+      this.showArtistUrlModal = false
+      this.editingArtistName = ''
+      this.artistCustomUrl = ''
+    },
+
+    updateArtistUrl() {
+      const artist = this.artists.find(a => a.name === this.editingArtistName)
+      if (artist) {
+        artist.url = this.artistCustomUrl.trim()
+        this.artists = [...this.artists]
+        this.showToast('URL updated', 'success')
+        this.closeArtistUrlModal()
+      }
     },
 
     updateArtistPhoto() {
       const url = this.artistPhotoUrl.trim()
-      if (!url) return
+      if (!url) {
+        this.updateCoverImage()
+        return
+      }
 
       const img = new Image()
       const timeout = setTimeout(() => {
@@ -807,13 +846,45 @@ export default {
         clearTimeout(timeout)
         this.artistPhotos = { ...this.artistPhotos, [this.editingArtistName]: url }
         localStorage.setItem('artistPhotos', JSON.stringify(this.artistPhotos))
+        this.updateCoverImage()
+      }
+
+      img.onerror = () => {
+        clearTimeout(timeout)
+        this.showToast('Photo load failed', 'error')
+      }
+
+      img.src = url
+    },
+
+    updateCoverImage() {
+      const url = this.coverImageUrl.trim()
+      if (!url) {
+        this.showToast('Updated', 'success')
+        this.closeArtistPhotoModal()
+        return
+      }
+
+      const img = new Image()
+      const timeout = setTimeout(() => {
+        this.showToast('Cover load timeout', 'error')
+        this.closeArtistPhotoModal()
+      }, 10000)
+
+      img.onload = () => {
+        clearTimeout(timeout)
+        const artist = this.artists.find(a => a.name === this.editingArtistName)
+        if (artist) {
+          artist.url = url
+          this.artists = [...this.artists]
+        }
         this.showToast('Updated', 'success')
         this.closeArtistPhotoModal()
       }
 
       img.onerror = () => {
         clearTimeout(timeout)
-        this.showToast('Load failed', 'error')
+        this.showToast('Cover load failed', 'error')
       }
 
       img.src = url
@@ -837,7 +908,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
 * {
   box-sizing: border-box;
