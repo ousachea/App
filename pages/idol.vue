@@ -20,13 +20,24 @@
     <main v-if="currentView === 'artists'" class="main">
       <div class="view-header">
         <h2>Artists</h2>
-        <div class="stats-pills">
-          <span class="pill">{{ totalMainWorks }} main</span>
-          <span class="pill">{{ totalCompilations }} compilations</span>
+        <div class="header-right">
+          <input v-model="searchQuery" type="text" placeholder="Search artists..." class="search-input"
+            @input="handleSearch" />
+          <div class="stats-pills">
+            <span class="pill">{{ filteredArtists.length }} / {{ artists.length }}</span>
+            <span class="pill">{{ totalMainWorks }} main</span>
+            <span class="pill">{{ totalCompilations }} compilations</span>
+          </div>
         </div>
       </div>
+
+      <div v-if="searchQuery && filteredArtists.length === 0" class="no-results">
+        <p>No artists found for "{{ searchQuery }}"</p>
+      </div>
+
       <div class="artists-grid">
-        <div v-for="artist in sortedArtists" :key="artist.name" class="artist-item" @click="selectArtist(artist.name)">
+        <div v-for="artist in filteredArtists" :key="artist.name" class="artist-item"
+          @click="selectArtist(artist.name)">
           <div class="artist-cover">
             <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name"
               @error="hideImage" />
@@ -56,14 +67,21 @@
             <span class="count-detail" v-if="currentArtist.compilations?.length">{{ currentArtist.compilations.length }}
               compilations</span>
           </div>
+          <input v-model="workSearchQuery" type="text" placeholder="Search works..." class="search-input work-search"
+            @input="handleWorkSearch" />
         </div>
         <button @click="openAddWorkModal" class="primary-btn">+ Add</button>
       </div>
 
-      <section v-if="sortedMainWorks.length" class="works-section">
-        <h3>Main ({{ sortedMainWorks.length }})</h3>
+      <div v-if="workSearchQuery && filteredMainWorks.length === 0 && filteredCompilations.length === 0"
+        class="no-results">
+        <p>No works found for "{{ workSearchQuery }}"</p>
+      </div>
+
+      <section v-if="filteredMainWorks.length" class="works-section">
+        <h3>Main ({{ filteredMainWorks.length }})</h3>
         <div class="works-grid">
-          <div v-for="work in sortedMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
+          <div v-for="work in filteredMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
               <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" />
               <div class="work-badges">
@@ -76,10 +94,10 @@
         </div>
       </section>
 
-      <section v-if="sortedCompilations.length" class="works-section">
-        <h3>Compilations ({{ sortedCompilations.length }})</h3>
+      <section v-if="filteredCompilations.length" class="works-section">
+        <h3>Compilations ({{ filteredCompilations.length }})</h3>
         <div class="works-grid">
-          <div v-for="work in sortedCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
+          <div v-for="work in filteredCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
               <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" />
               <div class="work-badges">
@@ -121,6 +139,7 @@
               <button @click="openExternalLink(currentWork.code, 'missav')" class="link-btn">MissAV</button>
               <button @click="openUploadModal(currentWork.code)" class="link-btn">{{ hasCustomImage(currentWork.code) ?
             'Update' : 'Add Image' }}</button>
+              <button @click="deleteWork(currentWork.code)" class="link-btn delete-btn">Delete Work</button>
             </div>
             <div class="nav-row" v-if="currentWorkList.length > 1">
               <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="nav-btn">‹</button>
@@ -356,7 +375,9 @@ export default {
       artistPhotoUrl: '',
       coverImageUrl: '',
       showArtistUrlModal: false,
-      artistCustomUrl: ''
+      artistCustomUrl: '',
+      searchQuery: '',
+      workSearchQuery: ''
     }
   },
   computed: {
@@ -375,6 +396,13 @@ export default {
     sortedArtists() {
       return [...this.artists].sort((a, b) => a.name.localeCompare(b.name))
     },
+    filteredArtists() {
+      if (!this.searchQuery.trim()) return this.sortedArtists
+      const query = this.searchQuery.toLowerCase()
+      return this.sortedArtists.filter(artist =>
+        artist.name.toLowerCase().includes(query)
+      )
+    },
     sortedMainWorks() {
       if (!this.currentArtist?.mainWorks) return []
       return [...this.currentArtist.mainWorks].sort((a, b) => a.code.localeCompare(b.code))
@@ -382,6 +410,20 @@ export default {
     sortedCompilations() {
       if (!this.currentArtist?.compilations) return []
       return [...this.currentArtist.compilations].sort((a, b) => a.code.localeCompare(b.code))
+    },
+    filteredMainWorks() {
+      if (!this.workSearchQuery.trim()) return this.sortedMainWorks
+      const query = this.workSearchQuery.toLowerCase()
+      return this.sortedMainWorks.filter(work =>
+        work.code.toLowerCase().includes(query)
+      )
+    },
+    filteredCompilations() {
+      if (!this.workSearchQuery.trim()) return this.sortedCompilations
+      const query = this.workSearchQuery.toLowerCase()
+      return this.sortedCompilations.filter(work =>
+        work.code.toLowerCase().includes(query)
+      )
     }
   },
   watch: {
@@ -515,16 +557,26 @@ export default {
     selectArtist(name) {
       this.activeTab = name
       this.currentView = 'works'
+      this.workSearchQuery = ''
     },
 
     backToArtists() {
       this.currentView = 'artists'
       this.activeTab = ''
+      this.searchQuery = ''
     },
 
     backToWorks() {
       this.currentView = 'works'
       this.currentWork = null
+    },
+
+    handleSearch() {
+      // Search is reactive via computed property
+    },
+
+    handleWorkSearch() {
+      // Search is reactive via computed property
     },
 
     openWorkView(work) {
@@ -937,6 +989,45 @@ export default {
       } catch (e) {
         this.showToast('Refresh failed', 'error')
       }
+    },
+
+    deleteWork(code) {
+      if (!confirm(`Delete ${code}?\n\nThis action cannot be undone.`)) return
+
+      const artist = this.currentArtist
+      if (!artist) return
+
+      // Remove from mainWorks
+      if (artist.mainWorks) {
+        const mainIndex = artist.mainWorks.findIndex(w => w.code === code)
+        if (mainIndex !== -1) {
+          artist.mainWorks.splice(mainIndex, 1)
+        }
+      }
+
+      // Remove from compilations
+      if (artist.compilations) {
+        const compIndex = artist.compilations.findIndex(w => w.code === code)
+        if (compIndex !== -1) {
+          artist.compilations.splice(compIndex, 1)
+        }
+      }
+
+      // If this was the cover, clear it
+      if (artist.cover === code) {
+        delete artist.cover
+      }
+
+      // Remove custom image if exists
+      if (this.customImages[code]) {
+        const newCustomImages = { ...this.customImages }
+        delete newCustomImages[code]
+        this.customImages = newCustomImages
+      }
+
+      this.artists = [...this.artists]
+      this.showToast(`Deleted ${code}`, 'success')
+      this.backToWorks()
     }
   }
 }
@@ -975,9 +1066,8 @@ export default {
 
 .header-inner {
   max-width: 1400px;
-  background-color: white;
   margin: 0 auto;
-  padding: 12px;
+  padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1025,7 +1115,7 @@ export default {
 
 .main {
   width: 100%;
-  padding: 12px;
+  padding: 40px 24px;
 }
 
 .view-header {
@@ -1033,6 +1123,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
+  gap: 20px;
 }
 
 .view-header h2 {
@@ -1040,6 +1131,34 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 200px;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+.work-search {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 300px;
 }
 
 .stats-pills {
@@ -1057,10 +1176,21 @@ export default {
   font-weight: 500;
 }
 
+.no-results {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.no-results p {
+  margin: 0;
+}
+
 .artists-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 8px;
+  gap: 32px;
 }
 
 .artist-item {
@@ -1434,6 +1564,16 @@ export default {
   color: #fff;
 }
 
+.delete-btn {
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+.delete-btn:hover {
+  background: #d32f2f;
+  color: #fff;
+}
+
 .nav-row {
   display: flex;
   align-items: center;
@@ -1718,7 +1858,7 @@ export default {
 
   .artists-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 8px;
+    gap: 24px;
   }
 
   .works-grid {
@@ -1747,6 +1887,26 @@ export default {
     padding: 24px 12px;
   }
 
+  .view-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-right {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .stats-pills {
+    justify-content: center;
+  }
+
   .works-header {
     flex-direction: column;
   }
@@ -1756,9 +1916,13 @@ export default {
     gap: 4px;
   }
 
+  .work-search {
+    max-width: 100%;
+  }
+
   .artists-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 8px;
+    gap: 16px;
   }
 
   .works-grid {
