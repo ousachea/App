@@ -39,11 +39,20 @@
         <div v-for="artist in filteredArtists" :key="artist.name" class="artist-item"
           @click="selectArtist(artist.name)">
           <div class="artist-cover">
+            <div v-if="imageLoadingStates[artist.name] === 'loading'" class="image-loading">
+              <div class="spinner"></div>
+            </div>
             <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name"
-              @error="hideImage" />
+              @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
+              :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
             <img v-else-if="getCoverWork(artist)" :src="getImageUrl(getCoverWork(artist).code)" :alt="artist.name"
-              @error="hideImage" />
+              @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
+              :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
             <div v-else class="placeholder">—</div>
+            <button v-if="imageLoadingStates[artist.name] === 'error'" @click.stop="retryImage(artist.name, 'artist')"
+              class="retry-btn">
+              ⟳ Retry
+            </button>
           </div>
           <div class="artist-meta">
             <h2>{{ artist.name }}</h2>
@@ -83,7 +92,16 @@
         <div class="works-grid">
           <div v-for="work in filteredMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
-              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" />
+              <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
+                <div class="spinner"></div>
+              </div>
+              <img :src="getImageUrl(work.code)" :alt="work.code" loading="lazy" @load="onImageLoad(work.code)"
+                @error="onImageError($event, work.code, 'work')"
+                :class="{ hidden: imageLoadingStates[work.code] === 'loading' }" />
+              <button v-if="imageLoadingStates[work.code] === 'error'" @click.stop="retryImage(work.code, 'work')"
+                class="retry-btn-small">
+                ⟳
+              </button>
               <div class="work-badges">
                 <span v-if="isCoverWork(currentArtist.name, work.code)" class="badge cover">★</span>
                 <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
@@ -99,7 +117,16 @@
         <div class="works-grid">
           <div v-for="work in filteredCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
-              <img :src="getImageUrl(work.code)" :alt="work.code" @error="hideImage" />
+              <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
+                <div class="spinner"></div>
+              </div>
+              <img :src="getImageUrl(work.code)" :alt="work.code" loading="lazy" @load="onImageLoad(work.code)"
+                @error="onImageError($event, work.code, 'work')"
+                :class="{ hidden: imageLoadingStates[work.code] === 'loading' }" />
+              <button v-if="imageLoadingStates[work.code] === 'error'" @click.stop="retryImage(work.code, 'work')"
+                class="retry-btn-small">
+                ⟳
+              </button>
               <div class="work-badges">
                 <span v-if="isCoverWork(currentArtist.name, work.code)" class="badge cover">★</span>
                 <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
@@ -118,7 +145,19 @@
       <div class="detail-grid">
         <div class="detail-left">
           <div class="cover-large" @click="openLightbox(currentWork, 0)">
-            <img :src="getImageUrl(currentWork.code)" :alt="currentWork.code" @error="hideImage" />
+            <div v-if="imageLoadingStates[currentWork.code] === 'loading'" class="image-loading">
+              <div class="spinner"></div>
+            </div>
+            <img :src="getImageUrl(currentWork.code)" :alt="currentWork.code" @load="onImageLoad(currentWork.code)"
+              @error="onImageError($event, currentWork.code, 'detail')"
+              :class="{ hidden: imageLoadingStates[currentWork.code] === 'loading' }" />
+            <button v-if="imageLoadingStates[currentWork.code] === 'error'"
+              @click.stop="retryImage(currentWork.code, 'detail')" class="retry-btn">
+              ⟳ Retry Loading
+            </button>
+            <div class="image-overlay">
+              <span class="zoom-hint">Click to enlarge</span>
+            </div>
           </div>
 
           <div class="detail-meta">
@@ -150,12 +189,24 @@
         </div>
 
         <div class="detail-right">
-          <h3>Gallery</h3>
+          <div class="gallery-header">
+            <h3>Gallery</h3>
+            <button @click="preloadAllGallery" class="preload-btn" :disabled="isPreloading">
+              {{ isPreloading ? 'Loading...' : 'Load All' }}
+            </button>
+          </div>
           <div class="gallery-grid">
             <div v-for="i in 20" :key="i" class="gallery-item" @click="openLightbox(currentWork, i)">
-              <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`${currentWork.code} - ${i}`"
-                @error="dimImage" />
-              <span>{{ i }}</span>
+              <div v-if="galleryLoadingStates[`${currentWork.code}-${i}`] === 'loading'" class="image-loading-small">
+                <div class="spinner-small"></div>
+              </div>
+              <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`${currentWork.code} - ${i}`" loading="lazy"
+                @load="onGalleryImageLoad(currentWork.code, i)"
+                @error="onGalleryImageError($event, currentWork.code, i)" :class="{
+            hidden: galleryLoadingStates[`${currentWork.code}-${i}`] === 'loading',
+            dimmed: galleryLoadingStates[`${currentWork.code}-${i}`] === 'error'
+          }" />
+              <span class="gallery-number">{{ i }}</span>
             </div>
           </div>
         </div>
@@ -377,7 +428,10 @@ export default {
       showArtistUrlModal: false,
       artistCustomUrl: '',
       searchQuery: '',
-      workSearchQuery: ''
+      workSearchQuery: '',
+      imageLoadingStates: {},
+      galleryLoadingStates: {},
+      isPreloading: false
     }
   },
   computed: {
@@ -579,6 +633,74 @@ export default {
       // Search is reactive via computed property
     },
 
+    onImageLoad(key) {
+      this.$set(this.imageLoadingStates, key, 'loaded')
+    },
+
+    onImageError(event, key, type) {
+      this.$set(this.imageLoadingStates, key, 'error')
+      event.target.style.display = 'none'
+    },
+
+    retryImage(key, type) {
+      this.$set(this.imageLoadingStates, key, 'loading')
+      // Force reload by updating the component
+      this.$nextTick(() => {
+        this.$set(this.imageLoadingStates, key, null)
+      })
+    },
+
+    onGalleryImageLoad(code, index) {
+      const key = `${code}-${index}`
+      this.$set(this.galleryLoadingStates, key, 'loaded')
+    },
+
+    onGalleryImageError(event, code, index) {
+      const key = `${code}-${index}`
+      this.$set(this.galleryLoadingStates, key, 'error')
+      event.target.style.opacity = '0.2'
+    },
+
+    async preloadAllGallery() {
+      if (!this.currentWork) return
+      this.isPreloading = true
+
+      const promises = []
+      for (let i = 1; i <= 20; i++) {
+        const img = new Image()
+        const url = this.getImageUrl(this.currentWork.code, `jp-${i}`)
+        const key = `${this.currentWork.code}-${i}`
+
+        this.$set(this.galleryLoadingStates, key, 'loading')
+
+        const promise = new Promise((resolve) => {
+          img.onload = () => {
+            this.$set(this.galleryLoadingStates, key, 'loaded')
+            resolve()
+          }
+          img.onerror = () => {
+            this.$set(this.galleryLoadingStates, key, 'error')
+            resolve()
+          }
+          img.src = url
+        })
+
+        promises.push(promise)
+      }
+
+      await Promise.all(promises)
+      this.isPreloading = false
+      this.showToast('Gallery loaded', 'success')
+    },
+
+    hideImage(e) {
+      e.target.style.display = 'none'
+    },
+
+    dimImage(e) {
+      e.target.style.opacity = '0.2'
+    },
+
     openWorkView(work) {
       const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
       this.currentWorkList = isMain ? (this.currentArtist.mainWorks || []) : (this.currentArtist.compilations || [])
@@ -612,14 +734,6 @@ export default {
         return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`
       }
       return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
-    },
-
-    hideImage(e) {
-      e.target.style.display = 'none'
-    },
-
-    dimImage(e) {
-      e.target.style.opacity = '0.2'
     },
 
     hasCustomImage(code) {
@@ -1221,6 +1335,80 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: opacity 0.3s;
+}
+
+.artist-cover img.hidden {
+  opacity: 0;
+}
+
+.image-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: 1;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.retry-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  z-index: 2;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.retry-btn-small {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.retry-btn-small:hover {
+  background: rgba(0, 0, 0, 0.95);
 }
 
 .placeholder {
@@ -1407,6 +1595,30 @@ export default {
   height: 100%;
   object-fit: contain;
   background: #000;
+  transition: opacity 0.3s;
+}
+
+.work-cover img.hidden {
+  opacity: 0;
+}
+
+.image-loading-small {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: 1;
+}
+
+.spinner-small {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .work-badges {
@@ -1475,6 +1687,36 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: opacity 0.3s;
+}
+
+.cover-large img.hidden {
+  opacity: 0;
+}
+
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 30%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 12px;
+  pointer-events: none;
+}
+
+.cover-large:hover .image-overlay {
+  opacity: 1;
+}
+
+.zoom-hint {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .detail-meta {
@@ -1619,6 +1861,40 @@ export default {
   margin-bottom: 20px;
 }
 
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.gallery-header h3 {
+  margin-bottom: 0;
+}
+
+.preload-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #000;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: all 0.2s;
+}
+
+.preload-btn:hover:not(:disabled) {
+  background: #000;
+  color: #fff;
+}
+
+.preload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1645,16 +1921,27 @@ export default {
   height: 100%;
   object-fit: contain;
   background: #000;
+  transition: opacity 0.3s;
 }
 
-.gallery-item span {
+.gallery-item img.hidden {
+  opacity: 0;
+}
+
+.gallery-item img.dimmed {
+  opacity: 0.2;
+}
+
+.gallery-number {
   position: absolute;
   bottom: 2px;
   right: 2px;
   font-size: 10px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
-  padding: 1px 3px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .modal-overlay {
