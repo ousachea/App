@@ -1,5 +1,14 @@
 <template>
-  <div class="app">
+  <div class="app dark-mode">
+    <!-- 
+      FOR NUXT: Add this to nuxt.config.js:
+      head: {
+        meta: [
+          { name: 'color-scheme', content: 'dark' },
+          { name: 'theme-color', content: '#0d1117' }
+        ]
+      }
+    -->
     <!-- HEADER -->
     <header class="header">
       <div class="header-inner">
@@ -8,6 +17,7 @@
           <span class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</span>
         </div>
         <div class="header-actions">
+          <button @click="showShortcutsHelp = true" title="Keyboard Shortcuts" class="icon-btn">⌨</button>
           <button @click="exportData" title="Export" class="icon-btn">↓</button>
           <button @click="triggerImport" title="Import" class="icon-btn">↑</button>
           <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
@@ -21,8 +31,8 @@
       <div class="view-header">
         <h2>Artists</h2>
         <div class="header-right">
-          <input v-model="searchQuery" type="text" placeholder="Search artists..." class="search-input"
-            @input="handleSearch" />
+          <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Search artists..."
+            class="search-input" @input="handleSearch" />
           <div class="stats-pills">
             <span class="pill">{{ filteredArtists.length }} / {{ artists.length }}</span>
             <span class="pill">{{ totalMainWorks }} main</span>
@@ -35,20 +45,29 @@
         <p>No artists found for "{{ searchQuery }}"</p>
       </div>
 
+      <!-- Artists Grid with CSS Grid (no virtual scrolling needed for artists) -->
       <div class="artists-grid">
         <div v-for="artist in filteredArtists" :key="artist.name" class="artist-item"
           @click="selectArtist(artist.name)">
           <div class="artist-cover">
+            <!-- Progressive Image Loading -->
             <div v-if="imageLoadingStates[artist.name] === 'loading'" class="image-loading">
               <div class="spinner"></div>
             </div>
-            <img v-if="artistPhotos[artist.name]" :src="artistPhotos[artist.name]" :alt="artist.name"
+
+            <!-- Blur placeholder -->
+            <img v-if="getProgressiveImage(artist).thumb && imageLoadingStates[artist.name] !== 'loaded'"
+              :src="getProgressiveImage(artist).thumb" :alt="artist.name" class="image-blur"
+              @load="onThumbLoad(artist.name)" />
+
+            <!-- Full image -->
+            <img v-if="getProgressiveImage(artist).full" :src="getProgressiveImage(artist).full" :alt="artist.name"
               @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
               :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
-            <img v-else-if="getCoverWork(artist)" :src="getImageUrl(getCoverWork(artist).code)" :alt="artist.name"
-              @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
-              :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
-            <div v-else class="placeholder">—</div>
+
+            <div v-if="!getProgressiveImage(artist).full && !getProgressiveImage(artist).thumb" class="placeholder">—
+            </div>
+
             <button v-if="imageLoadingStates[artist.name] === 'error'" @click.stop="retryImage(artist.name, 'artist')"
               class="retry-btn">
               ⟳ Retry
@@ -89,15 +108,23 @@
 
       <section v-if="filteredMainWorks.length" class="works-section">
         <h3>Main ({{ filteredMainWorks.length }})</h3>
+
+        <!-- Works Grid with lazy loading -->
         <div class="works-grid">
           <div v-for="work in filteredMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
                 <div class="spinner"></div>
               </div>
-              <img :src="getImageUrl(work.code)" :alt="work.code" loading="lazy" @load="onImageLoad(work.code)"
-                @error="onImageError($event, work.code, 'work')"
+
+              <!-- Progressive loading for works -->
+              <img v-if="getProgressiveWorkImage(work).thumb && imageLoadingStates[work.code] !== 'loaded'"
+                :src="getProgressiveWorkImage(work).thumb" :alt="work.code" class="image-blur" />
+
+              <img :src="getProgressiveWorkImage(work).full" :alt="work.code" loading="lazy"
+                @load="onImageLoad(work.code)" @error="onImageError($event, work.code, 'work')"
                 :class="{ hidden: imageLoadingStates[work.code] === 'loading' }" />
+
               <button v-if="imageLoadingStates[work.code] === 'error'" @click.stop="retryImage(work.code, 'work')"
                 class="retry-btn-small">
                 ⟳
@@ -114,15 +141,22 @@
 
       <section v-if="filteredCompilations.length" class="works-section">
         <h3>Compilations ({{ filteredCompilations.length }})</h3>
+
+        <!-- Compilations Grid with lazy loading -->
         <div class="works-grid">
           <div v-for="work in filteredCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
                 <div class="spinner"></div>
               </div>
-              <img :src="getImageUrl(work.code)" :alt="work.code" loading="lazy" @load="onImageLoad(work.code)"
-                @error="onImageError($event, work.code, 'work')"
+
+              <img v-if="getProgressiveWorkImage(work).thumb && imageLoadingStates[work.code] !== 'loaded'"
+                :src="getProgressiveWorkImage(work).thumb" :alt="work.code" class="image-blur" />
+
+              <img :src="getProgressiveWorkImage(work).full" :alt="work.code" loading="lazy"
+                @load="onImageLoad(work.code)" @error="onImageError($event, work.code, 'work')"
                 :class="{ hidden: imageLoadingStates[work.code] === 'loading' }" />
+
               <button v-if="imageLoadingStates[work.code] === 'error'" @click.stop="retryImage(work.code, 'work')"
                 class="retry-btn-small">
                 ⟳
@@ -142,15 +176,26 @@
     <main v-else-if="currentView === 'detail'" class="main detail">
       <button @click="backToWorks" class="back-btn">← Back</button>
 
+      <!-- Swipe hint for mobile -->
+      <div v-if="currentWorkList.length > 1" class="swipe-hint">
+        <span>← Swipe to navigate →</span>
+      </div>
+
       <div class="detail-grid">
         <div class="detail-left">
           <div class="cover-large" @click="openLightbox(currentWork, 0)">
             <div v-if="imageLoadingStates[currentWork.code] === 'loading'" class="image-loading">
               <div class="spinner"></div>
             </div>
-            <img :src="getImageUrl(currentWork.code)" :alt="currentWork.code" @load="onImageLoad(currentWork.code)"
-              @error="onImageError($event, currentWork.code, 'detail')"
+
+            <!-- Progressive loading for detail view -->
+            <img v-if="getProgressiveWorkImage(currentWork).thumb && imageLoadingStates[currentWork.code] !== 'loaded'"
+              :src="getProgressiveWorkImage(currentWork).thumb" :alt="currentWork.code" class="image-blur" />
+
+            <img :src="getProgressiveWorkImage(currentWork).full" :alt="currentWork.code"
+              @load="onImageLoad(currentWork.code)" @error="onImageError($event, currentWork.code, 'detail')"
               :class="{ hidden: imageLoadingStates[currentWork.code] === 'loading' }" />
+
             <button v-if="imageLoadingStates[currentWork.code] === 'error'"
               @click.stop="retryImage(currentWork.code, 'detail')" class="retry-btn">
               ⟳ Retry Loading
@@ -178,7 +223,6 @@
               <button @click="openExternalLink(currentWork.code, 'missav')" class="link-btn">MissAV</button>
               <button @click="openUploadModal(currentWork.code)" class="link-btn">{{ hasCustomImage(currentWork.code) ?
             'Update' : 'Add Image' }}</button>
-              <button @click="deleteWork(currentWork.code)" class="link-btn delete-btn">Delete Work</button>
             </div>
             <div class="nav-row" v-if="currentWorkList.length > 1">
               <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="nav-btn">‹</button>
@@ -269,6 +313,72 @@
       </div>
     </div>
 
+    <!-- KEYBOARD SHORTCUTS HELP MODAL -->
+    <div v-if="showShortcutsHelp" class="modal-overlay" @click.self="showShortcutsHelp = false">
+      <div class="modal shortcuts-modal">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="shortcuts-grid">
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>/</kbd>
+            </div>
+            <span class="shortcut-description">Focus search</span>
+          </div>
+
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>Esc</kbd>
+            </div>
+            <span class="shortcut-description">Go back / Close</span>
+          </div>
+
+          <div class="shortcut-section-title">Detail View</div>
+
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>←</kbd> <kbd>→</kbd>
+            </div>
+            <span class="shortcut-description">Navigate between works</span>
+          </div>
+
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>Space</kbd>
+            </div>
+            <span class="shortcut-description">Open lightbox</span>
+          </div>
+
+          <div class="shortcut-section-title">Lightbox</div>
+
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>←</kbd> <kbd>→</kbd>
+            </div>
+            <span class="shortcut-description">Navigate images</span>
+          </div>
+
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>Esc</kbd>
+            </div>
+            <span class="shortcut-description">Close lightbox</span>
+          </div>
+
+          <div class="shortcut-section-title">General</div>
+
+          <div class="shortcut-item">
+            <div class="shortcut-keys">
+              <kbd>?</kbd>
+            </div>
+            <span class="shortcut-description">Show this help</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button @click="showShortcutsHelp = false" class="primary-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- LIGHTBOX -->
     <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
       <button class="lb-close" @click="closeLightbox">✕</button>
@@ -276,6 +386,7 @@
       <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
       <button v-if="lightbox.images.length > 1" class="lb-btn lb-next" @click="nextImage">›</button>
       <div class="lb-counter">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</div>
+      <div v-if="lightbox.images.length > 1" class="lb-swipe-hint">← Swipe →</div>
     </div>
 
     <!-- TOAST -->
@@ -431,7 +542,13 @@ export default {
       workSearchQuery: '',
       imageLoadingStates: {},
       galleryLoadingStates: {},
-      isPreloading: false
+      isPreloading: false,
+      showShortcutsHelp: false,
+      touchStartX: 0,
+      touchStartY: 0,
+      touchEndX: 0,
+      touchEndY: 0,
+      minSwipeDistance: 50
     }
   },
   computed: {
@@ -560,22 +677,126 @@ export default {
       }
 
       this.setupKeyboardShortcuts()
+      this.setupTouchListeners()
     },
 
     setupKeyboardShortcuts() {
       document.addEventListener('keydown', (e) => {
+        // Focus search with "/"
+        if (e.key === '/' && !this.isInputFocused()) {
+          e.preventDefault()
+          if (this.$refs.searchInput) {
+            this.$refs.searchInput.focus()
+          }
+        }
+
+        // Show shortcuts help with "?"
+        if (e.key === '?' && !this.isInputFocused()) {
+          e.preventDefault()
+          this.showShortcutsHelp = true
+        }
+
+        // Lightbox controls
         if (this.lightbox.show) {
-          if (e.key === 'ArrowLeft') this.prevImage()
-          else if (e.key === 'ArrowRight') this.nextImage()
-          else if (e.key === 'Escape') this.closeLightbox()
-        } else if (this.currentView === 'detail') {
-          if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) this.navigateWork(-1)
-          else if (e.key === 'ArrowRight' && this.canNavigateWork(1)) this.navigateWork(1)
-          else if (e.key === 'Escape') this.backToWorks()
-        } else if (this.currentView === 'works' && e.key === 'Escape') {
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            this.prevImage()
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault()
+            this.nextImage()
+          } else if (e.key === 'Escape') {
+            this.closeLightbox()
+          }
+        }
+        // Detail view controls
+        else if (this.currentView === 'detail') {
+          if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) {
+            e.preventDefault()
+            this.navigateWork(-1)
+          } else if (e.key === 'ArrowRight' && this.canNavigateWork(1)) {
+            e.preventDefault()
+            this.navigateWork(1)
+          } else if (e.key === ' ' && !this.isInputFocused()) {
+            e.preventDefault()
+            this.openLightbox(this.currentWork, 0)
+          } else if (e.key === 'Escape') {
+            this.backToWorks()
+          }
+        }
+        // Works view controls
+        else if (this.currentView === 'works' && e.key === 'Escape') {
           this.backToArtists()
         }
+
+        // Close modals with Escape
+        if (e.key === 'Escape') {
+          if (this.showShortcutsHelp) this.showShortcutsHelp = false
+          if (this.showAddWorkModal) this.closeAddWorkModal()
+          if (this.showAddArtistModal) this.closeAddArtistModal()
+          if (this.showUploadModal) this.closeUploadModal()
+          if (this.showArtistPhotoModal) this.closeArtistPhotoModal()
+        }
       })
+    },
+
+    isInputFocused() {
+      const activeElement = document.activeElement
+      return activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT'
+      )
+    },
+
+    setupTouchListeners() {
+      if (process.client) {
+        document.addEventListener('touchstart', this.handleTouchStart, { passive: true })
+        document.addEventListener('touchmove', this.handleTouchMove, { passive: true })
+        document.addEventListener('touchend', this.handleTouchEnd, { passive: true })
+      }
+    },
+
+    handleTouchStart(e) {
+      this.touchStartX = e.changedTouches[0].screenX
+      this.touchStartY = e.changedTouches[0].screenY
+    },
+
+    handleTouchMove(e) {
+      this.touchEndX = e.changedTouches[0].screenX
+      this.touchEndY = e.changedTouches[0].screenY
+    },
+
+    handleTouchEnd() {
+      this.handleSwipe()
+    },
+
+    handleSwipe() {
+      const deltaX = this.touchEndX - this.touchStartX
+      const deltaY = this.touchEndY - this.touchStartY
+      const absDeltaX = Math.abs(deltaX)
+      const absDeltaY = Math.abs(deltaY)
+
+      // Only handle horizontal swipes (ignore vertical scrolls)
+      if (absDeltaX < this.minSwipeDistance || absDeltaY > absDeltaX) {
+        return
+      }
+
+      // Lightbox navigation
+      if (this.lightbox.show) {
+        if (deltaX > 0) {
+          this.prevImage()
+        } else {
+          this.nextImage()
+        }
+      }
+      // Detail view navigation
+      else if (this.currentView === 'detail') {
+        if (deltaX > 0 && this.canNavigateWork(-1)) {
+          this.navigateWork(-1)
+        } else if (deltaX < 0 && this.canNavigateWork(1)) {
+          this.navigateWork(1)
+        }
+      }
     },
 
     async saveCustomImagesToDB(images) {
@@ -633,6 +854,10 @@ export default {
       // Search is reactive via computed property
     },
 
+    onThumbLoad(key) {
+      // Thumbnail loaded, waiting for full image
+    },
+
     onImageLoad(key) {
       this.$set(this.imageLoadingStates, key, 'loaded')
     },
@@ -644,7 +869,6 @@ export default {
 
     retryImage(key, type) {
       this.$set(this.imageLoadingStates, key, 'loading')
-      // Force reload by updating the component
       this.$nextTick(() => {
         this.$set(this.imageLoadingStates, key, null)
       })
@@ -693,6 +917,41 @@ export default {
       this.showToast('Gallery loaded', 'success')
     },
 
+    // Progressive image loading methods
+    getProgressiveImage(artist) {
+      // If custom photo exists, use it directly
+      if (this.artistPhotos[artist.name]) {
+        return { full: this.artistPhotos[artist.name], thumb: null }
+      }
+
+      const coverWork = this.getCoverWork(artist)
+      if (!coverWork) {
+        return { full: null, thumb: null }
+      }
+
+      return this.getProgressiveWorkImage(coverWork)
+    },
+
+    getProgressiveWorkImage(work) {
+      // If custom image exists, use it directly
+      if (this.customImages[work.code]) {
+        return { full: this.customImages[work.code], thumb: null }
+      }
+
+      const parsed = parseWorkCode(work.code)
+      if (!parsed) return { full: null, thumb: null }
+
+      const paddedNum = parsed.number.padStart(5, '0')
+      const dmmId = `${parsed.prefix}${paddedNum}`
+
+      if (dmmId.length < 3) return { full: null, thumb: null }
+
+      return {
+        thumb: `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}ps.jpg`,
+        full: `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
+      }
+    },
+
     hideImage(e) {
       e.target.style.display = 'none'
     },
@@ -707,6 +966,33 @@ export default {
       this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
       this.currentWork = work
       this.currentView = 'detail'
+
+      // Preload adjacent works
+      this.$nextTick(() => {
+        this.preloadAdjacentWorks()
+      })
+    },
+
+    preloadAdjacentWorks() {
+      // Preload previous work
+      if (this.currentWorkIndex > 0) {
+        const prevWork = this.currentWorkList[this.currentWorkIndex - 1]
+        const prevImages = this.getProgressiveWorkImage(prevWork)
+        if (prevImages.full) {
+          const img = new Image()
+          img.src = prevImages.full
+        }
+      }
+
+      // Preload next work
+      if (this.currentWorkIndex < this.currentWorkList.length - 1) {
+        const nextWork = this.currentWorkList[this.currentWorkIndex + 1]
+        const nextImages = this.getProgressiveWorkImage(nextWork)
+        if (nextImages.full) {
+          const img = new Image()
+          img.src = nextImages.full
+        }
+      }
     },
 
     navigateWork(direction) {
@@ -714,6 +1000,7 @@ export default {
       if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
         this.currentWorkIndex = newIndex
         this.currentWork = this.currentWorkList[newIndex]
+        this.preloadAdjacentWorks()
       }
     },
 
@@ -1103,45 +1390,6 @@ export default {
       } catch (e) {
         this.showToast('Refresh failed', 'error')
       }
-    },
-
-    deleteWork(code) {
-      if (!confirm(`Delete ${code}?\n\nThis action cannot be undone.`)) return
-
-      const artist = this.currentArtist
-      if (!artist) return
-
-      // Remove from mainWorks
-      if (artist.mainWorks) {
-        const mainIndex = artist.mainWorks.findIndex(w => w.code === code)
-        if (mainIndex !== -1) {
-          artist.mainWorks.splice(mainIndex, 1)
-        }
-      }
-
-      // Remove from compilations
-      if (artist.compilations) {
-        const compIndex = artist.compilations.findIndex(w => w.code === code)
-        if (compIndex !== -1) {
-          artist.compilations.splice(compIndex, 1)
-        }
-      }
-
-      // If this was the cover, clear it
-      if (artist.cover === code) {
-        delete artist.cover
-      }
-
-      // Remove custom image if exists
-      if (this.customImages[code]) {
-        const newCustomImages = { ...this.customImages }
-        delete newCustomImages[code]
-        this.customImages = newCustomImages
-      }
-
-      this.artists = [...this.artists]
-      this.showToast(`Deleted ${code}`, 'success')
-      this.backToWorks()
     }
   }
 }
@@ -1154,13 +1402,42 @@ export default {
   padding: 0;
 }
 
+html {
+  background-color: #0d1117;
+  color: #e6edf3;
+}
+
+body {
+  background-color: #0d1117;
+  color: #e6edf3;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
-  --bg: #fff;
-  --bg-alt: #f5f5f5;
-  --text: #000;
-  --text-light: #555;
-  --border: #ccc;
-  --accent: #000;
+  --bg: #0d1117;
+  --bg-alt: #161b22;
+  --bg-card: #1c2128;
+  --text: #e6edf3;
+  --text-light: #7d8590;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --accent-dark: #1f6feb;
+  --success: #3fb950;
+  --error: #f85149;
+  --warning: #d29922;
+  --info: #58a6ff;
+  --purple: #bc8cff;
+  --pink: #ff7b72;
+  --cyan: #56d4dd;
+  --orange: #ffa657;
+  --gradient-1: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-2: linear-gradient(135deg, #ff7b72 0%, #ffa657 100%);
+  --gradient-3: linear-gradient(135deg, #58a6ff 0%, #56d4dd 100%);
+  --gradient-4: linear-gradient(135deg, #3fb950 0%, #56d4dd 100%);
+  --gradient-5: linear-gradient(135deg, #ffa657 0%, #ff7b72 100%);
+  --shadow: rgba(0, 0, 0, 0.5);
 }
 
 .app {
@@ -1168,14 +1445,42 @@ export default {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark-mode {
+  color-scheme: dark;
+  background-color: var(--bg);
+}
+
+/* Ensure scrollbar is dark */
+.app ::-webkit-scrollbar {
+  width: 12px;
+  background-color: var(--bg);
+}
+
+.app ::-webkit-scrollbar-track {
+  background-color: var(--bg);
+}
+
+.app ::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 6px;
+  border: 2px solid var(--bg);
+}
+
+.app ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent);
 }
 
 .header {
-  border-bottom: 2px solid var(--text);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
   background: var(--bg);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 0 rgba(88, 166, 255, 0.1);
 }
 
 .header-inner {
@@ -1201,8 +1506,8 @@ export default {
 
 .header-stats {
   font-size: 12px;
-  color: #555;
-  font-weight: 400;
+  color: var(--text-light);
+  font-weight: 500;
 }
 
 .header-actions {
@@ -1213,18 +1518,21 @@ export default {
 .icon-btn {
   width: 36px;
   height: 36px;
-  border: 1px solid #000;
-  background: transparent;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
   cursor: pointer;
   font-size: 16px;
-  color: var(--text);
+  color: var(--text-light);
   transition: all 0.2s;
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .icon-btn:hover {
-  background: #000;
-  color: #fff;
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
 }
 
 .main {
@@ -1254,19 +1562,21 @@ export default {
 }
 
 .search-input {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 2px;
+  padding: 8px 14px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
-  min-width: 200px;
+  min-width: 240px;
   transition: all 0.2s;
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #000;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .work-search {
@@ -1282,12 +1592,23 @@ export default {
 
 .pill {
   padding: 4px 12px;
-  background: #f5f5f5;
-  border: 1px solid #e0e0e0;
+  background: var(--gradient-3);
+  border: none;
   border-radius: 12px;
   font-size: 11px;
-  color: #555;
+  color: white;
   font-weight: 500;
+  box-shadow: 0 2px 4px rgba(79, 172, 254, 0.2);
+}
+
+.pill:nth-child(2) {
+  background: var(--gradient-4);
+  box-shadow: 0 2px 4px rgba(67, 233, 123, 0.2);
+}
+
+.pill:nth-child(3) {
+  background: var(--gradient-5);
+  box-shadow: 0 2px 4px rgba(250, 112, 154, 0.2);
 }
 
 .no-results {
@@ -1301,19 +1622,42 @@ export default {
   margin: 0;
 }
 
+/* Regular CSS Grid for Artists */
 .artists-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 32px;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+  padding: 4px;
+}
+
+/* Regular CSS Grid for Works */
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+  padding: 4px;
 }
 
 .artist-item {
   cursor: pointer;
   position: relative;
+  background: var(--bg-card);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+
+.artist-item:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(88, 166, 255, 0.2);
 }
 
 .artist-item:hover .artist-cover {
-  border: 2px solid #000;
+  filter: brightness(1.05);
 }
 
 .artist-cover {
@@ -1321,10 +1665,11 @@ export default {
   width: 100%;
   aspect-ratio: 3 / 2;
   background: #000;
-  border-radius: 2px;
+  border-radius: 12px 12px 0 0;
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   transition: all 0.3s ease;
+  border: none;
 }
 
 .artist-item:hover .artist-cover {
@@ -1342,6 +1687,25 @@ export default {
   opacity: 0;
 }
 
+/* Progressive Image Loading Styles */
+.image-blur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  filter: blur(10px);
+  transform: scale(1.1);
+  z-index: 1;
+}
+
+.artist-cover img:not(.image-blur),
+.work-cover img:not(.image-blur),
+.cover-large img:not(.image-blur) {
+  position: relative;
+  z-index: 2;
+}
+
 .image-loading {
   position: absolute;
   inset: 0;
@@ -1349,7 +1713,7 @@ export default {
   align-items: center;
   justify-content: center;
   background: #000;
-  z-index: 1;
+  z-index: 3;
 }
 
 .spinner {
@@ -1379,7 +1743,7 @@ export default {
   border-radius: 2px;
   cursor: pointer;
   font-size: 12px;
-  z-index: 2;
+  z-index: 4;
   transition: background 0.2s;
 }
 
@@ -1400,7 +1764,7 @@ export default {
   border-radius: 50%;
   cursor: pointer;
   font-size: 14px;
-  z-index: 2;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1418,12 +1782,15 @@ export default {
   width: 100%;
   height: 100%;
   font-size: 32px;
-  color: #ddd;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 300;
+  background: var(--gradient-1);
 }
 
 .artist-meta {
   padding: 0;
+  background: var(--bg-card);
+  padding: 16px;
 }
 
 .artist-meta h2 {
@@ -1435,7 +1802,8 @@ export default {
 
 .artist-meta p {
   font-size: 12px;
-  color: #555;
+  color: var(--text-light);
+  font-weight: 500;
 }
 
 .edit-btn {
@@ -1472,13 +1840,14 @@ export default {
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: #555;
+  color: var(--text);
   padding: 8px 0;
   transition: color 0.2s;
+  font-weight: 600;
 }
 
 .back-btn:hover {
-  color: #000;
+  color: var(--accent);
 }
 
 .title-block {
@@ -1511,41 +1880,46 @@ export default {
 
 .primary-btn {
   padding: 8px 16px;
-  background: var(--text);
+  background: var(--accent);
   color: var(--bg);
   border: none;
-  border-radius: 2px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
   transition: all 0.2s;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.4);
 }
 
 .primary-btn:hover {
-  background: #000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px rgba(88, 166, 255, 0.5);
+  transform: translateY(-1px);
 }
 
 .primary-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .secondary-btn {
   padding: 8px 16px;
-  background: transparent;
-  color: #000;
-  border: 1px solid #000;
-  border-radius: 2px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
+  font-weight: 600;
 }
 
 .secondary-btn:hover {
-  background: #000;
-  color: #fff;
+  background: var(--bg-alt);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .works-section {
@@ -1561,18 +1935,23 @@ export default {
   margin-bottom: 20px;
 }
 
-.works-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 24px;
-}
-
 .work-item {
   cursor: pointer;
+  transition: transform 0.2s;
+  background: var(--bg-card);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+}
+
+.work-item:hover {
+  border-color: var(--purple);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(167, 139, 250, 0.3);
 }
 
 .work-item:hover .work-cover {
-  border: 2px solid #000;
+  filter: brightness(1.05);
 }
 
 .work-cover {
@@ -1580,10 +1959,11 @@ export default {
   width: 100%;
   aspect-ratio: 3 / 2;
   background: #000;
-  border-radius: 2px;
+  border-radius: 8px 8px 0 0;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   transition: filter 0.2s;
+  border: none;
 }
 
 .work-item:hover .work-cover {
@@ -1609,7 +1989,7 @@ export default {
   align-items: center;
   justify-content: center;
   background: #000;
-  z-index: 1;
+  z-index: 3;
 }
 
 .spinner-small {
@@ -1627,6 +2007,7 @@ export default {
   left: 4px;
   display: flex;
   gap: 4px;
+  z-index: 5;
 }
 
 .badge {
@@ -1635,24 +2016,63 @@ export default {
   background: rgba(0, 0, 0, 0.7);
   color: #fff;
   border-radius: 2px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
 }
 
 .badge.cover {
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--gradient-5);
+  color: white;
 }
 
 .badge.warn {
-  background: rgba(255, 100, 100, 0.8);
+  background: var(--gradient-2);
 }
 
 .work-item>p {
   font-size: 12px;
-  color: #333;
+  color: var(--text);
   font-family: 'Monaco', 'Courier', monospace;
+  font-weight: 600;
+  background: var(--bg-card);
+  padding: 12px;
+  text-align: center;
 }
 
 .detail {
   padding: 24px;
+}
+
+.swipe-hint {
+  display: none;
+  text-align: center;
+  padding: 8px;
+  margin-bottom: 16px;
+  background: rgba(88, 166, 255, 0.1);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  border-radius: 8px;
+  color: var(--text-light);
+  font-size: 12px;
+  animation: fadeInOut 4s ease-in-out;
+}
+
+@keyframes fadeInOut {
+
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  10%,
+  90% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .swipe-hint {
+    display: block;
+  }
 }
 
 .detail-grid {
@@ -1705,6 +2125,7 @@ export default {
   justify-content: center;
   padding-bottom: 12px;
   pointer-events: none;
+  z-index: 5;
 }
 
 .cover-large:hover .image-overlay {
@@ -1766,23 +2187,26 @@ export default {
 
 .set-cover-btn {
   padding: 8px 12px;
-  background: transparent;
-  border: 1px solid #000;
-  border-radius: 2px;
+  background: var(--bg-alt);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .set-cover-btn:hover {
-  background: #000;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
 }
 
 .set-cover-btn.active {
-  background: #000;
+  background: var(--accent);
   color: #fff;
-  border-color: #000;
+  border-color: var(--accent);
 }
 
 .button-group {
@@ -1793,27 +2217,21 @@ export default {
 
 .link-btn {
   padding: 8px 12px;
-  background: transparent;
-  border: 1px solid #000;
+  background: var(--bg-alt);
+  border: 2px solid var(--border);
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
   text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  border-radius: 8px;
 }
 
 .link-btn:hover {
-  background: #000;
+  background: var(--accent);
   color: #fff;
-}
-
-.delete-btn {
-  border-color: #d32f2f;
-  color: #d32f2f;
-}
-
-.delete-btn:hover {
-  background: #d32f2f;
-  color: #fff;
+  border-color: var(--accent);
 }
 
 .nav-row {
@@ -1828,15 +2246,18 @@ export default {
 .nav-btn {
   width: 28px;
   height: 28px;
-  border: 1px solid #000;
-  background: transparent;
+  border: 2px solid var(--accent);
+  background: var(--bg-alt);
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+  color: var(--accent);
+  font-weight: 700;
+  border-radius: 6px;
 }
 
 .nav-btn:hover:not(:disabled) {
-  background: #000;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -1847,9 +2268,10 @@ export default {
 
 .nav-count {
   font-size: 12px;
-  color: #555;
+  color: var(--text);
   min-width: 40px;
   text-align: center;
+  font-weight: 600;
 }
 
 .detail-right h3 {
@@ -1874,19 +2296,20 @@ export default {
 
 .preload-btn {
   padding: 6px 12px;
-  background: transparent;
-  border: 1px solid #000;
-  border-radius: 2px;
+  background: var(--bg-alt);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   transition: all 0.2s;
+  color: var(--accent);
 }
 
 .preload-btn:hover:not(:disabled) {
-  background: #000;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -1942,6 +2365,7 @@ export default {
   padding: 2px 4px;
   border-radius: 2px;
   pointer-events: none;
+  z-index: 5;
 }
 
 .modal-overlay {
@@ -1950,7 +2374,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1959,42 +2383,48 @@ export default {
 }
 
 .modal {
-  background: var(--bg);
-  border-radius: 2px;
+  background: var(--bg-card);
+  border-radius: 12px;
   max-width: 400px;
   width: 100%;
   padding: 24px;
-  border: 2px solid #000;
+  border: 2px solid var(--border);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal h3 {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
+  color: var(--text);
 }
 
 .modal-label {
   font-size: 12px;
-  color: #555;
+  color: var(--text);
   margin-bottom: 8px;
   display: block;
+  font-weight: 600;
 }
 
 .input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #000;
-  border-radius: 2px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
   font-size: 13px;
   margin-bottom: 12px;
   transition: all 0.2s;
   font-family: inherit;
+  color: var(--text);
+  background: var(--bg-alt);
 }
 
 .input:focus {
   outline: none;
-  border: 2px solid #000;
-  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.05);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .radio-group {
@@ -2027,6 +2457,62 @@ export default {
 
 .modal-actions .secondary-btn {
   flex: 1;
+}
+
+/* Keyboard Shortcuts Modal */
+.shortcuts-modal {
+  max-width: 500px;
+}
+
+.shortcuts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.shortcut-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 6px;
+}
+
+.shortcut-description {
+  flex: 1;
+  font-size: 13px;
+  color: #555;
+}
+
+kbd {
+  display: inline-block;
+  padding: 4px 8px;
+  font-family: 'Monaco', 'Courier', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #000;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  min-width: 24px;
+  text-align: center;
 }
 
 .lightbox {
@@ -2107,25 +2593,53 @@ export default {
   font-weight: 500;
 }
 
+.lb-swipe-hint {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(88, 166, 255, 0.3);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 500;
+  display: none;
+  animation: fadeInOut 4s ease-in-out;
+}
+
+@media (max-width: 768px) {
+  .lb-swipe-hint {
+    display: block;
+  }
+
+  .lb-btn {
+    opacity: 0.3;
+  }
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--text);
-  color: var(--bg);
+  background: var(--accent);
+  color: white;
   padding: 12px 16px;
-  border-radius: 2px;
+  border-radius: 8px;
   font-size: 12px;
   z-index: 3000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  font-weight: 500;
 }
 
 .toast-error {
-  background: #d32f2f;
+  background: var(--error);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .toast-info {
-  background: #1976d2;
+  background: var(--info);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .fade-enter-active,
@@ -2223,6 +2737,58 @@ export default {
 
   .detail-left {
     max-width: 100%;
+  }
+
+  /* Touch-friendly tap targets */
+  .icon-btn,
+  .primary-btn,
+  .secondary-btn,
+  .nav-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Swipe hint indicators */
+  .detail-grid::after,
+  .lightbox::after {
+    content: '← Swipe →';
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(88, 166, 255, 0.2);
+    color: var(--text-light);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    pointer-events: none;
+    opacity: 0;
+    animation: swipeHint 3s ease-in-out;
+  }
+
+  @keyframes swipeHint {
+
+    0%,
+    100% {
+      opacity: 0;
+    }
+
+    10%,
+    90% {
+      opacity: 1;
+    }
+  }
+
+  /* Better touch feedback */
+  .artist-item:active,
+  .work-item:active {
+    transform: scale(0.98);
+  }
+
+  .primary-btn:active,
+  .secondary-btn:active,
+  .icon-btn:active {
+    transform: scale(0.95);
   }
 }
 </style>
