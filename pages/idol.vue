@@ -9,6 +9,7 @@
           <span class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</span>
         </div>
         <div class="header-actions">
+          <button @click="clearViewHistory" title="Clear History" class="icon-btn">🗑</button>
           <button @click="exportData" title="Export" class="icon-btn">↓</button>
           <button @click="triggerImport" title="Import" class="icon-btn">↑</button>
           <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
@@ -34,7 +35,7 @@
       <!-- Artists Grid with CSS Grid (no virtual scrolling needed for artists) -->
       <div class="artists-grid">
         <div v-for="artist in filteredArtists" :key="artist.name"
-          :class="['artist-item', { 'highlighted': lastViewedArtist === artist.name }]"
+          :class="['artist-item', { 'highlighted': viewedArtists.includes(artist.name) }]"
           @click="selectArtist(artist.name)">
           <div class="artist-cover">
             <!-- Progressive Image Loading -->
@@ -99,7 +100,7 @@
         <!-- Works Grid with lazy loading -->
         <div class="works-grid">
           <div v-for="work in filteredMainWorks" :key="work.code"
-            :class="['work-item', { 'highlighted': lastViewedWork === work.code }]" @click="openWorkView(work)">
+            :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
                 <div class="spinner"></div>
@@ -133,7 +134,7 @@
         <!-- Compilations Grid with lazy loading -->
         <div class="works-grid">
           <div v-for="work in filteredCompilations" :key="work.code"
-            :class="['work-item', { 'highlighted': lastViewedWork === work.code }]" @click="openWorkView(work)">
+            :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
                 <div class="spinner"></div>
@@ -478,8 +479,8 @@ export default {
         artists: 0,
         works: 0
       },
-      lastViewedArtist: null,
-      lastViewedWork: null
+      viewedArtists: [],
+      viewedWorks: []
     }
   },
   computed: {
@@ -552,6 +553,18 @@ export default {
         if (process.client) localStorage.setItem('artistPhotos', JSON.stringify(v))
       },
       deep: true
+    },
+    viewedArtists: {
+      handler(v) {
+        if (process.client) localStorage.setItem('viewedArtists', JSON.stringify(v))
+      },
+      deep: true
+    },
+    viewedWorks: {
+      handler(v) {
+        if (process.client) localStorage.setItem('viewedWorks', JSON.stringify(v))
+      },
+      deep: true
     }
   },
   mounted() {
@@ -563,6 +576,22 @@ export default {
       } catch (e) {
         console.warn('Failed to load artist photos:', e)
       }
+
+      // Load viewed artists and works
+      try {
+        const savedViewedArtists = localStorage.getItem('viewedArtists')
+        if (savedViewedArtists) this.viewedArtists = JSON.parse(savedViewedArtists)
+      } catch (e) {
+        console.warn('Failed to load viewed artists:', e)
+      }
+
+      try {
+        const savedViewedWorks = localStorage.getItem('viewedWorks')
+        if (savedViewedWorks) this.viewedWorks = JSON.parse(savedViewedWorks)
+      } catch (e) {
+        console.warn('Failed to load viewed works:', e)
+      }
+
       this.initializeApp()
     }
   },
@@ -764,8 +793,10 @@ export default {
       // Save current scroll position
       this.saveScrollPosition('artists')
 
-      // Track which artist was viewed
-      this.lastViewedArtist = name
+      // Track which artist was viewed (add to array if not already there)
+      if (!this.viewedArtists.includes(name)) {
+        this.viewedArtists.push(name)
+      }
 
       this.activeTab = name
       this.currentView = 'works'
@@ -916,8 +947,10 @@ export default {
       // Save current works scroll position
       this.saveScrollPosition('works')
 
-      // Track which work was viewed
-      this.lastViewedWork = work.code
+      // Track which work was viewed (add to array if not already there)
+      if (!this.viewedWorks.includes(work.code)) {
+        this.viewedWorks.push(work.code)
+      }
 
       const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
       this.currentWorkList = isMain ? (this.currentArtist.mainWorks || []) : (this.currentArtist.compilations || [])
@@ -1354,15 +1387,29 @@ export default {
       }
     },
 
+    clearViewHistory() {
+      if (confirm('Clear all viewing history? This will remove all highlights.')) {
+        this.viewedArtists = []
+        this.viewedWorks = []
+        localStorage.removeItem('viewedArtists')
+        localStorage.removeItem('viewedWorks')
+        this.showToast('History cleared', 'success')
+      }
+    },
+
     async hardRefresh() {
       try {
         this.showToast('Refreshing...', 'info')
         localStorage.removeItem('artists')
         localStorage.removeItem('artistPhotos')
+        localStorage.removeItem('viewedArtists')
+        localStorage.removeItem('viewedWorks')
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
         this.artistPhotos = {}
+        this.viewedArtists = []
+        this.viewedWorks = []
         localStorage.setItem('artists', JSON.stringify(this.artists))
         this.showToast('Reset to default', 'success')
       } catch (e) {
@@ -1571,8 +1618,27 @@ export default {
 
 .artist-item.highlighted {
   border-color: #fbbf24;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3), 0 8px 24px rgba(251, 191, 36, 0.4);
-  animation: pulseHighlight 2s ease-in-out;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.25);
+  position: relative;
+}
+
+.artist-item.highlighted::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  background: #fbbf24;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes pulseHighlight {
@@ -1883,8 +1949,27 @@ export default {
 
 .work-item.highlighted {
   border-color: #fbbf24;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3), 0 8px 24px rgba(251, 191, 36, 0.4);
-  animation: pulseHighlight 2s ease-in-out;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.25);
+  position: relative;
+}
+
+.work-item.highlighted::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  background: #fbbf24;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .work-cover {
