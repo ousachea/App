@@ -12,6 +12,34 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963','JUL-542','ACHJ-035','JUVR-155']
   },
   {
+    name: 'Alice',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['HUNTB-216']
+  },
+  {
+    name: 'Mei Satsuki',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['JUR-586']
+  },
+  {
+    name: 'Rea Marumo',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['HOMA-157','HALT-072','SVCAO-022','PPPE-368','SAVR-809','NMSL-016','MAAN-01-078','MAAN-01-076','URVRSP-430']
+  },
+  {
+    name: 'Misao Oguri',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['ROYD-283', 'DASS-735', 'DASS-723','REBDB-952']
+  },
+  {
     name: 'Ai Sayama',
     cover: '',
     url: '',  // Custom cover
@@ -78,7 +106,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Hana Himesaki', cover: 'NSFS-012',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['348NTR-024', 'ABP-892', 'ABP-943', 'ABP-971', 'ABW-019', 'FPRE-199', 'JUFE-264', 'KAM-213', 'LULU-076', 'MIAA-392', 'MXGS-1306', 'NSFS-012', '300MIUM-720']
+    compilations: [''], mainWorks: ['NACX-148','348NTR-024', 'ABP-892', 'ABP-943', 'ABP-971', 'ABW-019', 'FPRE-199', 'JUFE-264', 'KAM-213', 'LULU-076', 'MIAA-392', 'MXGS-1306', 'NSFS-012', '300MIUM-720']
   },
   {
     name: 'Haruka Riri', cover: '',
@@ -133,7 +161,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Koibuchi Momona', cover: '',
     url: 'https://pics.dmm.co.jp/mono/movie/adult/1start165/1start165pl.jpg',  // Custom cover
-    compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231']
+    compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231','START-136']
   },
   {
     name: 'Koume Ena', cover: '',
@@ -274,7 +302,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Satomi Mioka', cover: 'APNS-293',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['230ORECO-189', '300MIUM-865', '300MIUM-908', '483DAM-016', 'APNS-293', 'HAWA-325', 'HUNTB-733', 'MAAN-955', 'RECS-283', 'SAN-406', 'BARE-009', 'SRTD-349', 'SRTD-345', 'SPAY-241', 'SIRO-4820', 'LUXU-1572', 'ZOZO-165', 'APAA-387', 'GVH-477', 'MRPA-006', 'PKPD-217', 'UZU-004', 'SUN-071', 'MIUM-862', 'NHMSG-031', 'ORECO-079', 'MAAN-982', 'MAAN-836', 'BDST-027', 'AKDL-247', 'AKDL-213', 'AKDL-193', 'DFDM-041']
+    compilations: [''], mainWorks: ['SAN-406','230ORECO-189', '300MIUM-865', '300MIUM-908', '483DAM-016', 'APNS-293', 'HAWA-325', 'HUNTB-733', 'MAAN-955', 'RECS-283', 'SAN-406', 'BARE-009', 'SRTD-349', 'SRTD-345', 'SPAY-241', 'SIRO-4820', 'LUXU-1572', 'ZOZO-165', 'APAA-387', 'GVH-477', 'MRPA-006', 'PKPD-217', 'UZU-004', 'SUN-071', 'MIUM-862', 'NHMSG-031', 'ORECO-079', 'MAAN-982', 'MAAN-836', 'BDST-027', 'AKDL-247', 'AKDL-213', 'AKDL-193', 'DFDM-041']
   },
   {
     name: 'Sena Hikari', cover: '',
