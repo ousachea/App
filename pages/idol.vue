@@ -1,14 +1,6 @@
 <template>
-  <div class="app dark-mode">
-    <!-- 
-      FOR NUXT: Add this to nuxt.config.js:
-      head: {
-        meta: [
-          { name: 'color-scheme', content: 'dark' },
-          { name: 'theme-color', content: '#0d1117' }
-        ]
-      }
-    -->
+  <div class="app-container">
+
     <!-- HEADER -->
     <header class="header">
       <div class="header-inner">
@@ -17,7 +9,6 @@
           <span class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</span>
         </div>
         <div class="header-actions">
-          <button @click="showShortcutsHelp = true" title="Keyboard Shortcuts" class="icon-btn">⌨</button>
           <button @click="exportData" title="Export" class="icon-btn">↓</button>
           <button @click="triggerImport" title="Import" class="icon-btn">↑</button>
           <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
@@ -33,11 +24,6 @@
         <div class="header-right">
           <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Search artists..."
             class="search-input" @input="handleSearch" />
-          <div class="stats-pills">
-            <span class="pill">{{ filteredArtists.length }} / {{ artists.length }}</span>
-            <span class="pill">{{ totalMainWorks }} main</span>
-            <span class="pill">{{ totalCompilations }} compilations</span>
-          </div>
         </div>
       </div>
 
@@ -313,71 +299,7 @@
       </div>
     </div>
 
-    <!-- KEYBOARD SHORTCUTS HELP MODAL -->
-    <div v-if="showShortcutsHelp" class="modal-overlay" @click.self="showShortcutsHelp = false">
-      <div class="modal shortcuts-modal">
-        <h3>Keyboard Shortcuts</h3>
-        <div class="shortcuts-grid">
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>/</kbd>
-            </div>
-            <span class="shortcut-description">Focus search</span>
-          </div>
 
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>Esc</kbd>
-            </div>
-            <span class="shortcut-description">Go back / Close</span>
-          </div>
-
-          <div class="shortcut-section-title">Detail View</div>
-
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>←</kbd> <kbd>→</kbd>
-            </div>
-            <span class="shortcut-description">Navigate between works</span>
-          </div>
-
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>Space</kbd>
-            </div>
-            <span class="shortcut-description">Open lightbox</span>
-          </div>
-
-          <div class="shortcut-section-title">Lightbox</div>
-
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>←</kbd> <kbd>→</kbd>
-            </div>
-            <span class="shortcut-description">Navigate images</span>
-          </div>
-
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>Esc</kbd>
-            </div>
-            <span class="shortcut-description">Close lightbox</span>
-          </div>
-
-          <div class="shortcut-section-title">General</div>
-
-          <div class="shortcut-item">
-            <div class="shortcut-keys">
-              <kbd>?</kbd>
-            </div>
-            <span class="shortcut-description">Show this help</span>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button @click="showShortcutsHelp = false" class="primary-btn">Close</button>
-        </div>
-      </div>
-    </div>
 
     <!-- LIGHTBOX -->
     <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
@@ -1396,97 +1318,54 @@ export default {
 </script>
 
 <style scoped>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  background-color: #0d1117;
-  color: #e6edf3;
-}
-
-body {
-  background-color: #0d1117;
-  color: #e6edf3;
-  margin: 0;
-  padding: 0;
-}
-
+/* CSS Variables */
 :root {
-  --bg: #0d1117;
-  --bg-alt: #161b22;
-  --bg-card: #1c2128;
-  --text: #e6edf3;
-  --text-light: #7d8590;
-  --border: #30363d;
+  --bg: #ffffff;
+  --bg-card: #ffffff;
+  --bg-alt: #f9fafb;
+  --text: #111827;
+  --text-light: #6b7280;
+  --border: #e5e7eb;
   --accent: #58a6ff;
-  --accent-hover: #79c0ff;
-  --accent-dark: #1f6feb;
-  --success: #3fb950;
-  --error: #f85149;
-  --warning: #d29922;
-  --info: #58a6ff;
-  --purple: #bc8cff;
-  --pink: #ff7b72;
-  --cyan: #56d4dd;
-  --orange: #ffa657;
-  --gradient-1: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
-  --gradient-2: linear-gradient(135deg, #ff7b72 0%, #ffa657 100%);
-  --gradient-3: linear-gradient(135deg, #58a6ff 0%, #56d4dd 100%);
-  --gradient-4: linear-gradient(135deg, #3fb950 0%, #56d4dd 100%);
-  --gradient-5: linear-gradient(135deg, #ffa657 0%, #ff7b72 100%);
-  --shadow: rgba(0, 0, 0, 0.5);
+  --accent-hover: #4a95e8;
+  --purple: #a78bfa;
+  --error: #ef4444;
+  --info: #3b82f6;
+  --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  --gradient-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
 }
 
-.app {
+/* Global Reset */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* App Container - Ensures full height */
+.app-container {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-.dark-mode {
-  color-scheme: dark;
-  background-color: var(--bg);
-}
-
-/* Ensure scrollbar is dark */
-.app ::-webkit-scrollbar {
-  width: 12px;
-  background-color: var(--bg);
-}
-
-.app ::-webkit-scrollbar-track {
-  background-color: var(--bg);
-}
-
-.app ::-webkit-scrollbar-thumb {
-  background-color: var(--border);
-  border-radius: 6px;
-  border: 2px solid var(--bg);
-}
-
-.app ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--accent);
 }
 
 .header {
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--bg);
   backdrop-filter: blur(10px);
   box-shadow: 0 1px 0 0 rgba(88, 166, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .header-inner {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1537,15 +1416,17 @@ body {
 
 .main {
   width: 100%;
-  padding: 40px 24px;
+  padding: 12px;
+  flex: 1;
+  background: var(--bg);
 }
 
 .view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
   gap: 20px;
+  margin-bottom: 24px;
 }
 
 .view-header h2 {
@@ -1585,32 +1466,6 @@ body {
   max-width: 300px;
 }
 
-.stats-pills {
-  display: flex;
-  gap: 8px;
-}
-
-.pill {
-  padding: 4px 12px;
-  background: var(--gradient-3);
-  border: none;
-  border-radius: 12px;
-  font-size: 11px;
-  color: white;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(79, 172, 254, 0.2);
-}
-
-.pill:nth-child(2) {
-  background: var(--gradient-4);
-  box-shadow: 0 2px 4px rgba(67, 233, 123, 0.2);
-}
-
-.pill:nth-child(3) {
-  background: var(--gradient-5);
-  box-shadow: 0 2px 4px rgba(250, 112, 154, 0.2);
-}
-
 .no-results {
   text-align: center;
   padding: 60px 20px;
@@ -1622,21 +1477,19 @@ body {
   margin: 0;
 }
 
-/* Regular CSS Grid for Artists */
+/* Artists Grid */
 .artists-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 32px;
-  max-height: calc(100vh - 250px);
-  overflow-y: auto;
+  gap: 12px;
   padding: 4px;
 }
 
-/* Regular CSS Grid for Works */
+/* Works Grid */
 .works-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 24px;
+  gap: 12px;
   padding: 4px;
 }
 
@@ -1790,7 +1643,7 @@ body {
 .artist-meta {
   padding: 0;
   background: var(--bg-card);
-  padding: 16px;
+  padding: 8px;
 }
 
 .artist-meta h2 {
@@ -2211,7 +2064,7 @@ body {
 
 .button-group {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -2459,62 +2312,6 @@ body {
   flex: 1;
 }
 
-/* Keyboard Shortcuts Modal */
-.shortcuts-modal {
-  max-width: 500px;
-}
-
-.shortcuts-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.shortcut-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: #000;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.shortcut-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.shortcut-keys {
-  display: flex;
-  gap: 6px;
-}
-
-.shortcut-description {
-  flex: 1;
-  font-size: 13px;
-  color: #555;
-}
-
-kbd {
-  display: inline-block;
-  padding: 4px 8px;
-  font-family: 'Monaco', 'Courier', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  color: #000;
-  background: #f5f5f5;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  min-width: 24px;
-  text-align: center;
-}
-
 .lightbox {
   position: fixed;
   top: 0;
@@ -2659,7 +2456,7 @@ kbd {
 
   .artists-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 24px;
+    gap: 14px;
   }
 
   .works-grid {
@@ -2673,7 +2470,7 @@ kbd {
 
 @media (max-width: 640px) {
   .header-inner {
-    padding: 16px 12px;
+    padding: 12px;
   }
 
   .header h1 {
@@ -2704,10 +2501,6 @@ kbd {
     min-width: auto;
   }
 
-  .stats-pills {
-    justify-content: center;
-  }
-
   .works-header {
     flex-direction: column;
   }
@@ -2723,12 +2516,12 @@ kbd {
 
   .artists-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
+    gap: 12px;
   }
 
   .works-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 16px;
+    gap: 12px;
   }
 
   .detail-grid {
@@ -2746,37 +2539,6 @@ kbd {
   .nav-btn {
     min-height: 44px;
     min-width: 44px;
-  }
-
-  /* Swipe hint indicators */
-  .detail-grid::after,
-  .lightbox::after {
-    content: '← Swipe →';
-    position: fixed;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(88, 166, 255, 0.2);
-    color: var(--text-light);
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 11px;
-    pointer-events: none;
-    opacity: 0;
-    animation: swipeHint 3s ease-in-out;
-  }
-
-  @keyframes swipeHint {
-
-    0%,
-    100% {
-      opacity: 0;
-    }
-
-    10%,
-    90% {
-      opacity: 1;
-    }
   }
 
   /* Better touch feedback */
