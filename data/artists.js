@@ -9,7 +9,7 @@ export const DEFAULT_ARTISTS = [
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
-    mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963']
+    mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963','JUL-542','ACHJ-035','JUVR-155']
   },
   {
     name: 'Ai Sayama',
