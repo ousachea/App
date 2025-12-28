@@ -33,7 +33,8 @@
 
       <!-- Artists Grid with CSS Grid (no virtual scrolling needed for artists) -->
       <div class="artists-grid">
-        <div v-for="artist in filteredArtists" :key="artist.name" class="artist-item"
+        <div v-for="artist in filteredArtists" :key="artist.name"
+          :class="['artist-item', { 'highlighted': lastViewedArtist === artist.name }]"
           @click="selectArtist(artist.name)">
           <div class="artist-cover">
             <!-- Progressive Image Loading -->
@@ -97,7 +98,8 @@
 
         <!-- Works Grid with lazy loading -->
         <div class="works-grid">
-          <div v-for="work in filteredMainWorks" :key="work.code" class="work-item" @click="openWorkView(work)">
+          <div v-for="work in filteredMainWorks" :key="work.code"
+            :class="['work-item', { 'highlighted': lastViewedWork === work.code }]" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
                 <div class="spinner"></div>
@@ -130,7 +132,8 @@
 
         <!-- Compilations Grid with lazy loading -->
         <div class="works-grid">
-          <div v-for="work in filteredCompilations" :key="work.code" class="work-item" @click="openWorkView(work)">
+          <div v-for="work in filteredCompilations" :key="work.code"
+            :class="['work-item', { 'highlighted': lastViewedWork === work.code }]" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
                 <div class="spinner"></div>
@@ -474,7 +477,9 @@ export default {
       scrollPositions: {
         artists: 0,
         works: 0
-      }
+      },
+      lastViewedArtist: null,
+      lastViewedWork: null
     }
   },
   computed: {
@@ -759,6 +764,9 @@ export default {
       // Save current scroll position
       this.saveScrollPosition('artists')
 
+      // Track which artist was viewed
+      this.lastViewedArtist = name
+
       this.activeTab = name
       this.currentView = 'works'
       this.workSearchQuery = ''
@@ -907,6 +915,9 @@ export default {
     openWorkView(work) {
       // Save current works scroll position
       this.saveScrollPosition('works')
+
+      // Track which work was viewed
+      this.lastViewedWork = work.code
 
       const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
       this.currentWorkList = isMain ? (this.currentArtist.mainWorks || []) : (this.currentArtist.compilations || [])
@@ -1558,6 +1569,24 @@ export default {
   filter: brightness(1.05);
 }
 
+.artist-item.highlighted {
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3), 0 8px 24px rgba(251, 191, 36, 0.4);
+  animation: pulseHighlight 2s ease-in-out;
+}
+
+@keyframes pulseHighlight {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3), 0 8px 24px rgba(251, 191, 36, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.5), 0 8px 24px rgba(251, 191, 36, 0.6);
+  }
+}
+
 .artist-cover {
   position: relative;
   width: 100%;
@@ -1850,6 +1879,12 @@ export default {
 
 .work-item:hover .work-cover {
   filter: brightness(1.05);
+}
+
+.work-item.highlighted {
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3), 0 8px 24px rgba(251, 191, 36, 0.4);
+  animation: pulseHighlight 2s ease-in-out;
 }
 
 .work-cover {
