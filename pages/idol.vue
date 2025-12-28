@@ -470,7 +470,11 @@ export default {
       touchStartY: 0,
       touchEndX: 0,
       touchEndY: 0,
-      minSwipeDistance: 50
+      minSwipeDistance: 50,
+      scrollPositions: {
+        artists: 0,
+        works: 0
+      }
     }
   },
   computed: {
@@ -752,20 +756,38 @@ export default {
     },
 
     selectArtist(name) {
+      // Save current scroll position
+      this.saveScrollPosition('artists')
+
       this.activeTab = name
       this.currentView = 'works'
       this.workSearchQuery = ''
+
+      // Reset works scroll position
+      this.$nextTick(() => {
+        window.scrollTo(0, 0)
+      })
     },
 
     backToArtists() {
       this.currentView = 'artists'
       this.activeTab = ''
       this.searchQuery = ''
+
+      // Restore scroll position
+      this.$nextTick(() => {
+        this.restoreScrollPosition('artists')
+      })
     },
 
     backToWorks() {
       this.currentView = 'works'
       this.currentWork = null
+
+      // Restore scroll position
+      this.$nextTick(() => {
+        this.restoreScrollPosition('works')
+      })
     },
 
     handleSearch() {
@@ -883,14 +905,18 @@ export default {
     },
 
     openWorkView(work) {
+      // Save current works scroll position
+      this.saveScrollPosition('works')
+
       const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
       this.currentWorkList = isMain ? (this.currentArtist.mainWorks || []) : (this.currentArtist.compilations || [])
       this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
       this.currentWork = work
       this.currentView = 'detail'
 
-      // Preload adjacent works
+      // Preload adjacent works and scroll to top
       this.$nextTick(() => {
+        window.scrollTo(0, 0)
         this.preloadAdjacentWorks()
       })
     },
@@ -1296,6 +1322,25 @@ export default {
       }
 
       img.src = url
+    },
+
+    saveScrollPosition(view) {
+      if (process.client) {
+        this.scrollPositions[view] = window.scrollY || window.pageYOffset || 0
+      }
+    },
+
+    restoreScrollPosition(view) {
+      if (process.client) {
+        const scrollPos = this.scrollPositions[view] || 0
+        // Use requestAnimationFrame for smoother scrolling
+        requestAnimationFrame(() => {
+          window.scrollTo({
+            top: scrollPos,
+            behavior: 'instant' // Use 'instant' for immediate jump, 'smooth' for animated
+          })
+        })
+      }
     },
 
     async hardRefresh() {
