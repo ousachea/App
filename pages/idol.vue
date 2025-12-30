@@ -942,18 +942,19 @@ export default {
     dimImage(e) {
       e.target.style.opacity = '0.2'
     },
-
     openWorkView(work) {
       // Save current works scroll position
       this.saveScrollPosition('works')
 
-      // Track which work was viewed (add to array if not already there)
+      // Track which work was viewed
       if (!this.viewedWorks.includes(work.code)) {
         this.viewedWorks.push(work.code)
       }
 
-      const isMain = this.currentArtist?.mainWorks?.find(w => w.code === work.code)
-      this.currentWorkList = isMain ? (this.currentArtist.mainWorks || []) : (this.currentArtist.compilations || [])
+      // Use the SORTED arrays that match what's displayed
+      const isMain = this.sortedMainWorks.find(w => w.code === work.code)
+      this.currentWorkList = isMain ? this.sortedMainWorks : this.sortedCompilations
+
       this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
       this.currentWork = work
       this.currentView = 'detail'
