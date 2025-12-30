@@ -83,6 +83,14 @@
             <span class="count-detail" v-if="currentArtist.compilations?.length">{{ currentArtist.compilations.length }}
               compilations</span>
           </div>
+
+          <!-- Artist Navigation Row -->
+          <div class="artist-nav-row" v-if="currentArtistList.length > 1">
+            <button @click="navigateArtist(-1)" :disabled="!canNavigateArtist(-1)" class="nav-btn">‹</button>
+            <span class="nav-count">Artist {{ currentArtistIndex + 1 }} / {{ currentArtistList.length }}</span>
+            <button @click="navigateArtist(1)" :disabled="!canNavigateArtist(1)" class="nav-btn">›</button>
+          </div>
+
           <input v-model="workSearchQuery" type="text" placeholder="Search works..." class="search-input work-search"
             @input="handleWorkSearch" />
         </div>
@@ -449,6 +457,8 @@ export default {
       currentWork: null,
       currentWorkList: [],
       currentWorkIndex: 0,
+      currentArtistList: [], // ADD THIS
+      currentArtistIndex: 0,  // ADD THIS
       lightbox: { show: false, images: [], currentIndex: 0, code: '' },
       customImages: {},
       customImagesLoaded: false,
@@ -639,7 +649,31 @@ export default {
       this.setupKeyboardShortcuts()
       this.setupTouchListeners()
     },
+    navigateArtist(direction) {
+      const newIndex = this.currentArtistIndex + direction
+      if (newIndex >= 0 && newIndex < this.currentArtistList.length) {
+        this.currentArtistIndex = newIndex
+        const newArtist = this.currentArtistList[newIndex]
 
+        // Track viewed artist
+        if (!this.viewedArtists.includes(newArtist.name)) {
+          this.viewedArtists.push(newArtist.name)
+        }
+
+        this.activeTab = newArtist.name
+        this.workSearchQuery = ''
+
+        // Scroll to top
+        this.$nextTick(() => {
+          window.scrollTo(0, 0)
+        })
+      }
+    },
+
+    canNavigateArtist(direction) {
+      const newIndex = this.currentArtistIndex + direction
+      return newIndex >= 0 && newIndex < this.currentArtistList.length
+    },
     setupKeyboardShortcuts() {
       document.addEventListener('keydown', (e) => {
         // Focus search with "/"
@@ -683,9 +717,23 @@ export default {
             this.backToWorks()
           }
         }
+
         // Works view controls
-        else if (this.currentView === 'works' && e.key === 'Escape') {
-          this.backToArtists()
+        else if (this.currentView === 'works') {
+          // Arrow keys for artist navigation (when not in search)
+          if (!this.isInputFocused()) {
+            if (e.key === 'ArrowLeft' && this.canNavigateArtist(-1)) {
+              e.preventDefault()
+              this.navigateArtist(-1)
+            } else if (e.key === 'ArrowRight' && this.canNavigateArtist(1)) {
+              e.preventDefault()
+              this.navigateArtist(1)
+            }
+          }
+
+          if (e.key === 'Escape') {
+            this.backToArtists()
+          }
         }
 
         // Close modals with Escape
@@ -797,6 +845,10 @@ export default {
       if (!this.viewedArtists.includes(name)) {
         this.viewedArtists.push(name)
       }
+
+      // Set up artist navigation
+      this.currentArtistList = this.filteredArtists
+      this.currentArtistIndex = this.currentArtistList.findIndex(a => a.name === name)
 
       this.activeTab = name
       this.currentView = 'works'
