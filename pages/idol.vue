@@ -34,7 +34,7 @@
 
       <!-- Artists Grid with CSS Grid (no virtual scrolling needed for artists) -->
       <div class="artists-grid">
-        <div v-for="artist in filteredArtists" :key="artist.name"
+        <div v-for="(artist, index) in filteredArtists" :key="artist.name"
           :class="['artist-item', { 'highlighted': viewedArtists.includes(artist.name) }]"
           @click="selectArtist(artist.name)">
           <div class="artist-cover">
@@ -62,7 +62,7 @@
             </button>
           </div>
           <div class="artist-meta">
-            <h2>{{ artist.name }}</h2>
+            <h2><span class="index-number">{{ index + 1 }}.</span> {{ artist.name }}</h2>
             <p>{{ getArtistWorkCount(artist) }} works</p>
           </div>
           <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-btn">📷</button>
@@ -99,7 +99,7 @@
 
         <!-- Works Grid with lazy loading -->
         <div class="works-grid">
-          <div v-for="work in filteredMainWorks" :key="work.code"
+          <div v-for="(work, index) in filteredMainWorks" :key="work.code"
             :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
@@ -123,7 +123,7 @@
                 <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
               </div>
             </div>
-            <p>{{ work.code }}</p>
+            <p><span class="index-number">{{ index + 1 }}.</span> {{ work.code }}</p>
           </div>
         </div>
       </section>
@@ -133,7 +133,7 @@
 
         <!-- Compilations Grid with lazy loading -->
         <div class="works-grid">
-          <div v-for="work in filteredCompilations" :key="work.code"
+          <div v-for="(work, index) in filteredCompilations" :key="work.code"
             :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
             <div class="work-cover">
               <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
@@ -156,7 +156,7 @@
                 <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
               </div>
             </div>
-            <p>{{ work.code }}</p>
+            <p><span class="index-number">{{ index + 1 }}.</span> {{ work.code }}</p>
           </div>
         </div>
       </section>
@@ -1422,6 +1422,23 @@ export default {
 </script>
 
 <style scoped>
+.index-number {
+  color: var(--text-light);
+  font-weight: 400;
+  margin-right: 4px;
+  opacity: 0.6;
+}
+
+/* Slightly different styling for artists vs works */
+.artist-meta .index-number {
+  font-size: 13px;
+}
+
+.work-item p .index-number {
+  font-size: 11px;
+  font-family: inherit;
+}
+
 /* CSS Variables */
 :root {
   --bg: #ffffff;
