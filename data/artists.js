@@ -10,12 +10,13 @@ export const DEFAULT_ARTISTS = [
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963','JUL-542','ACHJ-035','JUVR-155']
-  },{
+  },
+  {
     name: 'Haruka Kasumi',
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
-    mainWorks: ['STAR-653','STAR-639']
+    mainWorks: ['STAR-653','STAR-639',]
   },
   {
     name: 'Washio Mei',
