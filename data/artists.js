@@ -10,6 +10,12 @@ export const DEFAULT_ARTISTS = [
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963','JUL-542','ACHJ-035','JUVR-155']
+  },{
+    name: 'Himari Himari',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['MIDV-964',]
   },
   {
     name: 'Haruka Kasumi',
