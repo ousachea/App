@@ -244,7 +244,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Mitsuki Momota', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['MIDA-026', 'MIDA-064', 'MIDA-102', 'MIDA-139', 'MIDA-190', 'MIDA-214', 'MIDA-258', 'MIDA-305', 'MIDA-346', 'MIDA-385', 'MIDA-424', 'MIDV-569', 'MIDV-574', 'MIDV-577', 'MIDV-637', 'MIDV-668', 'MIDV-698', 'MIDV-769', 'MIDV-804', 'MIDV-831', 'MIDV-869', 'MIDV-905', 'MIDV-985', 'MDVR-288', 'MDVR-317', 'MDVR-325', 'NAAC-032', 'OAE-253', 'REBD-854', 'FWAY-047']
+    compilations: [''], mainWorks: ['MIDA-460','MIDA-026', 'MIDA-064', 'MIDA-102', 'MIDA-139', 'MIDA-190', 'MIDA-214', 'MIDA-258', 'MIDA-305', 'MIDA-346', 'MIDA-385', 'MIDA-424', 'MIDV-569', 'MIDV-574', 'MIDV-577', 'MIDV-637', 'MIDV-668', 'MIDV-698', 'MIDV-769', 'MIDV-804', 'MIDV-831', 'MIDV-869', 'MIDV-905', 'MIDV-985', 'MDVR-288', 'MDVR-317', 'MDVR-325', 'NAAC-032', 'OAE-253', 'REBD-854', 'FWAY-047']
   },
   {
     name: 'Miu Shiramine', cover: '',
