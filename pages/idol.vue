@@ -23,6 +23,12 @@
       <div class="view-header">
         <h2>Artists</h2>
         <div class="header-right">
+          <select v-model="artistSortBy" class="sort-select" @change="handleArtistSortChange">
+            <option value="nameAsc">Name (A-Z)</option>
+            <option value="nameDesc">Name (Z-A)</option>
+            <option value="mostWorks">Most Works</option>
+            <option value="leastWorks">Least Works</option>
+          </select>
           <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Search artists..."
             class="search-input" @input="handleSearch" />
         </div>
@@ -32,23 +38,20 @@
         <p>No artists found for "{{ searchQuery }}"</p>
       </div>
 
-      <!-- Artists Grid with CSS Grid (no virtual scrolling needed for artists) -->
+      <!-- Artists Grid -->
       <div class="artists-grid">
         <div v-for="(artist, index) in filteredArtists" :key="artist.name"
           :class="['artist-item', { 'highlighted': viewedArtists.includes(artist.name) }]"
           @click="selectArtist(artist.name)">
           <div class="artist-cover">
-            <!-- Progressive Image Loading -->
             <div v-if="imageLoadingStates[artist.name] === 'loading'" class="image-loading">
               <div class="spinner"></div>
             </div>
 
-            <!-- Blur placeholder -->
             <img v-if="getProgressiveImage(artist).thumb && imageLoadingStates[artist.name] !== 'loaded'"
               :src="getProgressiveImage(artist).thumb" :alt="artist.name" class="image-blur"
               @load="onThumbLoad(artist.name)" />
 
-            <!-- Full image -->
             <img v-if="getProgressiveImage(artist).full" :src="getProgressiveImage(artist).full" :alt="artist.name"
               @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
               :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
@@ -91,8 +94,17 @@
             <button @click="navigateArtist(1)" :disabled="!canNavigateArtist(1)" class="nav-btn">›</button>
           </div>
 
-          <input v-model="workSearchQuery" type="text" placeholder="Search works..." class="search-input work-search"
-            @input="handleWorkSearch" />
+          <!-- Sort and Search Row -->
+          <div class="controls-row">
+            <select v-model="workSortBy" class="sort-select" @change="handleSortChange">
+              <option value="dateDesc">Date Added (Newest)</option>
+              <option value="dateAsc">Date Added (Oldest)</option>
+              <option value="codeAsc">Code (A-Z)</option>
+              <option value="codeDesc">Code (Z-A)</option>
+            </select>
+            <input v-model="workSearchQuery" type="text" placeholder="Search works..." class="search-input work-search"
+              @input="handleWorkSearch" />
+          </div>
         </div>
         <button @click="openAddWorkModal" class="primary-btn">+ Add</button>
       </div>
@@ -105,7 +117,6 @@
       <section v-if="filteredMainWorks.length" class="works-section">
         <h3>Main ({{ filteredMainWorks.length }})</h3>
 
-        <!-- Works Grid with lazy loading -->
         <div class="works-grid">
           <div v-for="(work, index) in filteredMainWorks" :key="work.code"
             :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
@@ -114,7 +125,6 @@
                 <div class="spinner"></div>
               </div>
 
-              <!-- Progressive loading for works -->
               <img v-if="getProgressiveWorkImage(work).thumb && imageLoadingStates[work.code] !== 'loaded'"
                 :src="getProgressiveWorkImage(work).thumb" :alt="work.code" class="image-blur" />
 
@@ -139,7 +149,6 @@
       <section v-if="filteredCompilations.length" class="works-section">
         <h3>Compilations ({{ filteredCompilations.length }})</h3>
 
-        <!-- Compilations Grid with lazy loading -->
         <div class="works-grid">
           <div v-for="(work, index) in filteredCompilations" :key="work.code"
             :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
@@ -174,7 +183,6 @@
     <main v-else-if="currentView === 'detail'" class="main detail">
       <button @click="backToWorks" class="back-btn">← Back</button>
 
-      <!-- Swipe hint for mobile -->
       <div v-if="currentWorkList.length > 1" class="swipe-hint">
         <span>← Swipe to navigate →</span>
       </div>
@@ -186,7 +194,6 @@
               <div class="spinner"></div>
             </div>
 
-            <!-- Progressive loading for detail view -->
             <img v-if="getProgressiveWorkImage(currentWork).thumb && imageLoadingStates[currentWork.code] !== 'loaded'"
               :src="getProgressiveWorkImage(currentWork).thumb" :alt="currentWork.code" class="image-blur" />
 
@@ -310,8 +317,6 @@
         </div>
       </div>
     </div>
-
-
 
     <!-- LIGHTBOX -->
     <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
@@ -457,8 +462,8 @@ export default {
       currentWork: null,
       currentWorkList: [],
       currentWorkIndex: 0,
-      currentArtistList: [], // ADD THIS
-      currentArtistIndex: 0,  // ADD THIS
+      currentArtistList: [],
+      currentArtistIndex: 0,
       lightbox: { show: false, images: [], currentIndex: 0, code: '' },
       customImages: {},
       customImagesLoaded: false,
@@ -476,6 +481,8 @@ export default {
       artistCustomUrl: '',
       searchQuery: '',
       workSearchQuery: '',
+      artistSortBy: 'nameAsc', // nameAsc, nameDesc, mostWorks, leastWorks
+      workSortBy: 'dateDesc', // dateDesc, dateAsc, codeAsc, codeDesc
       imageLoadingStates: {},
       galleryLoadingStates: {},
       isPreloading: false,
@@ -507,7 +514,19 @@ export default {
       return this.artists.find(a => a.name === this.activeTab)
     },
     sortedArtists() {
-      return [...this.artists].sort((a, b) => a.name.localeCompare(b.name))
+      const artists = [...this.artists]
+      switch (this.artistSortBy) {
+        case 'nameAsc':
+          return artists.sort((a, b) => a.name.localeCompare(b.name))
+        case 'nameDesc':
+          return artists.sort((a, b) => b.name.localeCompare(a.name))
+        case 'mostWorks':
+          return artists.sort((a, b) => this.getArtistWorkCount(b) - this.getArtistWorkCount(a))
+        case 'leastWorks':
+          return artists.sort((a, b) => this.getArtistWorkCount(a) - this.getArtistWorkCount(b))
+        default:
+          return artists.sort((a, b) => a.name.localeCompare(b.name))
+      }
     },
     filteredArtists() {
       if (!this.searchQuery.trim()) return this.sortedArtists
@@ -518,11 +537,11 @@ export default {
     },
     sortedMainWorks() {
       if (!this.currentArtist?.mainWorks) return []
-      return [...this.currentArtist.mainWorks].sort((a, b) => a.code.localeCompare(b.code))
+      return this.sortWorks([...this.currentArtist.mainWorks])
     },
     sortedCompilations() {
       if (!this.currentArtist?.compilations) return []
-      return [...this.currentArtist.compilations].sort((a, b) => a.code.localeCompare(b.code))
+      return this.sortWorks([...this.currentArtist.compilations])
     },
     filteredMainWorks() {
       if (!this.workSearchQuery.trim()) return this.sortedMainWorks
@@ -575,11 +594,37 @@ export default {
         if (process.client) localStorage.setItem('viewedWorks', JSON.stringify(v))
       },
       deep: true
+    },
+    workSortBy: {
+      handler(v) {
+        if (process.client) localStorage.setItem('workSortBy', v)
+      }
+    },
+    artistSortBy: {
+      handler(v) {
+        if (process.client) localStorage.setItem('artistSortBy', v)
+      }
     }
   },
   mounted() {
     if (process.client) {
       this.imageDB = new ImageDB()
+
+      // Load sort preference
+      try {
+        const savedSort = localStorage.getItem('workSortBy')
+        if (savedSort) this.workSortBy = savedSort
+      } catch (e) {
+        console.warn('Failed to load sort preference:', e)
+      }
+
+      try {
+        const savedArtistSort = localStorage.getItem('artistSortBy')
+        if (savedArtistSort) this.artistSortBy = savedArtistSort
+      } catch (e) {
+        console.warn('Failed to load artist sort preference:', e)
+      }
+
       try {
         const saved = localStorage.getItem('artistPhotos')
         if (saved) this.artistPhotos = JSON.parse(saved)
@@ -587,7 +632,6 @@ export default {
         console.warn('Failed to load artist photos:', e)
       }
 
-      // Load viewed artists and works
       try {
         const savedViewedArtists = localStorage.getItem('viewedArtists')
         if (savedViewedArtists) this.viewedArtists = JSON.parse(savedViewedArtists)
@@ -606,6 +650,43 @@ export default {
     }
   },
   methods: {
+    sortWorks(works) {
+      switch (this.workSortBy) {
+        case 'dateDesc':
+          return works.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
+        case 'dateAsc':
+          return works.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0))
+        case 'codeAsc':
+          return works.sort((a, b) => a.code.localeCompare(b.code))
+        case 'codeDesc':
+          return works.sort((a, b) => b.code.localeCompare(a.code))
+        default:
+          return works
+      }
+    },
+
+    handleSortChange() {
+      // Sort preference is saved automatically via watcher
+      // Just show a subtle confirmation
+      const sortNames = {
+        dateDesc: 'Date (Newest)',
+        dateAsc: 'Date (Oldest)',
+        codeAsc: 'Code (A-Z)',
+        codeDesc: 'Code (Z-A)'
+      }
+      this.showToast(`Sorted by ${sortNames[this.workSortBy]}`, 'info')
+    },
+
+    handleArtistSortChange() {
+      const sortNames = {
+        nameAsc: 'Name (A-Z)',
+        nameDesc: 'Name (Z-A)',
+        mostWorks: 'Most Works',
+        leastWorks: 'Least Works'
+      }
+      this.showToast(`Sorted by ${sortNames[this.artistSortBy]}`, 'info')
+    },
+
     async initializeApp() {
       try {
         const dbInitialized = await this.imageDB.init()
@@ -636,6 +717,8 @@ export default {
           const parsed = JSON.parse(saved)
           if (Array.isArray(parsed) && parsed.length > 0) {
             this.artists = normalizeArtists(parsed)
+            // Add timestamps to existing works that don't have them
+            this.migrateWorkTimestamps()
           }
         }
       } catch (e) {
@@ -649,13 +732,35 @@ export default {
       this.setupKeyboardShortcuts()
       this.setupTouchListeners()
     },
+
+    migrateWorkTimestamps() {
+      let needsSave = false
+      const now = Date.now()
+
+      this.artists.forEach(artist => {
+        ;['mainWorks', 'compilations'].forEach(type => {
+          if (artist[type]?.length) {
+            artist[type].forEach(work => {
+              if (!work.addedAt) {
+                work.addedAt = now
+                needsSave = true
+              }
+            })
+          }
+        })
+      })
+
+      if (needsSave) {
+        this.artists = [...this.artists]
+      }
+    },
+
     navigateArtist(direction) {
       const newIndex = this.currentArtistIndex + direction
       if (newIndex >= 0 && newIndex < this.currentArtistList.length) {
         this.currentArtistIndex = newIndex
         const newArtist = this.currentArtistList[newIndex]
 
-        // Track viewed artist
         if (!this.viewedArtists.includes(newArtist.name)) {
           this.viewedArtists.push(newArtist.name)
         }
@@ -663,7 +768,6 @@ export default {
         this.activeTab = newArtist.name
         this.workSearchQuery = ''
 
-        // Scroll to top
         this.$nextTick(() => {
           window.scrollTo(0, 0)
         })
@@ -674,9 +778,9 @@ export default {
       const newIndex = this.currentArtistIndex + direction
       return newIndex >= 0 && newIndex < this.currentArtistList.length
     },
+
     setupKeyboardShortcuts() {
       document.addEventListener('keydown', (e) => {
-        // Focus search with "/"
         if (e.key === '/' && !this.isInputFocused()) {
           e.preventDefault()
           if (this.$refs.searchInput) {
@@ -684,13 +788,11 @@ export default {
           }
         }
 
-        // Show shortcuts help with "?"
         if (e.key === '?' && !this.isInputFocused()) {
           e.preventDefault()
           this.showShortcutsHelp = true
         }
 
-        // Lightbox controls
         if (this.lightbox.show) {
           if (e.key === 'ArrowLeft') {
             e.preventDefault()
@@ -702,7 +804,6 @@ export default {
             this.closeLightbox()
           }
         }
-        // Detail view controls
         else if (this.currentView === 'detail') {
           if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) {
             e.preventDefault()
@@ -717,10 +818,7 @@ export default {
             this.backToWorks()
           }
         }
-
-        // Works view controls
         else if (this.currentView === 'works') {
-          // Arrow keys for artist navigation (when not in search)
           if (!this.isInputFocused()) {
             if (e.key === 'ArrowLeft' && this.canNavigateArtist(-1)) {
               e.preventDefault()
@@ -736,7 +834,6 @@ export default {
           }
         }
 
-        // Close modals with Escape
         if (e.key === 'Escape') {
           if (this.showShortcutsHelp) this.showShortcutsHelp = false
           if (this.showAddWorkModal) this.closeAddWorkModal()
@@ -784,12 +881,10 @@ export default {
       const absDeltaX = Math.abs(deltaX)
       const absDeltaY = Math.abs(deltaY)
 
-      // Only handle horizontal swipes (ignore vertical scrolls)
       if (absDeltaX < this.minSwipeDistance || absDeltaY > absDeltaX) {
         return
       }
 
-      // Lightbox navigation
       if (this.lightbox.show) {
         if (deltaX > 0) {
           this.prevImage()
@@ -797,7 +892,6 @@ export default {
           this.nextImage()
         }
       }
-      // Detail view navigation
       else if (this.currentView === 'detail') {
         if (deltaX > 0 && this.canNavigateWork(-1)) {
           this.navigateWork(-1)
@@ -838,15 +932,12 @@ export default {
     },
 
     selectArtist(name) {
-      // Save current scroll position
       this.saveScrollPosition('artists')
 
-      // Track which artist was viewed (add to array if not already there)
       if (!this.viewedArtists.includes(name)) {
         this.viewedArtists.push(name)
       }
 
-      // Set up artist navigation
       this.currentArtistList = this.filteredArtists
       this.currentArtistIndex = this.currentArtistList.findIndex(a => a.name === name)
 
@@ -854,7 +945,6 @@ export default {
       this.currentView = 'works'
       this.workSearchQuery = ''
 
-      // Reset works scroll position
       this.$nextTick(() => {
         window.scrollTo(0, 0)
       })
@@ -865,7 +955,6 @@ export default {
       this.activeTab = ''
       this.searchQuery = ''
 
-      // Restore scroll position
       this.$nextTick(() => {
         this.restoreScrollPosition('artists')
       })
@@ -875,22 +964,21 @@ export default {
       this.currentView = 'works'
       this.currentWork = null
 
-      // Restore scroll position
       this.$nextTick(() => {
         this.restoreScrollPosition('works')
       })
     },
 
     handleSearch() {
-      // Search is reactive via computed property
+      // Search is reactive
     },
 
     handleWorkSearch() {
-      // Search is reactive via computed property
+      // Search is reactive
     },
 
     onThumbLoad(key) {
-      // Thumbnail loaded, waiting for full image
+      // Thumbnail loaded
     },
 
     onImageLoad(key) {
@@ -952,9 +1040,7 @@ export default {
       this.showToast('Gallery loaded', 'success')
     },
 
-    // Progressive image loading methods
     getProgressiveImage(artist) {
-      // If custom photo exists, use it directly
       if (this.artistPhotos[artist.name]) {
         return { full: this.artistPhotos[artist.name], thumb: null }
       }
@@ -968,7 +1054,6 @@ export default {
     },
 
     getProgressiveWorkImage(work) {
-      // If custom image exists, use it directly
       if (this.customImages[work.code]) {
         return { full: this.customImages[work.code], thumb: null }
       }
@@ -994,16 +1079,14 @@ export default {
     dimImage(e) {
       e.target.style.opacity = '0.2'
     },
+
     openWorkView(work) {
-      // Save current works scroll position
       this.saveScrollPosition('works')
 
-      // Track which work was viewed
       if (!this.viewedWorks.includes(work.code)) {
         this.viewedWorks.push(work.code)
       }
 
-      // Use the SORTED arrays that match what's displayed
       const isMain = this.sortedMainWorks.find(w => w.code === work.code)
       this.currentWorkList = isMain ? this.sortedMainWorks : this.sortedCompilations
 
@@ -1011,7 +1094,6 @@ export default {
       this.currentWork = work
       this.currentView = 'detail'
 
-      // Preload adjacent works and scroll to top
       this.$nextTick(() => {
         window.scrollTo(0, 0)
         this.preloadAdjacentWorks()
@@ -1019,7 +1101,6 @@ export default {
     },
 
     preloadAdjacentWorks() {
-      // Preload previous work
       if (this.currentWorkIndex > 0) {
         const prevWork = this.currentWorkList[this.currentWorkIndex - 1]
         const prevImages = this.getProgressiveWorkImage(prevWork)
@@ -1029,7 +1110,6 @@ export default {
         }
       }
 
-      // Preload next work
       if (this.currentWorkIndex < this.currentWorkList.length - 1) {
         const nextWork = this.currentWorkList[this.currentWorkIndex + 1]
         const nextImages = this.getProgressiveWorkImage(nextWork)
@@ -1176,7 +1256,13 @@ export default {
       const artist = this.artists.find(a => a.name === this.newWork.artist)
       if (!artist) return this.showToast('Artist not found', 'error')
       if (!artist[this.newWork.type]) artist[this.newWork.type] = []
-      artist[this.newWork.type].push({ code })
+
+      // Add work with timestamp
+      artist[this.newWork.type].push({
+        code,
+        addedAt: Date.now()
+      })
+
       this.artists = [...this.artists]
       this.closeAddWorkModal()
       this.showToast(`Added ${code}`, 'success')
@@ -1309,6 +1395,7 @@ export default {
           this.customImages = data.customImages || {}
           this.artistPhotos = data.artistPhotos || {}
           localStorage.setItem('artists', JSON.stringify(this.artists))
+          this.migrateWorkTimestamps()
           this.showToast('Imported', 'success')
         }
         reader.readAsText(file)
@@ -1430,11 +1517,10 @@ export default {
     restoreScrollPosition(view) {
       if (process.client) {
         const scrollPos = this.scrollPositions[view] || 0
-        // Use requestAnimationFrame for smoother scrolling
         requestAnimationFrame(() => {
           window.scrollTo({
             top: scrollPos,
-            behavior: 'instant' // Use 'instant' for immediate jump, 'smooth' for animated
+            behavior: 'instant'
           })
         })
       }
@@ -1457,12 +1543,16 @@ export default {
         localStorage.removeItem('artistPhotos')
         localStorage.removeItem('viewedArtists')
         localStorage.removeItem('viewedWorks')
+        localStorage.removeItem('workSortBy')
+        localStorage.removeItem('artistSortBy')
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
         this.artistPhotos = {}
         this.viewedArtists = []
         this.viewedWorks = []
+        this.workSortBy = 'dateDesc'
+        this.artistSortBy = 'nameAsc'
         localStorage.setItem('artists', JSON.stringify(this.artists))
         this.showToast('Reset to default', 'success')
       } catch (e) {
@@ -1481,7 +1571,6 @@ export default {
   opacity: 0.6;
 }
 
-/* Slightly different styling for artists vs works */
 .artist-meta .index-number {
   font-size: 13px;
 }
@@ -1489,6 +1578,38 @@ export default {
 .work-item p .index-number {
   font-size: 11px;
   font-family: inherit;
+}
+
+/* Controls Row */
+.controls-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  align-items: center;
+}
+
+.sort-select {
+  padding: 8px 14px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+  min-width: 180px;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.sort-select:hover {
+  border-color: var(--accent);
 }
 
 /* CSS Variables */
@@ -1511,7 +1632,6 @@ export default {
   --gradient-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
 }
 
-/* Global Reset */
 *,
 *::before,
 *::after {
@@ -1520,7 +1640,6 @@ export default {
   box-sizing: border-box;
 }
 
-/* App Container - Ensures full height */
 .app-container {
   min-height: 100vh;
   display: flex;
@@ -1612,7 +1731,7 @@ export default {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .search-input {
@@ -1621,7 +1740,7 @@ export default {
   border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
-  min-width: 240px;
+  min-width: 200px;
   transition: all 0.2s;
   background: var(--bg-card);
   color: var(--text);
@@ -1634,9 +1753,8 @@ export default {
 }
 
 .work-search {
-  margin-top: 12px;
-  width: 100%;
-  max-width: 300px;
+  flex: 1;
+  min-width: 200px;
 }
 
 .no-results {
@@ -1650,7 +1768,6 @@ export default {
   margin: 0;
 }
 
-/* Artists Grid */
 .artists-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1658,7 +1775,6 @@ export default {
   padding: 4px;
 }
 
-/* Works Grid */
 .works-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1750,7 +1866,6 @@ export default {
   opacity: 0;
 }
 
-/* Progressive Image Loading Styles */
 .image-blur {
   position: absolute;
   top: 0;
@@ -1893,7 +2008,7 @@ export default {
 .works-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 48px;
   gap: 20px;
 }
@@ -1939,6 +2054,14 @@ export default {
 .count-detail {
   color: #777;
   font-weight: 400;
+}
+
+.artist-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .primary-btn {
@@ -2736,6 +2859,11 @@ export default {
     min-width: auto;
   }
 
+  .sort-select {
+    width: 100%;
+    min-width: auto;
+  }
+
   .works-header {
     flex-direction: column;
   }
@@ -2743,6 +2871,16 @@ export default {
   .work-stats {
     flex-direction: column;
     gap: 4px;
+  }
+
+  .controls-row {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .sort-select {
+    width: 100%;
+    min-width: auto;
   }
 
   .work-search {
@@ -2767,7 +2905,6 @@ export default {
     max-width: 100%;
   }
 
-  /* Touch-friendly tap targets */
   .icon-btn,
   .primary-btn,
   .secondary-btn,
@@ -2776,7 +2913,6 @@ export default {
     min-width: 44px;
   }
 
-  /* Better touch feedback */
   .artist-item:active,
   .work-item:active {
     transform: scale(0.98);
