@@ -94,14 +94,8 @@
             <button @click="navigateArtist(1)" :disabled="!canNavigateArtist(1)" class="nav-btn">›</button>
           </div>
 
-          <!-- Sort and Search Row -->
+          <!-- Search Row -->
           <div class="controls-row">
-            <select v-model="workSortBy" class="sort-select" @change="handleSortChange">
-              <option value="dateDesc">Date Added (Newest)</option>
-              <option value="dateAsc">Date Added (Oldest)</option>
-              <option value="codeAsc">Code (A-Z)</option>
-              <option value="codeDesc">Code (Z-A)</option>
-            </select>
             <input v-model="workSearchQuery" type="text" placeholder="Search works..." class="search-input work-search"
               @input="handleWorkSearch" />
           </div>
@@ -226,6 +220,8 @@
             <div class="button-group">
               <button @click="openExternalLink(currentWork.code, 'njav')" class="link-btn">NJAV</button>
               <button @click="openExternalLink(currentWork.code, 'missav')" class="link-btn">MissAV</button>
+              <button @click="openExternalLink(currentWork.code, '24av')" class="link-btn">24AV</button>
+              <button @click="openExternalLink(currentWork.code, '24av-uncensored')" class="link-btn">24AV UC</button>
               <button @click="openUploadModal(currentWork.code)" class="link-btn">{{ hasCustomImage(currentWork.code) ?
             'Update' : 'Add Image' }}</button>
             </div>
@@ -482,7 +478,6 @@ export default {
       searchQuery: '',
       workSearchQuery: '',
       artistSortBy: 'nameAsc', // nameAsc, nameDesc, mostWorks, leastWorks
-      workSortBy: 'dateDesc', // dateDesc, dateAsc, codeAsc, codeDesc
       imageLoadingStates: {},
       galleryLoadingStates: {},
       isPreloading: false,
@@ -535,25 +530,19 @@ export default {
         artist.name.toLowerCase().includes(query)
       )
     },
-    sortedMainWorks() {
-      if (!this.currentArtist?.mainWorks) return []
-      return this.sortWorks([...this.currentArtist.mainWorks])
-    },
-    sortedCompilations() {
-      if (!this.currentArtist?.compilations) return []
-      return this.sortWorks([...this.currentArtist.compilations])
-    },
     filteredMainWorks() {
-      if (!this.workSearchQuery.trim()) return this.sortedMainWorks
+      if (!this.currentArtist?.mainWorks) return []
+      if (!this.workSearchQuery.trim()) return this.currentArtist.mainWorks
       const query = this.workSearchQuery.toLowerCase()
-      return this.sortedMainWorks.filter(work =>
+      return this.currentArtist.mainWorks.filter(work =>
         work.code.toLowerCase().includes(query)
       )
     },
     filteredCompilations() {
-      if (!this.workSearchQuery.trim()) return this.sortedCompilations
+      if (!this.currentArtist?.compilations) return []
+      if (!this.workSearchQuery.trim()) return this.currentArtist.compilations
       const query = this.workSearchQuery.toLowerCase()
-      return this.sortedCompilations.filter(work =>
+      return this.currentArtist.compilations.filter(work =>
         work.code.toLowerCase().includes(query)
       )
     }
@@ -595,11 +584,6 @@ export default {
       },
       deep: true
     },
-    workSortBy: {
-      handler(v) {
-        if (process.client) localStorage.setItem('workSortBy', v)
-      }
-    },
     artistSortBy: {
       handler(v) {
         if (process.client) localStorage.setItem('artistSortBy', v)
@@ -609,14 +593,6 @@ export default {
   mounted() {
     if (process.client) {
       this.imageDB = new ImageDB()
-
-      // Load sort preference
-      try {
-        const savedSort = localStorage.getItem('workSortBy')
-        if (savedSort) this.workSortBy = savedSort
-      } catch (e) {
-        console.warn('Failed to load sort preference:', e)
-      }
 
       try {
         const savedArtistSort = localStorage.getItem('artistSortBy')
@@ -650,33 +626,6 @@ export default {
     }
   },
   methods: {
-    sortWorks(works) {
-      switch (this.workSortBy) {
-        case 'dateDesc':
-          return works.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
-        case 'dateAsc':
-          return works.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0))
-        case 'codeAsc':
-          return works.sort((a, b) => a.code.localeCompare(b.code))
-        case 'codeDesc':
-          return works.sort((a, b) => b.code.localeCompare(a.code))
-        default:
-          return works
-      }
-    },
-
-    handleSortChange() {
-      // Sort preference is saved automatically via watcher
-      // Just show a subtle confirmation
-      const sortNames = {
-        dateDesc: 'Date (Newest)',
-        dateAsc: 'Date (Oldest)',
-        codeAsc: 'Code (A-Z)',
-        codeDesc: 'Code (Z-A)'
-      }
-      this.showToast(`Sorted by ${sortNames[this.workSortBy]}`, 'info')
-    },
-
     handleArtistSortChange() {
       const sortNames = {
         nameAsc: 'Name (A-Z)',
@@ -1087,8 +1036,8 @@ export default {
         this.viewedWorks.push(work.code)
       }
 
-      const isMain = this.sortedMainWorks.find(w => w.code === work.code)
-      this.currentWorkList = isMain ? this.sortedMainWorks : this.sortedCompilations
+      const isMain = this.currentArtist.mainWorks.find(w => w.code === work.code)
+      this.currentWorkList = isMain ? this.filteredMainWorks : this.filteredCompilations
 
       this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
       this.currentWork = work
@@ -1295,9 +1244,18 @@ export default {
     openExternalLink(code, type = 'njav') {
       if (!code) return
       const formattedCode = code.toLowerCase().replace(/-/g, '-')
-      const url = type === 'missav'
-        ? `https://missav.ws/en/${formattedCode}`
-        : `https://www.njav.com/en/xvideos/${formattedCode}`
+      let url
+
+      if (type === 'missav') {
+        url = `https://missav.ws/en/${formattedCode}`
+      } else if (type === '24av') {
+        url = `https://24av.net/en/v/${formattedCode}`
+      } else if (type === '24av-uncensored') {
+        url = `https://24av.net/en/v/${formattedCode}-uncensored-leaked`
+      } else {
+        url = `https://www.njav.com/en/xvideos/${formattedCode}`
+      }
+
       window.open(url, '_blank', 'noopener,noreferrer')
     },
 
@@ -1543,7 +1501,6 @@ export default {
         localStorage.removeItem('artistPhotos')
         localStorage.removeItem('viewedArtists')
         localStorage.removeItem('viewedWorks')
-        localStorage.removeItem('workSortBy')
         localStorage.removeItem('artistSortBy')
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
@@ -1551,7 +1508,6 @@ export default {
         this.artistPhotos = {}
         this.viewedArtists = []
         this.viewedWorks = []
-        this.workSortBy = 'dateDesc'
         this.artistSortBy = 'nameAsc'
         localStorage.setItem('artists', JSON.stringify(this.artists))
         this.showToast('Reset to default', 'success')
@@ -2921,7 +2877,6 @@ export default {
   .primary-btn:active,
   .secondary-btn:active,
   .icon-btn:active {
-    transform: scale(0.95);
-  }
+    transform: scale(0.95);}
 }
 </style>
