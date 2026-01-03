@@ -232,6 +232,11 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['CLUB-881']
   },
   {
+    name: 'Hibiki Amemiya', cover: '',
+    url: 'EBWH-111',  // Custom cover
+    compilations: [''], mainWorks: ['HZGD-327','PRTD-034','WAAA-550','PPPE-353','EBWH-111']
+  },
+  {
     name: 'Minato Haru', cover: 'SONE-865',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['FC2PPV-3087371', 'FC2PPV-3104502', 'FC2PPV-4203485', 'FWAY-002', 'FWAY-060', 'JDKR-032', 'MIRD-259', 'OFES-013', 'SNOS-001', 'SONE-021', 'SONE-063', 'SONE-155', 'SONE-188', 'SONE-503', 'SONE-508', 'SONE-776', 'SONE-865', 'SONE-914', 'SONE-978', 'SSIS-889', 'SSIS-890', 'SSIS-945', 'SSIS-978', 'TZ-124']
