@@ -2925,4 +2925,188 @@ export default {
     transform: scale(0.95);
   }
 }
+
+/* Improved Input Styles */
+.search-input {
+  padding: 10px 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  min-width: 200px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bg-card);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.search-input::placeholder {
+  color: var(--text-light);
+  opacity: 0.6;
+}
+
+.search-input:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.15), 0 2px 12px rgba(88, 166, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.work-search {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Improved Sort Select */
+.sort-select {
+  padding: 10px 16px;
+  padding-right: 36px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bg-card);
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+  min-width: 180px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sort-select:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.15), 0 2px 12px rgba(88, 166, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.sort-select option {
+  padding: 10px;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+/* Improved Modal Input */
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg-card);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.input::placeholder {
+  color: var(--text-light);
+  opacity: 0.6;
+}
+
+.input:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.15), 0 2px 12px rgba(88, 166, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Improved Radio Group */
+.radio-group {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--bg-alt);
+  border-radius: 10px;
+  border: 2px solid var(--border);
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.radio-group label:hover {
+  background: var(--bg-card);
+}
+
+.radio-group input[type="radio"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+/* Enhanced File Input (hidden but styled when visible) */
+input[type="file"] {
+  padding: 12px 16px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg-alt);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+input[type="file"]:hover {
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+
+/* Input Focus Glow Animation */
+@keyframes inputGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.25);
+  }
+}
+
+.input:focus,
+.search-input:focus,
+.sort-select:focus {
+  animation: inputGlow 2s ease-in-out infinite;
+}
 </style>
