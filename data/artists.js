@@ -23,7 +23,7 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['MIDV-964',]
   },
   {
-    name: 'Haruka Kasumi',
+    name: 'Kiyomiya Nina',
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
