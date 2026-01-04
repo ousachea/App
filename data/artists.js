@@ -16,13 +16,18 @@ export const DEFAULT_ARTISTS = [
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['MIDV-964',]
+  },{name: 'Kiyomiya Nina',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['MIDV-964',]
   },
   {
     name: 'Haruka Kasumi',
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
-    mainWorks: ['STAR-653','STAR-639',]
+    mainWorks: ['EBWH-281','EBWH-248','EBWH-183','EBWH-183','EBWH-144','EBWH-165','EBWH-104']
   },
   {
     name: 'Washio Mei',
