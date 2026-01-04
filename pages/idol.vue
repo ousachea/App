@@ -38,37 +38,40 @@
         <p>No artists found for "{{ searchQuery }}"</p>
       </div>
 
-      <!-- Artists Grid -->
-      <div class="artists-grid">
-        <div v-for="(artist, index) in filteredArtists" :key="artist.name"
-          :class="['artist-item', { 'highlighted': viewedArtists.includes(artist.name) }]"
-          @click="selectArtist(artist.name)">
-          <div class="artist-cover">
-            <div v-if="imageLoadingStates[artist.name] === 'loading'" class="image-loading">
-              <div class="spinner"></div>
+      <!-- Artists Grid with Alphabetical Grouping -->
+      <div v-for="group in groupedArtists" :key="group.letter" class="artist-group">
+        <div class="group-letter">{{ group.letter }}</div>
+        <div class="artists-grid">
+          <div v-for="(artist, index) in group.artists" :key="artist.name"
+            :class="['artist-item', { 'highlighted': viewedArtists.includes(artist.name) }]"
+            @click="selectArtist(artist.name)">
+            <div class="artist-cover">
+              <div v-if="imageLoadingStates[artist.name] === 'loading'" class="image-loading">
+                <div class="spinner"></div>
+              </div>
+
+              <img v-if="getProgressiveImage(artist).thumb && imageLoadingStates[artist.name] !== 'loaded'"
+                :src="getProgressiveImage(artist).thumb" :alt="artist.name" class="image-blur"
+                @load="onThumbLoad(artist.name)" />
+
+              <img v-if="getProgressiveImage(artist).full" :src="getProgressiveImage(artist).full" :alt="artist.name"
+                @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
+                :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
+
+              <div v-if="!getProgressiveImage(artist).full && !getProgressiveImage(artist).thumb" class="placeholder">—
+              </div>
+
+              <button v-if="imageLoadingStates[artist.name] === 'error'" @click.stop="retryImage(artist.name, 'artist')"
+                class="retry-btn">
+                ⟳ Retry
+              </button>
             </div>
-
-            <img v-if="getProgressiveImage(artist).thumb && imageLoadingStates[artist.name] !== 'loaded'"
-              :src="getProgressiveImage(artist).thumb" :alt="artist.name" class="image-blur"
-              @load="onThumbLoad(artist.name)" />
-
-            <img v-if="getProgressiveImage(artist).full" :src="getProgressiveImage(artist).full" :alt="artist.name"
-              @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
-              :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
-
-            <div v-if="!getProgressiveImage(artist).full && !getProgressiveImage(artist).thumb" class="placeholder">—
+            <div class="artist-meta">
+              <h2><span class="index-number">{{ index + 1 }}.</span> {{ artist.name }}</h2>
+              <p>{{ getArtistWorkCount(artist) }} works</p>
             </div>
-
-            <button v-if="imageLoadingStates[artist.name] === 'error'" @click.stop="retryImage(artist.name, 'artist')"
-              class="retry-btn">
-              ⟳ Retry
-            </button>
+            <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-btn">📷</button>
           </div>
-          <div class="artist-meta">
-            <h2><span class="index-number">{{ index + 1 }}.</span> {{ artist.name }}</h2>
-            <p>{{ getArtistWorkCount(artist) }} works</p>
-          </div>
-          <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-btn">📷</button>
         </div>
       </div>
     </main>
@@ -529,6 +532,24 @@ export default {
       return this.sortedArtists.filter(artist =>
         artist.name.toLowerCase().includes(query)
       )
+    },
+    groupedArtists() {
+      const groups = {}
+
+      this.filteredArtists.forEach(artist => {
+        const firstLetter = artist.name.charAt(0).toUpperCase()
+        if (!groups[firstLetter]) {
+          groups[firstLetter] = []
+        }
+        groups[firstLetter].push(artist)
+      })
+
+      return Object.keys(groups)
+        .sort()
+        .map(letter => ({
+          letter,
+          artists: groups[letter]
+        }))
     },
     filteredMainWorks() {
       if (!this.currentArtist?.mainWorks) return []
@@ -1536,6 +1557,22 @@ export default {
   font-family: inherit;
 }
 
+/* Artist Group Styles */
+.artist-group {
+  margin-bottom: 48px;
+}
+
+.group-letter {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid var(--accent);
+  letter-spacing: -0.5px;
+  opacity: 0.9;
+}
+
 /* Controls Row */
 .controls-row {
   display: flex;
@@ -2511,6 +2548,14 @@ export default {
   height: 100%;
   object-fit: contain;
   background: #000;
+  transition: opacity 0.3s
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
   transition: opacity 0.3s;
 }
 
@@ -2877,6 +2922,7 @@ export default {
   .primary-btn:active,
   .secondary-btn:active,
   .icon-btn:active {
-    transform: scale(0.95);}
+    transform: scale(0.95);
+  }
 }
 </style>

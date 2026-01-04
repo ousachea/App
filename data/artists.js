@@ -16,11 +16,6 @@ export const DEFAULT_ARTISTS = [
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['MIDV-964',]
-  },{name: 'Kiyomiya Nina',
-    cover: '',
-    url: '',  // Custom cover
-    compilations: [''],
-    mainWorks: ['MIDV-964',]
   },
   {
     name: 'Kiyomiya Nina',
@@ -96,7 +91,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Anna Morikawa', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['PRED-018']
+    compilations: [''], mainWorks: ['PRED-018','200GANA-1680']
   },
   {
     name: 'Rara Anzai | Rion | Shion Utsunomiya', cover: 'SSNI-727',
@@ -123,7 +118,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Collection', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['LUXU-1631','LUXU-1814','LUXU-1478','LUXU-1041','259LUXU-1511', 'LUXU-1621','LUXU-950','LUXU-1561','259LUXU-1518', '259LUXU-1571', '259LUXU-1610', '259LUXU-1618', '259LUXU-1621', '259LUXU-1631', '259LUXU-688', '259LUXU-743', 'ADN-630', 'ARA-412', 'CLUB-855', 'DDHP-044', 'FC2-PPV-2864495', 'GANA-2858', 'JUFE-028', 'JUL-872', 'KTB-018', 'MIUM-681', 'MIUM-742', 'MIUM-811', 'NTK-391', 'ORECS-132', 'SSNI-362', 'SUKE-043', 'SUKE-053', 'TOUKA-01',]
+    compilations: [''], mainWorks: ['LUXU-1631','300MAAN-546','300MIUM-527','LUXU-1814','LUXU-1478','LUXU-1041','259LUXU-1511', 'LUXU-1621','LUXU-950','LUXU-1561','259LUXU-1518', '259LUXU-1571', '259LUXU-1610', '259LUXU-1618', '259LUXU-1621', '259LUXU-1631', '259LUXU-688', '259LUXU-743', 'ADN-630', 'ARA-412', 'CLUB-855', 'DDHP-044', 'FC2-PPV-2864495', 'GANA-2858', 'JUFE-028', 'JUL-872', 'KTB-018', 'MIUM-681', 'MIUM-742', 'MIUM-811', 'NTK-391', 'ORECS-132', 'SSNI-362', 'SUKE-043', 'SUKE-053', 'TOUKA-01',]
   },
   {
     name: 'Ema Yuina', cover: '',
@@ -249,7 +244,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Mio Kimijima', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['HND-511', 'HND-547', 'IQQQ-024', 'IPX-083', 'JUY-543', 'JUY-606', 'MIAE-226', 'NIMA-007', 'NITR-388', 'PPPD-686', 'URPW-039']
+    compilations: [''], mainWorks: ['200GANA-1996','200GANA-1707','HND-511', 'HND-547', 'IQQQ-024', 'IPX-083', 'JUY-543', 'JUY-606', 'MIAE-226', 'NIMA-007', 'NITR-388', 'PPPD-686', 'URPW-039']
   },
   {
     name: 'Mitsuki Momota', cover: '',
