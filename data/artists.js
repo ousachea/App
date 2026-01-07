@@ -221,9 +221,10 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231','START-136']
   },
   {
-    name: 'Koume Ena', cover: '',
+    name: 'Ena Koume', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['CLUB-893', 'JUFE-131', 'KAM-196', 'MADV-609', 'MIMK-137']
+    compilations: ['MKCK-398'], 
+    mainWorks: ['CLUB-893', 'JUFE-131', 'KAM-196', 'MADV-609', 'MIMK-137','NACT-066']
   },
   { name: 'Kokona Asakura (朝倉ここな)', mainWorks: ['CEMD-113', 'MEYD-696', 'BKYN-005', 'HMN-051', '230ORECO-734'] },
   {
