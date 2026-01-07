@@ -5,25 +5,55 @@
 
 export const DEFAULT_ARTISTS = [
   {
+    name: '---',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['---',]
+  },
+  {
+    name: 'Takarada Monami',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: ['MDBK-244'],
+    mainWorks: ['GVH-684','UZU-026','FPRE-149','NACR-882','FPRE-125','FPRE-115','SMOK-004','JYMA-053','WAWA-022','AEGE-022','GMJK-008','MVSD-499']
+  },
+  {
+    name: 'Shino Mayu',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['SONE-807','OFJE-697','EBWH-276','SONE-964','SONE-894','SONE-634','SONE-494','FWAY-040']
+  },
+  {
+    name: 'Kiyomiya Nina',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: ['MKCK-398','MKCK-388'],
+    mainWorks: ['EBWH-281','EBWH-265','EBWH-261','EBWH-248','REBDB-950','EBWH-243','EBWH-230','EBWH-226','EBWH-226','EBWH-219','EBWH-205','MIDA-190','EBWH-200','EBWH-192','EBWH-183','MKCK-377','EBWH-165','EBWH-155','EBWH-144','EBVR-102','EBWH-135','EBWH-123','FWAY-028','EBWH-119','EBWH-104','EBWH-087','EBWH-071']
+  },
+  {
+    name: 'Konomi Nagisa',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['ABW-182','ABW-126','ABW-086','ABW-075','CHN-196','ABW-042']
+  },
+  {
     name: 'Ai Kano',
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963','JUL-542','ACHJ-035','JUVR-155']
-  },{
+  },
+  {
     name: 'Himari Himari',
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['MIDV-964',]
   },
-  {
-    name: 'Kiyomiya Nina',
-    cover: '',
-    url: '',  // Custom cover
-    compilations: [''],
-    mainWorks: ['EBWH-281','EBWH-248','EBWH-183','EBWH-183','EBWH-144','EBWH-165','EBWH-104']
-  },
+ 
   {
     name: 'Washio Mei',
     cover: '',
