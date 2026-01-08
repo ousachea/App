@@ -400,7 +400,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Yui Hatano', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['JJDA-058', 'NGOD-304', 'MIAB-154', 'MRSS-153', 'GVH-689', 'MIAB-370','mfyd-075']
+    compilations: [''], mainWorks: ['JJDA-058', 'NGOD-304', 'MIAB-154', 'MRSS-153', 'GVH-689', 'MIAB-370','mfyd-075','CJOD-484','NGOD-292','GVH-782','MIAB-541','CEMD-695','NGOD-253','LULU-362','BDA-205','MRSS-153']
   },
   {
     name: 'Yuri Oshikawa', cover: '',
