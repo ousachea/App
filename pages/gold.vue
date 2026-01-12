@@ -26,8 +26,8 @@
           <span class="shortcut-hint">⌘N Add</span>
           <span class="shortcut-hint">⌘E Export</span>
         </div>
-        <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading || isRefreshDisabled"
-          class="title-refresh-btn">
+        <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-refresh-btn"
+          title="Refresh price from API">
           <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
         </button>
       </div>
@@ -49,6 +49,10 @@
                 <div class="price-display-section">
                   <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
                   <div class="price-label">per troy ounce</div>
+                  <div class="price-breakdown">
+                    <span class="breakdown-item">{{ formatCurrencyDisplay(currentPrice * DAMLUNG_TO_OZ) }} per
+                      Damlung</span>
+                  </div>
                   <div class="price-meta">{{ lastUpdated }}</div>
                 </div>
 
@@ -100,9 +104,15 @@
                   <div v-if="isApiPrice" class="api-active">
                     <div class="api-status">
                       <span class="status-dot"></span>
-                      API Active • {{ apiQuota.dailyCalls }} / {{ apiQuota.dailyLimit }} calls used
+                      API Active • Last updated {{ lastUpdated }}
                     </div>
-                    <button @click="removeApiKey" class="btn-small">Disable API</button>
+                    <div class="api-actions">
+                      <button @click="handleRefresh" :disabled="loading" class="btn-small">
+                        <span v-if="loading">Fetching...</span>
+                        <span v-else>Refresh Price</span>
+                      </button>
+                      <button @click="removeApiKey" class="btn-small">Disable API</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -388,7 +398,7 @@
                 <div class="card-content settings-content">
                   <div class="setting-item">
                     <span class="setting-label">Version</span>
-                    <span class="setting-value">4.1.0</span>
+                    <span class="setting-value">4.2.0</span>
                   </div>
                   <div class="setting-item">
                     <span class="setting-label">Price Source</span>
@@ -447,12 +457,6 @@ export default {
       apiBaseUrl: 'https://www.goldapi.io/api',
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
-      apiQuota: {
-        dailyCalls: 0,
-        lastCallDate: null,
-        dailyLimit: 10
-      },
-
       // Calculator
       calculatorAmount: 1,
       calculatorUnit: 'chi',
@@ -489,10 +493,6 @@ export default {
   computed: {
     currentPrice() {
       return this.goldPrice > 0 ? this.goldPrice : 0;
-    },
-
-    isRefreshDisabled() {
-      return this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit;
     },
 
     memoizedChiPrice() {
@@ -854,7 +854,7 @@ export default {
     },
 
     async handleRefresh() {
-      if (!this.apiKey || this.isRefreshDisabled) return;
+      if (!this.apiKey) return;
       await this.fetchMetalPrice(true);
     },
 
@@ -886,26 +886,12 @@ export default {
       const cached = this.cache.gold;
       const cacheAge = cached.timestamp ? (now - new Date(cached.timestamp)) / (1000 * 60 * 60) : 999;
 
-      if (cached.data && cacheAge < 24) {
+      // Use cached price if available and less than 24 hours old
+      if (cached.data && cacheAge < 24 && !userRequested) {
         this.goldPrice = cached.data.price;
         this.isApiPrice = true;
         this.lastUpdated = cacheAge > 1 ? `${Math.floor(cacheAge)}h ago` : 'just now';
         this.savePrice();
-        return;
-      }
-
-      const today = new Date().toDateString();
-      if (this.apiQuota.lastCallDate !== today) {
-        this.apiQuota.dailyCalls = 0;
-        this.apiQuota.lastCallDate = today;
-      }
-
-      if (this.apiQuota.dailyCalls >= this.apiQuota.dailyLimit) {
-        if (cached.data) {
-          this.showToast('Daily limit reached, using cached price', 'info');
-        } else {
-          this.showToast('Daily limit reached, use custom price', 'error');
-        }
         return;
       }
 
@@ -931,7 +917,6 @@ export default {
           if (data && typeof data.price === 'number') {
             this.goldPrice = data.price;
             this.isApiPrice = true;
-            this.apiQuota.dailyCalls++;
             this.cache.gold = { data, timestamp: now.toISOString() };
             this.lastUpdated = 'just now';
             this.savePrice();
@@ -964,7 +949,6 @@ export default {
 
       if (isCmd && event.key === 'n') {
         event.preventDefault();
-        // Focus on first input in Add Purchase section
         this.$nextTick(() => {
           const input = document.querySelector('.purchase-section .input');
           if (input) input.focus();
@@ -1329,6 +1313,20 @@ body {
   letter-spacing: 0.5px;
 }
 
+.price-breakdown {
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.breakdown-item {
+  display: block;
+  font-weight: 600;
+}
+
 .price-meta {
   font-size: 12px;
   color: #ccc;
@@ -1440,6 +1438,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .api-status {
@@ -1447,6 +1447,12 @@ body {
   color: #059669;
   display: flex;
   align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.api-actions {
+  display: flex;
   gap: 6px;
 }
 
@@ -2285,6 +2291,12 @@ body {
     font-size: 12px;
   }
 
+  .price-breakdown {
+    font-size: 12px;
+    margin: 6px 0;
+    padding: 6px;
+  }
+
   .price-meta {
     font-size: 11px;
     margin-top: 4px;
@@ -2346,6 +2358,18 @@ body {
   .api-active {
     padding: 10px;
     gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .api-actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+
+  .api-actions .btn-small {
+    flex: 1;
   }
 
   /* Portfolio Card */
@@ -2749,6 +2773,12 @@ body {
 
   .price-label {
     font-size: 10px;
+  }
+
+  .price-breakdown {
+    font-size: 11px;
+    margin: 4px 0;
+    padding: 4px;
   }
 
   .price-meta {
