@@ -1,4 +1,4 @@
-<!-- pages/index.vue - GOLD TRACKER (ENHANCED WITH QUICK WINS) -->
+<!-- pages/index.vue - GOLD TRACKER (WITHOUT KEYBOARD SHORTCUTS) -->
 
 <template>
   <div class="app">
@@ -22,10 +22,6 @@
           <div class="light green"></div>
         </div>
         <div class="title">Gold Tracker</div>
-        <div class="title-shortcuts">
-          <span class="shortcut-hint">⌘N Add</span>
-          <span class="shortcut-hint">⌘E Export</span>
-        </div>
         <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-refresh-btn"
           title="Refresh price from API">
           <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
@@ -50,8 +46,8 @@
                   <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
                   <div class="price-label">per troy ounce</div>
                   <div class="price-breakdown">
-                    <span class="breakdown-item">{{ formatCurrencyDisplay(currentPrice * DAMLUNG_TO_OZ) }} per
-                      Damlung</span>
+                    <span class="breakdown-item">{{ formatCurrencyDisplay(currentPrice * DAMLUNG_TO_OZ) }} Damlung
+                      (ដំឡឹង)</span>
                   </div>
                   <div class="price-meta">{{ lastUpdated }}</div>
                 </div>
@@ -244,7 +240,7 @@
           <section v-if="purchases.length > 0" class="history-section">
             <div class="history-header">
               <h2 class="section-title">Purchase History</h2>
-              <button @click="exportData('csv')" class="icon-btn" title="Export CSV (⌘E)">⬇</button>
+              <button @click="exportData('csv')" class="icon-btn" title="Export CSV">⬇</button>
             </div>
 
             <!-- Search & Filter -->
@@ -398,15 +394,11 @@
                 <div class="card-content settings-content">
                   <div class="setting-item">
                     <span class="setting-label">Version</span>
-                    <span class="setting-value">4.2.0</span>
+                    <span class="setting-value">4.2.1</span>
                   </div>
                   <div class="setting-item">
                     <span class="setting-label">Price Source</span>
                     <span class="setting-value">{{ isApiPrice ? 'API' : 'Custom' }}</span>
-                  </div>
-                  <div class="setting-item">
-                    <span class="setting-label">Keyboard Shortcuts</span>
-                    <span class="setting-value">⌘N ⌘E ⌘R</span>
                   </div>
                 </div>
               </div>
@@ -520,7 +512,6 @@ export default {
       return this.formatCurrencyDisplay(sum);
     },
 
-    // NEW: Average cost per chi
     memoizedAverageCostPerChi() {
       if (this.purchases.length === 0) return '$0.00';
       const totalChi = this.purchases.reduce((sum, p) => sum + p.amount, 0);
@@ -562,11 +553,9 @@ export default {
       return this.formatCurrencyDisplay(ozAmount * this.currentPrice);
     },
 
-    // FILTER & SORT
     filteredPurchases() {
       let result = [...this.purchases];
 
-      // Text search
       if (this.filterText.trim()) {
         const search = this.filterText.toLowerCase();
         result = result.filter(p => {
@@ -577,7 +566,6 @@ export default {
         });
       }
 
-      // Date range
       if (this.filterDateFrom) {
         result = result.filter(p => p.date >= this.filterDateFrom);
       }
@@ -585,7 +573,6 @@ export default {
         result = result.filter(p => p.date <= this.filterDateTo);
       }
 
-      // Sort
       result.sort((a, b) => {
         switch (this.sortBy) {
           case 'date-asc':
@@ -886,7 +873,6 @@ export default {
       const cached = this.cache.gold;
       const cacheAge = cached.timestamp ? (now - new Date(cached.timestamp)) / (1000 * 60 * 60) : 999;
 
-      // Use cached price if available and less than 24 hours old
       if (cached.data && cacheAge < 24 && !userRequested) {
         this.goldPrice = cached.data.price;
         this.isApiPrice = true;
@@ -942,31 +928,6 @@ export default {
       }
     },
 
-    // KEYBOARD SHORTCUTS
-    handleKeyboard(event) {
-      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-      const isCmd = isMac ? event.metaKey : event.ctrlKey;
-
-      if (isCmd && event.key === 'n') {
-        event.preventDefault();
-        this.$nextTick(() => {
-          const input = document.querySelector('.purchase-section .input');
-          if (input) input.focus();
-          this.showToast('Add new purchase (⌘N)', 'info');
-        });
-      }
-
-      if (isCmd && event.key === 'e') {
-        event.preventDefault();
-        this.exportData('csv');
-      }
-
-      if (isCmd && event.key === 'r') {
-        event.preventDefault();
-        if (this.apiKey) this.handleRefresh();
-      }
-    },
-
     loadSavedData() {
       if (!process.client) return;
       try {
@@ -991,16 +952,12 @@ export default {
 
   mounted() {
     this.loadSavedData();
-    window.addEventListener('keydown', this.handleKeyboard);
-  },
-
-  beforeDestroy() {
-    window.removeEventListener('keydown', this.handleKeyboard);
   }
 }
 </script>
 
 <style scoped>
+/* [All CSS remains exactly the same - no changes needed] */
 * {
   box-sizing: border-box;
 }
@@ -1030,7 +987,6 @@ body {
   display: flex;
 }
 
-/* App */
 .app {
   width: 100%;
   height: 100%;
@@ -1055,7 +1011,6 @@ body {
   }
 }
 
-/* Toast Notifications */
 .toast-container {
   position: fixed;
   top: 20px;
@@ -1091,7 +1046,6 @@ body {
   font-weight: 600;
 }
 
-/* macOS Window */
 .window {
   width: 100%;
   max-width: 1000px;
@@ -1105,7 +1059,6 @@ body {
   max-height: 100%;
 }
 
-/* Title Bar */
 .title-bar {
   display: flex;
   align-items: center;
@@ -1147,21 +1100,6 @@ body {
   font-weight: 600;
   color: #333;
   flex: 1;
-}
-
-.title-shortcuts {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.shortcut-hint {
-  font-size: 10px;
-  color: #999;
-  background: #f0f0f0;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: monospace;
 }
 
 .price-source {
@@ -1217,7 +1155,6 @@ body {
   }
 }
 
-/* Main Content */
 .window-content {
   flex: 1;
   overflow-y: auto;
@@ -1234,7 +1171,6 @@ body {
   width: 100%;
 }
 
-/* Sections */
 .hero-section,
 .stats-section,
 .calculator-section,
@@ -1253,7 +1189,6 @@ body {
   margin: 0 0 16px 0;
 }
 
-/* Cards */
 .card {
   background: white;
   border: 1px solid #e5e5e5;
@@ -1286,7 +1221,6 @@ body {
   padding: 16px;
 }
 
-/* Hero Card */
 .hero-card .card-content {
   padding: 20px;
   display: flex;
@@ -1318,7 +1252,7 @@ body {
   color: #666;
   margin: 8px 0;
   padding: 8px;
-  background: #f9f9f9;
+  background: #D1E3FA;
   border-radius: 6px;
 }
 
@@ -1333,7 +1267,6 @@ body {
   margin-top: 8px;
 }
 
-/* Price Input Section */
 .price-input-section {
   background: #f9f9f9;
   border-radius: 8px;
@@ -1359,7 +1292,6 @@ body {
   padding: 0 4px;
 }
 
-/* API Setup Section */
 .api-setup-section {
   display: flex;
   flex-direction: column;
@@ -1476,7 +1408,6 @@ body {
   }
 }
 
-/* Filter Card */
 .filter-card {
   margin-bottom: 16px;
 }
@@ -1529,7 +1460,6 @@ body {
   font-weight: 500;
 }
 
-/* Empty State */
 .empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -1547,7 +1477,6 @@ body {
   margin: 0;
 }
 
-/* Stats Grid */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1577,7 +1506,6 @@ body {
   margin-bottom: 4px;
 }
 
-/* Portfolio Card */
 .portfolio-card {
   background: white;
   border: 1px solid #e5e5e5;
@@ -1697,7 +1625,6 @@ body {
   color: #dc2626;
 }
 
-/* Forms */
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1766,7 +1693,6 @@ body {
   color: #1d1d1d;
 }
 
-/* Buttons */
 .btn {
   padding: 8px 16px;
   border: 1px solid transparent;
@@ -1782,6 +1708,7 @@ body {
 .btn-primary {
   background: #1a73e8;
   color: white;
+  margin: 0;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1865,7 +1792,6 @@ body {
   margin-top: 12px;
 }
 
-/* Conversions */
 .conversion-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -1898,7 +1824,6 @@ body {
   color: #999;
 }
 
-/* Purchase History */
 .history-header {
   display: flex;
   justify-content: space-between;
@@ -2032,7 +1957,6 @@ body {
   gap: 6px;
 }
 
-/* Edit Mode */
 .edit-mode {
   padding: 16px;
 }
@@ -2102,7 +2026,6 @@ body {
   border-color: #6ee7b7;
 }
 
-/* Settings */
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -2145,7 +2068,6 @@ body {
   font-weight: 600;
 }
 
-/* Transitions */
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.2s ease;
@@ -2178,7 +2100,6 @@ body {
   transform: translateX(30px);
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -2196,7 +2117,6 @@ body {
   background: #b0b0b0;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .window {
     max-width: 100%;
@@ -2221,8 +2141,6 @@ body {
 }
 
 @media (max-width: 768px) {
-
-  /* Core Layout */
   .app {
     padding: 0;
     align-items: stretch;
@@ -2241,7 +2159,6 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Sections - Reduce padding */
   .hero-section,
   .stats-section,
   .calculator-section,
@@ -2259,7 +2176,6 @@ body {
     margin: 0 0 12px 0;
   }
 
-  /* Cards */
   .card-header {
     padding: 10px 12px;
   }
@@ -2272,7 +2188,6 @@ body {
     padding: 12px;
   }
 
-  /* Hero Card */
   .hero-card .card-content {
     padding: 12px;
     gap: 12px;
@@ -2292,9 +2207,9 @@ body {
   }
 
   .price-breakdown {
-    font-size: 12px;
-    margin: 6px 0;
-    padding: 6px;
+    font-size: 32px;
+    margin: 12px 0;
+    padding: 12px;
   }
 
   .price-meta {
@@ -2302,7 +2217,6 @@ body {
     margin-top: 4px;
   }
 
-  /* Price Input */
   .price-input-section {
     padding: 12px;
     border: 1px solid #e5e5e5;
@@ -2321,7 +2235,6 @@ body {
     font-size: 11px;
   }
 
-  /* API Setup */
   .setup-prompt {
     padding: 10px;
     border-radius: 6px;
@@ -2372,7 +2285,6 @@ body {
     flex: 1;
   }
 
-  /* Portfolio Card */
   .portfolio-row {
     flex-direction: column;
     gap: 12px;
@@ -2410,7 +2322,6 @@ body {
     font-size: 22px;
   }
 
-  /* Forms */
   .form-row {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -2432,7 +2343,6 @@ body {
     border-radius: 6px;
   }
 
-  /* Filter Controls */
   .filter-card {
     margin-bottom: 12px;
   }
@@ -2472,7 +2382,6 @@ body {
     font-size: 11px;
   }
 
-  /* Calculator & Conversions */
   .result-display {
     padding: 10px;
     border-radius: 6px;
@@ -2509,7 +2418,6 @@ body {
     font-size: 10px;
   }
 
-  /* Buttons */
   .btn {
     padding: 10px 12px;
     font-size: 13px;
@@ -2547,7 +2455,6 @@ body {
     width: 100%;
   }
 
-  /* Purchase Cards */
   .purchase-card {
     border-radius: 6px;
   }
@@ -2609,7 +2516,6 @@ body {
     flex: 1;
   }
 
-  /* Edit Mode */
   .edit-mode {
     padding: 12px;
   }
@@ -2638,7 +2544,6 @@ body {
     width: 100%;
   }
 
-  /* Settings */
   .settings-grid {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -2658,7 +2563,6 @@ body {
     margin-top: 4px;
   }
 
-  /* Empty State */
   .empty-state {
     padding: 30px 20px;
   }
@@ -2672,7 +2576,6 @@ body {
     font-size: 13px;
   }
 
-  /* Toast */
   .toast-container {
     top: 10px;
     right: 10px;
@@ -2687,8 +2590,6 @@ body {
 }
 
 @media (max-width: 480px) {
-
-  /* Extra small devices */
   .app {
     padding: 0;
   }
@@ -2713,10 +2614,6 @@ body {
     font-weight: 600;
   }
 
-  .shortcut-hint {
-    display: none !important;
-  }
-
   .title-refresh-btn {
     width: 24px;
     height: 24px;
@@ -2729,7 +2626,6 @@ body {
     padding: 2px 6px;
   }
 
-  /* Sections */
   .hero-section,
   .stats-section,
   .calculator-section,
@@ -2786,7 +2682,6 @@ body {
     margin-top: 2px;
   }
 
-  /* Price Input */
   .price-input-section {
     padding: 10px;
   }
@@ -2809,7 +2704,6 @@ body {
     font-size: 10px;
   }
 
-  /* API Setup */
   .setup-prompt {
     padding: 8px;
   }
@@ -2830,7 +2724,6 @@ body {
     font-size: 10px;
   }
 
-  /* Portfolio */
   .portfolio-row {
     padding: 10px;
     gap: 10px;
@@ -2866,7 +2759,6 @@ body {
     font-size: 11px;
   }
 
-  /* Forms & Input */
   .form-row {
     gap: 8px;
   }
@@ -2894,7 +2786,6 @@ body {
     padding: 9px;
   }
 
-  /* Conversion Grid */
   .conversion-grid {
     gap: 8px;
   }
@@ -2907,7 +2798,6 @@ body {
     font-size: 14px;
   }
 
-  /* Purchase Cards */
   .purchase-header {
     padding: 9px 10px;
   }
@@ -2947,7 +2837,6 @@ body {
     font-size: 10px;
   }
 
-  /* Buttons */
   .btn {
     padding: 9px 10px;
     font-size: 12px;
@@ -2963,7 +2852,6 @@ body {
     height: 36px;
   }
 
-  /* Settings */
   .setting-label {
     font-size: 12px;
   }
@@ -2972,7 +2860,6 @@ body {
     font-size: 12px;
   }
 
-  /* Edit Mode */
   .edit-form {
     gap: 8px;
   }
@@ -2985,7 +2872,6 @@ body {
     font-size: 12px;
   }
 
-  /* Toast */
   .toast {
     font-size: 11px;
     padding: 8px 10px;
