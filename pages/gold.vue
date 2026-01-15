@@ -1,4 +1,4 @@
-<!-- pages/index.vue - GOLD TRACKER (WITHOUT KEYBOARD SHORTCUTS) -->
+<!-- pages/index.vue - GOLD TRACKER (WITH GRAM TO CHI CONVERTER) -->
 
 <template>
   <div class="app">
@@ -22,10 +22,13 @@
           <div class="light green"></div>
         </div>
         <div class="title">Gold Tracker</div>
-        <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-refresh-btn"
-          title="Refresh price from API">
-          <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
-        </button>
+        <div class="title-buttons">
+          <button v-if="purchases.length > 0" @click="exportData('csv')" class="title-btn" title="Export CSV">⬇</button>
+          <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-refresh-btn"
+            title="Refresh price from API">
+            <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
+          </button>
+        </div>
       </div>
 
       <!-- Main Content -->
@@ -69,6 +72,8 @@
                 <div class="api-setup-section">
                   <div v-if="!apiKey || apiKey === 'goldapi-3yrz5zhtl5zcyqg4-io'" class="setup-prompt">
                     <div class="setup-title">💡 Tip: Set up API for auto-updates</div>
+                    <div class="setup-info">Try the demo key: <span class="demo-key">goldapi-3yrz5zhtl5zcyqg4-io</span>
+                    </div>
                     <div class="setup-controls">
                       <button @click="toggleApiSetup" class="btn btn-secondary">Configure API</button>
                     </div>
@@ -177,6 +182,49 @@
             </div>
           </section>
 
+          <!-- Gram to Chi Converter -->
+          <section class="converter-section">
+            <h2 class="section-title">Gram to Chi Converter</h2>
+            <div class="card">
+              <div class="card-content">
+                <div class="converter-container">
+                  <div class="converter-input-group">
+                    <label class="form-label">Grams</label>
+                    <input v-model.number="gramAmount" type="number" min="0" step="0.1" placeholder="0.00"
+                      class="input converter-input" inputmode="decimal">
+                  </div>
+                  <div class="converter-arrow">→</div>
+                  <div class="converter-output-group">
+                    <label class="form-label">Chi (ជី)</label>
+                    <div class="converter-output">{{ memoizedGramToChi }}</div>
+                  </div>
+                </div>
+                <div class="converter-info">
+                  <span class="info-label">Conversion Ratio:</span>
+                  <span class="info-value">1 Chi = 3.75g</span>
+                </div>
+                <div class="converter-scale">
+                  <div class="scale-row">
+                    <span class="scale-label">3.75g</span>
+                    <span class="scale-value">= 1 Chi</span>
+                  </div>
+                  <div class="scale-row">
+                    <span class="scale-label">7.5g</span>
+                    <span class="scale-value">= 2 Chi</span>
+                  </div>
+                  <div class="scale-row">
+                    <span class="scale-label">18.75g</span>
+                    <span class="scale-value">= 5 Chi</span>
+                  </div>
+                  <div class="scale-row">
+                    <span class="scale-label">37.5g</span>
+                    <span class="scale-value">= 10 Chi</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- Conversions -->
           <section class="conversions-section">
             <h2 class="section-title">Price by Unit</h2>
@@ -240,7 +288,6 @@
           <section v-if="purchases.length > 0" class="history-section">
             <div class="history-header">
               <h2 class="section-title">Purchase History</h2>
-              <button @click="exportData('csv')" class="icon-btn" title="Export CSV">⬇</button>
             </div>
 
             <!-- Search & Filter -->
@@ -363,47 +410,6 @@
             </div>
           </section>
 
-          <!-- Settings -->
-          <section class="settings-section">
-            <h2 class="section-title">Data & Export</h2>
-            <div class="settings-grid">
-              <div class="card">
-                <div class="card-header">
-                  <h3 class="card-title">Data Info</h3>
-                </div>
-                <div class="card-content settings-content">
-                  <div class="setting-item">
-                    <span class="setting-label">Total Purchases</span>
-                    <span class="setting-value">{{ purchases.length }}</span>
-                  </div>
-                  <div class="setting-item">
-                    <span class="setting-label">Storage Used</span>
-                    <span class="setting-value">{{ (JSON.stringify(purchases).length / 1024).toFixed(2) }} KB</span>
-                  </div>
-                  <div class="button-group">
-                    <button @click="exportData('csv')" class="btn btn-secondary">Export CSV</button>
-                    <button @click="exportData('json')" class="btn btn-secondary">Export JSON</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="card-header">
-                  <h3 class="card-title">About</h3>
-                </div>
-                <div class="card-content settings-content">
-                  <div class="setting-item">
-                    <span class="setting-label">Version</span>
-                    <span class="setting-value">4.2.1</span>
-                  </div>
-                  <div class="setting-item">
-                    <span class="setting-label">Price Source</span>
-                    <span class="setting-value">{{ isApiPrice ? 'API' : 'Custom' }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
         </main>
       </div>
     </div>
@@ -431,6 +437,7 @@ export default {
     return {
       TROY_OUNCE_TO_GRAM: 31.1035,
       CHI_TO_OZ: 3.75 / 31.1035,
+      CHI_TO_GRAM: 3.75,
       GRAM_TO_OZ: 1 / 31.1035,
       DAMLUNG_TO_OZ: 37.5 / 31.1035,
 
@@ -452,6 +459,9 @@ export default {
       // Calculator
       calculatorAmount: 1,
       calculatorUnit: 'chi',
+
+      // Gram to Chi Converter
+      gramAmount: 0,
 
       // Purchases
       purchases: [],
@@ -485,6 +495,12 @@ export default {
   computed: {
     currentPrice() {
       return this.goldPrice > 0 ? this.goldPrice : 0;
+    },
+
+    memoizedGramToChi() {
+      if (!this.gramAmount || this.gramAmount <= 0) return '0.00';
+      const chi = this.gramAmount / this.CHI_TO_GRAM;
+      return chi.toFixed(2);
     },
 
     memoizedChiPrice() {
@@ -957,7 +973,105 @@ export default {
 </script>
 
 <style scoped>
-/* [All CSS remains exactly the same - no changes needed] */
+/* Gram to Chi Converter Styles */
+.converter-section {
+  padding: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.converter-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.converter-input-group,
+.converter-output-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.converter-input {
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.converter-output {
+  padding: 10px 12px;
+  font-size: 18px;
+  font-weight: 700;
+  background: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  color: #1d1d1d;
+  text-align: center;
+}
+
+.converter-arrow {
+  font-size: 24px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.converter-info {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f0f7ff;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #1a73e8;
+  font-weight: 700;
+}
+
+.converter-scale {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.scale-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.scale-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 600;
+}
+
+.scale-value {
+  font-size: 14px;
+  color: #1d1d1d;
+  font-weight: 700;
+}
+
+/* Original Styles */
 * {
   box-sizing: border-box;
 }
@@ -1100,6 +1214,33 @@ body {
   font-weight: 600;
   color: #333;
   flex: 1;
+}
+
+.title-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.title-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
 }
 
 .price-source {
@@ -1311,6 +1452,22 @@ body {
   color: #333;
   margin-bottom: 8px;
   font-weight: 600;
+}
+
+.setup-info {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: rgba(26, 115, 232, 0.05);
+  border-radius: 4px;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.demo-key {
+  color: #1a73e8;
+  font-weight: 600;
+  font-size: 11px;
 }
 
 .setup-controls {
@@ -2138,6 +2295,16 @@ body {
   .settings-grid {
     grid-template-columns: 1fr;
   }
+
+  .converter-container {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .converter-arrow {
+    transform: rotate(90deg);
+    margin: -4px 0;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2165,7 +2332,8 @@ body {
   .conversions-section,
   .purchase-section,
   .history-section,
-  .settings-section {
+  .settings-section,
+  .converter-section {
     padding: 12px 12px;
     border-bottom: 1px solid #f0f0f0;
   }
@@ -2418,6 +2586,30 @@ body {
     font-size: 10px;
   }
 
+  .converter-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .converter-input-group,
+  .converter-output-group {
+    flex: 1;
+  }
+
+  .converter-arrow {
+    transform: rotate(90deg);
+    margin: -4px 0;
+  }
+
+  .converter-scale {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .converter-info {
+    flex-direction: column;
+    text-align: center;
+  }
+
   .btn {
     padding: 10px 12px;
     font-size: 13px;
@@ -2614,6 +2806,17 @@ body {
     font-weight: 600;
   }
 
+  .title-buttons {
+    gap: 4px;
+  }
+
+  .title-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    padding: 0;
+  }
+
   .title-refresh-btn {
     width: 24px;
     height: 24px;
@@ -2632,7 +2835,8 @@ body {
   .conversions-section,
   .purchase-section,
   .history-section,
-  .settings-section {
+  .settings-section,
+  .converter-section {
     padding: 10px 10px;
   }
 
@@ -2710,6 +2914,15 @@ body {
 
   .setup-title {
     font-size: 11px;
+  }
+
+  .setup-info {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .demo-key {
+    font-size: 9px;
   }
 
   .api-setup-form {
@@ -2796,6 +3009,15 @@ body {
 
   .conversion-value {
     font-size: 14px;
+  }
+
+  .converter-scale {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .converter-container {
+    gap: 10px;
   }
 
   .purchase-header {
