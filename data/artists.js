@@ -12,6 +12,13 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['---',]
   },
   {
+    name: 'Mika Azuma',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['SONE-963','SONE-963','SNOS-024']
+  },
+  {
     name: 'Takarada Monami',
     cover: '',
     url: '',  // Custom cover
