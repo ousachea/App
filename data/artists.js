@@ -277,7 +277,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Minato Haru', cover: 'SONE-865',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['FC2PPV-3087371', 'FC2PPV-3104502', 'FC2PPV-4203485', 'FWAY-002', 'FWAY-060', 'JDKR-032', 'MIRD-259', 'OFES-013', 'SNOS-001', 'SONE-021', 'SONE-063', 'SONE-155', 'SONE-188', 'SONE-503', 'SONE-508', 'SONE-776', 'SONE-865', 'SONE-914', 'SONE-978', 'SSIS-889', 'SSIS-890', 'SSIS-945', 'SSIS-978', 'TZ-124']
+    compilations: [''], mainWorks: ['FC2PPV-3087371', 'FC2PPV-3104502','SNOS-073', 'FC2PPV-4203485', 'FWAY-002', 'FWAY-060', 'JDKR-032', 'MIRD-259', 'OFES-013', 'SNOS-001', 'SONE-021', 'SONE-063', 'SONE-155', 'SONE-188', 'SONE-503', 'SONE-508', 'SONE-776', 'SONE-865', 'SONE-914', 'SONE-978', 'SSIS-889', 'SSIS-890', 'SSIS-945', 'SSIS-978', 'TZ-124']
   },
   {
     name: 'Mio Kimijima', cover: '',

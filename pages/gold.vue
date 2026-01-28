@@ -1,4 +1,4 @@
-<!-- pages/index.vue - GOLD TRACKER (WITH GRAM TO CHI CONVERTER) -->
+<!-- pages/index.vue - GOLD TRACKER (IMPROVED UI) -->
 
 <template>
   <div class="app">
@@ -23,9 +23,13 @@
         </div>
         <div class="title">Gold Tracker</div>
         <div class="title-buttons">
-          <button v-if="purchases.length > 0" @click="exportData('csv')" class="title-btn" title="Export CSV">⬇</button>
-          <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-refresh-btn"
-            title="Refresh price from API">
+          <button v-if="purchases.length > 0" @click="exportData('csv')" class="title-btn" title="Export CSV">
+            <span class="btn-text">Export</span>
+            <span class="btn-icon">⬇</span>
+          </button>
+          <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-btn"
+            title="Refresh price">
+            <span class="btn-text">Refresh</span>
             <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
           </button>
         </div>
@@ -34,119 +38,111 @@
       <!-- Main Content -->
       <div class="window-content">
         <main class="content">
-          <!-- Hero Card - Custom Price Input -->
+          <!-- Hero Card - Price Display -->
           <section class="hero-section">
-            <div class="card hero-card">
-              <div class="card-header">
-                <h1 class="card-title">Gold Price</h1>
+            <div class="hero-card">
+              <div class="price-header">
+                <h1>Current Gold Price</h1>
                 <span class="price-source" :class="{ api: isApiPrice }">
-                  {{ isApiPrice ? '📡 API' : '✋ Custom' }}
+                  {{ isApiPrice ? '📡 Live' : '✋ Manual' }}
                 </span>
               </div>
 
-              <div class="card-content">
-                <div class="price-display-section">
+              <!-- Main Price Display -->
+              <div class="price-display">
+                <div class="price-main">
                   <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
-                  <div class="price-label">per troy ounce</div>
-                  <div class="price-breakdown">
-                    <span class="breakdown-item">{{ formatCurrencyDisplay(currentPrice * DAMLUNG_TO_OZ) }} Damlung
-                      (ដំឡឹង)</span>
-                  </div>
-                  <div class="price-meta">{{ lastUpdated }}</div>
+                  <div class="price-unit">per troy ounce</div>
                 </div>
 
-                <!-- Input Section -->
-                <div class="price-input-section">
-                  <div class="input-group">
-                    <input v-model.number="manualPrice" type="number" step="0.01" placeholder="Enter gold price (USD)"
-                      class="input price-input" inputmode="decimal" @keyup.enter="applyCustomPrice">
-                    <button @click="applyCustomPrice" class="btn btn-primary">Use Price</button>
+                <div class="price-damlung">
+                  <span class="damlung-value">{{ formatCurrencyDisplay(currentPrice * DAMLUNG_TO_OZ) }}</span>
+                  <span class="damlung-label">per Damlung (ដំឡឹង)</span>
+                </div>
+
+                <div class="price-timestamp">{{ lastUpdated }}</div>
+              </div>
+
+              <!-- Manual Price Input -->
+              <div class="price-input-card">
+                <label class="input-label">Set Custom Price</label>
+                <div class="input-row">
+                  <input v-model.number="manualPrice" type="number" step="0.01" placeholder="Enter price in USD"
+                    class="price-input" inputmode="decimal" @keyup.enter="applyCustomPrice">
+                  <button @click="applyCustomPrice" class="btn-apply">Apply</button>
+                </div>
+              </div>
+
+              <!-- API Configuration -->
+              <div class="api-section">
+                <div v-if="!apiKey || apiKey === 'goldapi-3yrz5zhtl5zcyqg4-io'" class="api-prompt">
+                  <div class="prompt-icon">💡</div>
+                  <div class="prompt-content">
+                    <div class="prompt-title">Enable Live Updates</div>
+                    <div class="prompt-text">Connect to Gold API for automatic price updates</div>
                   </div>
-                  <div class="price-helper">
-                    <span v-if="currentPrice > 0" class="helper-text">Current: {{ formatCurrencyDisplay(currentPrice)
-                      }}</span>
+                  <div class="prompt-actions">
+                    <button @click="useDemoApi" class="btn-demo">Use Demo</button>
+                    <button @click="toggleApiSetup" class="btn-setup">Setup</button>
                   </div>
                 </div>
 
-                <!-- API Setup -->
-                <div class="api-setup-section">
-                  <div v-if="!apiKey || apiKey === 'goldapi-3yrz5zhtl5zcyqg4-io'" class="setup-prompt">
-                    <div class="setup-title">💡 Tip: Set up API for auto-updates</div>
-                    <div class="setup-info">Try the demo key: <span class="demo-key">goldapi-3yrz5zhtl5zcyqg4-io</span>
-                    </div>
-                    <div class="setup-controls">
-                      <button @click="toggleApiSetup" class="btn btn-secondary">Configure API</button>
-                    </div>
-                  </div>
-
-                  <Transition name="expand">
-                    <div v-if="showApiSetup" class="api-setup-form">
-                      <div class="setup-input-group">
-                        <label class="form-label">Gold API Key</label>
-                        <div class="api-input-wrapper">
-                          <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'"
-                            placeholder="Get free key from goldapi.io" class="input">
-                          <button @click="toggleApiKeyVisibility" class="icon-btn-small"
-                            :title="showApiKey ? 'Hide' : 'Show'">
-                            {{ showApiKey ? '👁️' : '👁️‍🗨️' }}
-                          </button>
-                        </div>
-                        <div class="api-info">
-                          <a href="https://www.goldapi.io" target="_blank" rel="noopener">Get free API key →</a>
-                        </div>
-                      </div>
-                      <div class="setup-actions">
-                        <button @click="saveApiKey" class="btn btn-primary">Save & Enable API</button>
-                        <button @click="toggleApiSetup" class="btn btn-secondary">Cancel</button>
-                      </div>
-                    </div>
-                  </Transition>
-
-                  <div v-if="isApiPrice" class="api-active">
-                    <div class="api-status">
-                      <span class="status-dot"></span>
-                      API Active • Last updated {{ lastUpdated }}
-                    </div>
-                    <div class="api-actions">
-                      <button @click="handleRefresh" :disabled="loading" class="btn-small">
-                        <span v-if="loading">Fetching...</span>
-                        <span v-else>Refresh Price</span>
+                <Transition name="expand">
+                  <div v-if="showApiSetup" class="api-config">
+                    <label class="input-label">API Key</label>
+                    <div class="input-row">
+                      <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'"
+                        placeholder="Enter your API key" class="api-input">
+                      <button @click="toggleApiKeyVisibility" class="btn-toggle">
+                        {{ showApiKey ? '👁️' : '👁️‍🗨️' }}
                       </button>
-                      <button @click="removeApiKey" class="btn-small">Disable API</button>
                     </div>
+                    <div class="api-help">
+                      Get a free key at <a href="https://www.goldapi.io" target="_blank">goldapi.io</a>
+                    </div>
+                    <div class="button-row">
+                      <button @click="saveApiKey" class="btn-primary">Save & Connect</button>
+                      <button @click="toggleApiSetup" class="btn-secondary">Cancel</button>
+                    </div>
+                  </div>
+                </Transition>
+
+                <div v-if="isApiPrice" class="api-active">
+                  <div class="active-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Live updates active</span>
+                  </div>
+                  <div class="button-row-small">
+                    <button @click="handleRefresh" :disabled="loading" class="btn-small">
+                      {{ loading ? 'Updating...' : 'Refresh Now' }}
+                    </button>
+                    <button @click="removeApiKey" class="btn-small-outline">Disconnect</button>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <!-- Stats Grid -->
+          <!-- Portfolio Stats -->
           <section v-if="purchases.length > 0" class="stats-section">
-            <h2 class="section-title">Portfolio Overview</h2>
-            <div class="portfolio-card">
-              <div class="portfolio-row">
-                <div class="portfolio-item">
-                  <span class="portfolio-label">Total Invested</span>
-                  <span class="portfolio-value">{{ memoizedTotalInvested }}</span>
-                </div>
-                <div class="portfolio-divider"></div>
-                <div class="portfolio-item">
-                  <span class="portfolio-label">Current Value</span>
-                  <span class="portfolio-value">{{ memoizedCurrentValue }}</span>
-                </div>
-                <div class="portfolio-divider"></div>
-                <div class="portfolio-item">
-                  <span class="portfolio-label">Avg Cost/Chi</span>
-                  <span class="portfolio-value">{{ memoizedAverageCostPerChi }}</span>
-                </div>
+            <h2 class="section-title">Your Portfolio</h2>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">Total Invested</div>
+                <div class="stat-value">{{ memoizedTotalInvested }}</div>
               </div>
-              <div class="portfolio-profit-row" :class="memoizedProfitLoss >= 0 ? 'gain' : 'loss'">
-                <div class="profit-icon">{{ memoizedProfitLoss >= 0 ? '↑' : '↓' }}</div>
-                <div class="profit-content">
-                  <div class="profit-label">{{ memoizedProfitLoss >= 0 ? 'Gain' : 'Loss' }}</div>
-                  <div class="profit-amount">{{ memoizedProfitLossDisplay }}</div>
-                  <div class="profit-percent">{{ memoizedProfitChangePercent }}</div>
-                </div>
+              <div class="stat-card">
+                <div class="stat-label">Current Worth</div>
+                <div class="stat-value">{{ memoizedCurrentValue }}</div>
+              </div>
+            </div>
+
+            <div class="profit-card" :class="memoizedProfitLoss >= 0 ? 'gain' : 'loss'">
+              <div class="profit-icon">{{ memoizedProfitLoss >= 0 ? '📈' : '📉' }}</div>
+              <div class="profit-content">
+                <div class="profit-label">{{ memoizedProfitLoss >= 0 ? 'Total Gain' : 'Total Loss' }}</div>
+                <div class="profit-amount">{{ memoizedProfitLossDisplay }}</div>
+                <div class="profit-percent">{{ memoizedProfitChangePercent }}</div>
               </div>
             </div>
           </section>
@@ -154,258 +150,175 @@
           <!-- Quick Calculator -->
           <section class="calculator-section">
             <h2 class="section-title">Quick Calculator</h2>
-            <div class="card">
-              <div class="card-content">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Amount</label>
-                    <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0"
-                      class="input" inputmode="decimal">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Unit</label>
-                    <select v-model="calculatorUnit" class="input">
-                      <option value="chi">Chi (ជី)</option>
-                      <option value="gram">Gram</option>
-                      <option value="damlung">Damlung (ដំឡឹង)</option>
-                      <option value="oz">Troy Ounce</option>
-                    </select>
-                  </div>
-                  <Transition name="fade">
-                    <div v-if="calculatorAmount > 0" class="result-display">
-                      <div class="result-label">Equals</div>
-                      <div class="result-value">{{ memoizedCalculatorResult }}</div>
-                    </div>
-                  </Transition>
+            <div class="calculator-card">
+              <div class="calc-inputs">
+                <div class="calc-group">
+                  <label class="input-label">Amount</label>
+                  <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0"
+                    class="calc-input" inputmode="decimal">
+                </div>
+                <div class="calc-group">
+                  <label class="input-label">Unit</label>
+                  <select v-model="calculatorUnit" class="calc-select">
+                    <option value="chi">Chi (ជី)</option>
+                    <option value="gram">Gram</option>
+                    <option value="damlung">Damlung (ដំឡឹង)</option>
+                    <option value="oz">Troy Ounce</option>
+                  </select>
                 </div>
               </div>
+
+              <Transition name="fade">
+                <div v-if="calculatorAmount > 0" class="calc-result">
+                  <div class="result-label">Value</div>
+                  <div class="result-value">{{ memoizedCalculatorResult }}</div>
+                </div>
+              </Transition>
             </div>
           </section>
 
           <!-- Gram to Chi Converter -->
           <section class="converter-section">
-            <h2 class="section-title">Gram to Chi Converter</h2>
-            <div class="card">
-              <div class="card-content">
-                <div class="converter-container">
-                  <div class="converter-input-group">
-                    <label class="form-label">Grams</label>
-                    <input v-model.number="gramAmount" type="number" min="0" step="0.1" placeholder="0.00"
-                      class="input converter-input" inputmode="decimal">
-                  </div>
-                  <div class="converter-arrow">→</div>
-                  <div class="converter-output-group">
-                    <label class="form-label">Chi (ជី)</label>
-                    <div class="converter-output">{{ memoizedGramToChi }}</div>
-                  </div>
+            <h2 class="section-title">Gram ↔ Chi Converter</h2>
+            <div class="converter-card">
+              <div class="converter-row">
+                <div class="converter-input">
+                  <label class="input-label">Grams</label>
+                  <input v-model.number="gramAmount" type="number" min="0" step="0.1" placeholder="0.00"
+                    class="converter-field" inputmode="decimal">
                 </div>
-                <div class="converter-info">
-                  <span class="info-label">Conversion Ratio:</span>
-                  <span class="info-value">1 Chi = 3.75g</span>
+                <div class="converter-arrow">→</div>
+                <div class="converter-output">
+                  <label class="input-label">Chi (ជី)</label>
+                  <div class="converter-result">{{ memoizedGramToChi }}</div>
                 </div>
-                <div class="converter-scale">
-                  <div class="scale-row">
-                    <span class="scale-label">3.75g</span>
-                    <span class="scale-value">= 1 Chi</span>
-                  </div>
-                  <div class="scale-row">
-                    <span class="scale-label">7.5g</span>
-                    <span class="scale-value">= 2 Chi</span>
-                  </div>
-                  <div class="scale-row">
-                    <span class="scale-label">18.75g</span>
-                    <span class="scale-value">= 5 Chi</span>
-                  </div>
-                  <div class="scale-row">
-                    <span class="scale-label">37.5g</span>
-                    <span class="scale-value">= 10 Chi</span>
-                  </div>
+              </div>
+
+              <div class="converter-info">
+                <span class="info-badge">1 Chi = 3.75g</span>
+              </div>
+
+              <div class="quick-ref">
+                <div class="ref-item">
+                  <span class="ref-gram">3.75g</span>
+                  <span class="ref-equal">=</span>
+                  <span class="ref-chi">1 Chi</span>
+                </div>
+                <div class="ref-item">
+                  <span class="ref-gram">7.5g</span>
+                  <span class="ref-equal">=</span>
+                  <span class="ref-chi">2 Chi</span>
+                </div>
+                <div class="ref-item">
+                  <span class="ref-gram">18.75g</span>
+                  <span class="ref-equal">=</span>
+                  <span class="ref-chi">5 Chi</span>
+                </div>
+                <div class="ref-item">
+                  <span class="ref-gram">37.5g</span>
+                  <span class="ref-equal">=</span>
+                  <span class="ref-chi">10 Chi</span>
                 </div>
               </div>
             </div>
           </section>
 
-          <!-- Conversions -->
-          <section class="conversions-section">
+          <!-- Price by Unit -->
+          <section class="units-section">
             <h2 class="section-title">Price by Unit</h2>
-            <div class="card">
-              <div class="card-content">
-                <div class="conversion-grid">
-                  <div class="conversion-item">
-                    <div class="conversion-label">Chi (ជី)</div>
-                    <div class="conversion-value">{{ memoizedChiPrice }}</div>
-                    <div class="conversion-unit">3.75g</div>
-                  </div>
-                  <div class="conversion-item">
-                    <div class="conversion-label">Gram</div>
-                    <div class="conversion-value">{{ memoizedGramPrice }}</div>
-                    <div class="conversion-unit">1g</div>
-                  </div>
-                  <div class="conversion-item">
-                    <div class="conversion-label">Damlung (ដំឡឹង)</div>
-                    <div class="conversion-value">{{ memoizedDamlungPrice }}</div>
-                    <div class="conversion-unit">37.5g</div>
-                  </div>
-                  <div class="conversion-item">
-                    <div class="conversion-label">Troy Ounce</div>
-                    <div class="conversion-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
-                    <div class="conversion-unit">31.1g</div>
-                  </div>
-                </div>
+            <div class="units-grid">
+              <div class="unit-card">
+                <div class="unit-name">Chi (ជី)</div>
+                <div class="unit-price">{{ memoizedChiPrice }}</div>
+                <div class="unit-weight">3.75 grams</div>
+              </div>
+              <div class="unit-card">
+                <div class="unit-name">Gram</div>
+                <div class="unit-price">{{ memoizedGramPrice }}</div>
+                <div class="unit-weight">1 gram</div>
+              </div>
+              <div class="unit-card">
+                <div class="unit-name">Damlung</div>
+                <div class="unit-price">{{ memoizedDamlungPrice }}</div>
+                <div class="unit-weight">37.5 grams</div>
+              </div>
+              <div class="unit-card">
+                <div class="unit-name">Troy Oz</div>
+                <div class="unit-price">{{ formatCurrencyDisplay(currentPrice) }}</div>
+                <div class="unit-weight">31.1 grams</div>
               </div>
             </div>
           </section>
 
           <!-- Add Purchase -->
           <section class="purchase-section">
-            <h2 class="section-title">Add Purchase</h2>
-            <div class="card">
-              <div class="card-content">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Amount (Chi)</label>
-                    <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
-                      class="input" inputmode="decimal">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Price (USD)</label>
-                    <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
-                      class="input" inputmode="decimal">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Date</label>
-                    <input v-model="newPurchase.date" type="date" class="input" :max="getCurrentDate()">
-                  </div>
+            <h2 class="section-title">Add New Purchase</h2>
+            <div class="purchase-card">
+              <div class="purchase-form">
+                <div class="form-field">
+                  <label class="input-label">Amount (Chi)</label>
+                  <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
+                    class="form-input" inputmode="decimal">
                 </div>
-                <button @click="addPurchase" :disabled="!canAddPurchase()" class="btn btn-primary">
-                  Add Purchase
-                </button>
+                <div class="form-field">
+                  <label class="input-label">Price Paid (USD)</label>
+                  <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
+                    class="form-input" inputmode="decimal">
+                </div>
+                <div class="form-field">
+                  <label class="input-label">Date</label>
+                  <input v-model="newPurchase.date" type="date" class="form-input" :max="getCurrentDate()">
+                </div>
               </div>
+              <button @click="addPurchase" :disabled="!canAddPurchase()" class="btn-add">
+                Add Purchase
+              </button>
             </div>
           </section>
 
-          <!-- Purchase History with Search & Filter -->
-          <section v-if="purchases.length > 0" class="history-section">
-            <div class="history-header">
-              <h2 class="section-title">Purchase History</h2>
-            </div>
-
-            <!-- Search & Filter -->
-            <div class="card filter-card">
-              <div class="card-content">
-                <div class="filter-controls">
-                  <div class="filter-group">
-                    <label class="form-label">Search</label>
-                    <input v-model="filterText" type="text" placeholder="Search by date or amount..."
-                      class="input search-input">
-                  </div>
-
-                  <div class="filter-group">
-                    <label class="form-label">Date Range</label>
-                    <div class="date-range">
-                      <input v-model="filterDateFrom" type="date" class="input">
-                      <span class="date-separator">to</span>
-                      <input v-model="filterDateTo" type="date" class="input">
-                    </div>
-                  </div>
-
-                  <div class="filter-group">
-                    <label class="form-label">Sort</label>
-                    <select v-model="sortBy" class="input">
-                      <option value="date-desc">Newest First</option>
-                      <option value="date-asc">Oldest First</option>
-                      <option value="amount-desc">Highest Amount</option>
-                      <option value="amount-asc">Lowest Amount</option>
-                      <option value="profit-desc">Best Gain</option>
-                      <option value="profit-asc">Worst Loss</option>
-                    </select>
-                  </div>
-
-                  <button @click="clearFilters" class="btn btn-secondary" v-if="hasActiveFilters">
-                    Clear Filters
-                  </button>
-                </div>
-
-                <div class="filter-stats" v-if="filteredPurchases.length !== purchases.length">
-                  <span class="stat-text">{{ filteredPurchases.length }} of {{ purchases.length }} purchases</span>
-                </div>
+          <!-- My Purchases -->
+          <section v-if="purchases.length > 0" class="purchases-section">
+            <div class="purchases-header">
+              <h2 class="section-title">My Purchases</h2>
+              <div class="sort-control">
+                <label class="sort-label">Sort by</label>
+                <select v-model="purchaseSortBy" class="sort-select">
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                  <option value="amount-desc">Highest Amount</option>
+                  <option value="amount-asc">Lowest Amount</option>
+                  <option value="profit-desc">Highest Profit</option>
+                  <option value="profit-asc">Lowest Profit</option>
+                </select>
               </div>
             </div>
 
-            <!-- Purchases List -->
             <div class="purchases-list">
-              <div v-if="filteredPurchases.length === 0" class="empty-state">
-                <span class="empty-icon">🔍</span>
-                <p class="empty-text">No purchases match your filters</p>
-              </div>
+              <div v-for="purchase in sortedPurchases" :key="purchase.id" class="purchase-item">
+                <div class="purchase-header">
+                  <div class="purchase-date">{{ formatDate(purchase.date) }}</div>
+                  <div class="purchase-amount">{{ purchase.amount }} Chi</div>
+                </div>
 
-              <div v-for="purchase in filteredPurchases" :key="purchase.id" class="purchase-card"
-                :class="{ editing: editingId === purchase.id }">
-
-                <!-- View Mode -->
-                <template v-if="editingId !== purchase.id">
-                  <div class="purchase-header">
-                    <div class="purchase-date">{{ formatDate(purchase.date) }}</div>
-                    <div class="purchase-amount">{{ purchase.amount }} CHI</div>
+                <div class="purchase-details">
+                  <div class="detail-row">
+                    <span class="detail-label">Paid</span>
+                    <span class="detail-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</span>
                   </div>
-
-                  <div class="purchase-row">
-                    <div class="purchase-item">
-                      <span class="purchase-label">Total Paid</span>
-                      <span class="purchase-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</span>
-                    </div>
-                    <div class="purchase-item">
-                      <span class="purchase-label">Price per Chi</span>
-                      <span class="purchase-value">{{ formatCurrencyDisplay(purchase.totalPaid / purchase.amount)
-                        }}</span>
-                    </div>
-                    <div class="purchase-item">
-                      <span class="purchase-label">Per Chi Today</span>
-                      <span class="purchase-value">{{ getWorthTodayPerChiCached(purchase) }}</span>
-                    </div>
-                    <div class="purchase-item">
-                      <span class="purchase-label">Worth Today</span>
-                      <span class="purchase-value">{{ getWorthTodayTotalCached(purchase) }}</span>
-                    </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Worth Now</span>
+                    <span class="detail-value">{{ getWorthTodayTotalCached(purchase) }}</span>
                   </div>
+                </div>
 
-                  <div class="purchase-footer" :class="getProfitClassCached(purchase.id)">
-                    <div class="profit-info">
-                      <div class="profit-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</div>
-                      <div class="profit-display">{{ getProfitDisplayCached(purchase.id) }}</div>
-                      <div class="profit-percent">{{ getProfitPercentCached(purchase.id) }}</div>
-                    </div>
-                    <div class="purchase-actions">
-                      <button @click="startEdit(purchase)" class="action-btn sm">Edit</button>
-                      <button @click="deletePurchase(purchase.id)" class="action-btn sm danger">Delete</button>
-                    </div>
+                <div class="purchase-profit" :class="getProfitClassCached(purchase.id)">
+                  <div class="profit-info">
+                    <span class="profit-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</span>
+                    <span class="profit-amount">{{ getProfitDisplayCached(purchase.id) }}</span>
+                    <span class="profit-percent">{{ getProfitPercentCached(purchase.id) }}</span>
                   </div>
-                </template>
-
-                <!-- Edit Mode -->
-                <template v-else>
-                  <div class="edit-mode">
-                    <h3 class="edit-title">Edit Purchase</h3>
-                    <div class="edit-form">
-                      <div class="edit-field">
-                        <label class="form-label">Date</label>
-                        <input v-model="editingPurchase.date" type="date" class="input-small">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label">Amount (Chi)</label>
-                        <input v-model.number="editingPurchase.amount" type="number" step="0.01" class="input-small">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label">Total Paid (USD)</label>
-                        <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" class="input-small">
-                      </div>
-                    </div>
-                    <div class="edit-actions">
-                      <button @click="saveEdit(purchase.id)" class="action-btn success">Save</button>
-                      <button @click="cancelEdit" class="action-btn">Cancel</button>
-                    </div>
-                  </div>
-                </template>
+                  <button @click="deletePurchase(purchase.id)" class="btn-delete">Delete</button>
+                </div>
               </div>
             </div>
           </section>
@@ -418,13 +331,13 @@
 
 <script>
 export default {
-  name: 'GoldTrackerEnhanced',
+  name: 'GoldTrackerImproved',
 
   head() {
     return {
       title: 'Gold Tracker',
       meta: [
-        { hid: 'description', name: 'description', content: 'Gold tracker with search, filters, and analytics' },
+        { hid: 'description', name: 'description', content: 'Track your gold investments with ease' },
         { hid: 'viewport', name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' },
         { hid: 'apple-mobile-web-app-capable', name: 'apple-mobile-web-app-capable', content: 'yes' },
         { hid: 'apple-mobile-web-app-status-bar-style', name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
@@ -441,14 +354,12 @@ export default {
       GRAM_TO_OZ: 1 / 31.1035,
       DAMLUNG_TO_OZ: 37.5 / 31.1035,
 
-      // Price Management
       goldPrice: 0,
       manualPrice: null,
       isApiPrice: false,
       loading: false,
       lastUpdated: 'No price set',
 
-      // API Config
       apiKey: '',
       apiKeyInput: '',
       showApiKey: false,
@@ -456,14 +367,10 @@ export default {
       apiBaseUrl: 'https://www.goldapi.io/api',
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
-      // Calculator
       calculatorAmount: 1,
       calculatorUnit: 'chi',
-
-      // Gram to Chi Converter
       gramAmount: 0,
 
-      // Purchases
       purchases: [],
       newPurchase: {
         amount: null,
@@ -474,19 +381,13 @@ export default {
       editingId: null,
       editingPurchase: null,
 
-      // FILTER & SEARCH
-      filterText: '',
-      filterDateFrom: null,
-      filterDateTo: null,
-      sortBy: 'date-desc',
+      purchaseSortBy: 'date-desc',
 
-      // Caching
       cache: { gold: { data: null, timestamp: null } },
       fallbackPrice: 2200,
       purchaseCache: new Map(),
       formatCache: new Map(),
 
-      // UI
       toasts: [],
       toastId: 0
     };
@@ -528,14 +429,6 @@ export default {
       return this.formatCurrencyDisplay(sum);
     },
 
-    memoizedAverageCostPerChi() {
-      if (this.purchases.length === 0) return '$0.00';
-      const totalChi = this.purchases.reduce((sum, p) => sum + p.amount, 0);
-      const totalInvested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      if (totalChi === 0) return '$0.00';
-      return this.formatCurrencyDisplay(totalInvested / totalChi);
-    },
-
     memoizedProfitLoss() {
       let current = 0;
       for (let p of this.purchases) {
@@ -569,50 +462,25 @@ export default {
       return this.formatCurrencyDisplay(ozAmount * this.currentPrice);
     },
 
-    filteredPurchases() {
-      let result = [...this.purchases];
+    sortedPurchases() {
+      const sorted = [...this.purchases];
 
-      if (this.filterText.trim()) {
-        const search = this.filterText.toLowerCase();
-        result = result.filter(p => {
-          const date = this.formatDate(p.date).toLowerCase();
-          const amount = p.amount.toString();
-          const paid = p.totalPaid.toString();
-          return date.includes(search) || amount.includes(search) || paid.includes(search);
-        });
+      switch (this.purchaseSortBy) {
+        case 'date-asc':
+          return sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+        case 'date-desc':
+          return sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+        case 'amount-asc':
+          return sorted.sort((a, b) => a.amount - b.amount);
+        case 'amount-desc':
+          return sorted.sort((a, b) => b.amount - a.amount);
+        case 'profit-asc':
+          return sorted.sort((a, b) => this.getProfitValueCached(a.id) - this.getProfitValueCached(b.id));
+        case 'profit-desc':
+          return sorted.sort((a, b) => this.getProfitValueCached(b.id) - this.getProfitValueCached(a.id));
+        default:
+          return sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
       }
-
-      if (this.filterDateFrom) {
-        result = result.filter(p => p.date >= this.filterDateFrom);
-      }
-      if (this.filterDateTo) {
-        result = result.filter(p => p.date <= this.filterDateTo);
-      }
-
-      result.sort((a, b) => {
-        switch (this.sortBy) {
-          case 'date-asc':
-            return new Date(a.date) - new Date(b.date);
-          case 'date-desc':
-            return new Date(b.date) - new Date(a.date);
-          case 'amount-asc':
-            return a.amount - b.amount;
-          case 'amount-desc':
-            return b.amount - a.amount;
-          case 'profit-desc':
-            return this.getProfitValueCached(b.id) - this.getProfitValueCached(a.id);
-          case 'profit-asc':
-            return this.getProfitValueCached(a.id) - this.getProfitValueCached(b.id);
-          default:
-            return new Date(b.date) - new Date(a.date);
-        }
-      });
-
-      return result;
-    },
-
-    hasActiveFilters() {
-      return this.filterText || this.filterDateFrom || this.filterDateTo || this.sortBy !== 'date-desc';
     }
   },
 
@@ -639,14 +507,6 @@ export default {
       return formatted;
     },
 
-    clearFilters() {
-      this.filterText = '';
-      this.filterDateFrom = null;
-      this.filterDateTo = null;
-      this.sortBy = 'date-desc';
-      this.showToast('Filters cleared', 'info');
-    },
-
     applyCustomPrice() {
       if (!this.manualPrice || this.manualPrice <= 0) {
         this.showToast('Enter a valid price', 'error');
@@ -654,7 +514,7 @@ export default {
       }
       this.goldPrice = this.manualPrice;
       this.isApiPrice = false;
-      this.lastUpdated = 'just now (custom)';
+      this.lastUpdated = 'just now (manual)';
       this.savePrice();
       this.purchaseCache.clear();
       this.showToast('Price updated', 'success');
@@ -665,6 +525,13 @@ export default {
       if (!this.showApiSetup) {
         this.apiKeyInput = '';
       }
+    },
+
+    useDemoApi() {
+      this.apiKey = 'goldapi-3yrz5zhtl5zcyqg4-io';
+      if (process.client) localStorage.setItem('apiKey', this.apiKey);
+      this.showToast('Demo API key activated', 'success');
+      this.fetchMetalPrice(true);
     },
 
     toggleApiKeyVisibility() {
@@ -686,7 +553,7 @@ export default {
     },
 
     removeApiKey() {
-      if (confirm('Disable API and use custom prices?')) {
+      if (confirm('Disable API and use manual prices?')) {
         this.apiKey = '';
         this.isApiPrice = false;
         if (process.client) localStorage.removeItem('apiKey');
@@ -734,27 +601,6 @@ export default {
       const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
       const currentValue = ozEquivalent * this.currentPrice;
       return this.formatCurrencyDisplay(currentValue);
-    },
-
-    startEdit(purchase) {
-      this.editingId = purchase.id;
-      this.editingPurchase = { ...purchase };
-    },
-
-    saveEdit(purchaseId) {
-      const index = this.purchases.findIndex(p => p.id === purchaseId);
-      if (index !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
-        this.purchases[index] = { ...this.purchases[index], ...this.editingPurchase };
-        this.savePurchases();
-        this.purchaseCache.clear();
-        this.editingId = null;
-        this.showToast('Purchase updated', 'success');
-      }
-    },
-
-    cancelEdit() {
-      this.editingId = null;
-      this.editingPurchase = null;
     },
 
     getCurrentDate() {
@@ -938,7 +784,7 @@ export default {
           this.lastUpdated = 'Cached';
           this.showToast('Using cached price', 'info');
         } else if (!altSuccess) {
-          this.showToast('Failed to fetch price, use custom', 'error');
+          this.showToast('Failed to fetch price', 'error');
         }
         this.loading = false;
       }
@@ -973,216 +819,66 @@ export default {
 </script>
 
 <style scoped>
-/* Gram to Chi Converter Styles */
-.converter-section {
-  padding: 24px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.converter-container {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.converter-input-group,
-.converter-output-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.converter-input {
-  padding: 10px 12px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.converter-output {
-  padding: 10px 12px;
-  font-size: 18px;
-  font-weight: 700;
-  background: #f9f9f9;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  color: #1d1d1d;
-  text-align: center;
-}
-
-.converter-arrow {
-  font-size: 24px;
-  color: #999;
-  margin-bottom: 8px;
-}
-
-.converter-info {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: #f0f7ff;
-  border-radius: 6px;
-  margin-bottom: 12px;
-}
-
-.info-label {
-  font-size: 12px;
-  color: #666;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #1a73e8;
-  font-weight: 700;
-}
-
-.converter-scale {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e5e5e5;
-}
-
-.scale-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 6px;
-  text-align: center;
-}
-
-.scale-label {
-  font-size: 12px;
-  color: #999;
-  font-weight: 600;
-}
-
-.scale-value {
-  font-size: 14px;
-  color: #1d1d1d;
-  font-weight: 700;
-}
-
-/* Original Styles */
+/* ============================================
+   BASE & RESET
+   ============================================ */
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
 body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: #f5f5f5;
-  color: #333;
-  overflow-x: hidden;
-  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  position: fixed;
-  height: 100vh;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
+  overflow-x: hidden;
 }
 
-#__nuxt,
-#__layout {
-  width: 100%;
-  height: 100%;
-  display: flex;
-}
-
+/* ============================================
+   APP LAYOUT
+   ============================================ */
 .app {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  padding: 0;
-  background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
-  flex-direction: column;
-}
-
-@media (min-width: 769px) {
-  body {
-    position: static;
-    height: auto;
-  }
-
-  .app {
-    min-height: 100vh;
-    padding: 20px;
-    flex-direction: row;
-  }
-}
-
-.toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-.toast {
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  font-size: 13px;
+  min-height: 100vh;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  pointer-events: auto;
-  backdrop-filter: blur(10px);
-}
-
-.toast-success {
-  background: rgba(52, 168, 83, 0.9);
-}
-
-.toast-error {
-  background: rgba(255, 59, 48, 0.9);
-}
-
-.toast-icon {
-  font-weight: 600;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .window {
   width: 100%;
-  max-width: 1000px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  max-width: 900px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  max-height: 100%;
+  max-height: 95vh;
 }
 
+/* ============================================
+   TITLE BAR
+   ============================================ */
 .title-bar {
+  height: 52px;
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+  border-bottom: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
-  height: 44px;
-  background: linear-gradient(180deg, #f9f9f9 0%, #f5f5f5 100%);
-  border-bottom: 1px solid #e5e5e5;
-  padding: 0 16px;
-  gap: 10px;
+  padding: 0 20px;
+  gap: 16px;
   flex-shrink: 0;
-  z-index: 10;
 }
 
 .traffic-lights {
@@ -1195,6 +891,7 @@ body {
   height: 12px;
   border-radius: 50%;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .light.red {
@@ -1209,81 +906,54 @@ body {
   background: #28c940;
 }
 
+.light:hover {
+  opacity: 0.8;
+}
+
 .title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
   flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d1d1f;
+  letter-spacing: -0.01em;
 }
 
 .title-buttons {
   display: flex;
   gap: 8px;
-  align-items: center;
 }
 
 .title-btn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: none;
+  height: 32px;
+  padding: 0 12px;
+  background: rgba(0, 0, 0, 0.04);
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1d1f;
   cursor: pointer;
-  font-size: 14px;
   transition: all 0.2s;
-  color: #666;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
 }
 
-.title-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #333;
+.title-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.08);
 }
 
-.price-source {
-  font-size: 11px;
-  color: #999;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #f0f0f0;
-}
-
-.price-source.api {
-  background: #d1fae5;
-  color: #059669;
-}
-
-.title-refresh-btn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-  color: #666;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.title-refresh-btn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
-  color: #333;
-}
-
-.title-refresh-btn:disabled {
-  opacity: 0.5;
+.title-btn:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.refresh-icon {
-  display: inline-block;
+.btn-text {
+  display: none;
+}
+
+.btn-icon {
+  font-size: 14px;
 }
 
 .refresh-icon.spinning {
@@ -1296,259 +966,367 @@ body {
   }
 }
 
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
 .window-content {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  display: flex;
-  flex-direction: column;
 }
 
 .content {
-  padding: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
 }
 
-.hero-section,
-.stats-section,
-.calculator-section,
-.conversions-section,
-.purchase-section,
-.history-section,
-.settings-section {
-  padding: 24px;
+section {
+  padding: 32px 28px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1d1d1d;
-  margin: 0 0 16px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
 }
 
-.card {
-  background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.2s;
+/* ============================================
+   HERO SECTION - PRICE DISPLAY
+   ============================================ */
+.hero-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
 }
 
-.card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-color: #d0d0d0;
+.hero-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
-.card-header {
-  padding: 16px;
-  border-bottom: 1px solid #e5e5e5;
+.price-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
 }
 
-.card-title {
+.price-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1d1d1f;
   margin: 0;
-  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.price-source {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1d1d1d;
+  background: #f5f5f7;
+  color: #86868b;
 }
 
-.card-content {
-  padding: 16px;
+.price-source.api {
+  background: #d1fae5;
+  color: #047857;
 }
 
-.hero-card .card-content {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.price-display-section {
+.price-display {
   text-align: center;
-  padding: 16px 0;
+  padding: 24px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 24px;
+}
+
+.price-main {
+  margin-bottom: 16px;
 }
 
 .price-value {
-  font-size: 48px;
-  font-weight: 700;
-  color: #1d1d1d;
-  margin-bottom: 4px;
+  font-size: 56px;
+  font-weight: 800;
+  color: #1d1d1f;
+  line-height: 1;
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
 }
 
-.price-label {
-  font-size: 13px;
-  color: #999;
+.price-unit {
+  font-size: 15px;
+  color: #86868b;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.price-breakdown {
-  font-size: 13px;
-  color: #666;
-  margin: 8px 0;
-  padding: 8px;
-  background: #D1E3FA;
-  border-radius: 6px;
-}
-
-.breakdown-item {
-  display: block;
-  font-weight: 600;
-}
-
-.price-meta {
-  font-size: 12px;
-  color: #ccc;
-  margin-top: 8px;
-}
-
-.price-input-section {
-  background: #f9f9f9;
-  border-radius: 8px;
+.price-damlung {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 16px;
-  border: 1px solid #e5e5e5;
-}
-
-.input-group {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.price-input {
-  flex: 1;
-  font-size: 16px;
-  padding: 10px 12px;
-}
-
-.price-helper {
-  font-size: 12px;
-  color: #999;
-  padding: 0 4px;
-}
-
-.api-setup-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.setup-prompt {
-  background: #fffbf0;
-  border: 1px solid #ffe5cc;
-  border-radius: 8px;
-  padding: 12px;
-  text-align: center;
-}
-
-.setup-title {
-  font-size: 13px;
-  color: #333;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.setup-info {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 8px;
-  padding: 8px;
-  background: rgba(26, 115, 232, 0.05);
-  border-radius: 4px;
-  font-family: 'Monaco', 'Courier New', monospace;
-}
-
-.demo-key {
-  color: #1a73e8;
-  font-weight: 600;
-  font-size: 11px;
-}
-
-.setup-controls {
-  display: flex;
-  gap: 6px;
-}
-
-.api-setup-form {
   background: #f0f7ff;
-  border: 1px solid #b3e5fc;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.setup-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  border-radius: 12px;
   margin-bottom: 12px;
 }
 
-.api-input-wrapper {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
+.damlung-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a73e8;
 }
 
-.api-input-wrapper input {
+.damlung-label {
+  font-size: 13px;
+  color: #5f6368;
+  font-weight: 500;
+}
+
+.price-timestamp {
+  font-size: 13px;
+  color: #86868b;
+  font-weight: 500;
+}
+
+/* ============================================
+   INPUT COMPONENTS
+   ============================================ */
+.input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.price-input-card,
+.api-section {
+  margin-bottom: 20px;
+}
+
+.price-input-card {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.price-input,
+.api-input {
+  flex: 1;
+  height: 48px;
+  padding: 0 16px;
+  font-size: 17px;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  background: white;
+  color: #1d1d1f;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.price-input:focus,
+.api-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.btn-apply,
+.btn-toggle {
+  height: 48px;
+  padding: 0 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-apply:hover,
+.btn-toggle:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-toggle {
+  width: 48px;
+  padding: 0;
+  font-size: 18px;
+}
+
+/* ============================================
+   API SECTION
+   ============================================ */
+.api-section {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+}
+
+.api-prompt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fffbf0;
+  border: 2px solid #ffd66b;
+  border-radius: 12px;
+}
+
+.prompt-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.prompt-content {
   flex: 1;
 }
 
-.api-info {
-  font-size: 11px;
-  color: #666;
+.prompt-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin-bottom: 4px;
 }
 
-.api-info a {
+.prompt-text {
+  font-size: 13px;
+  color: #5f6368;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-demo,
+.btn-setup {
+  height: 40px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-demo {
+  background: #10b981;
+  color: white;
+}
+
+.btn-demo:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-setup {
+  background: #667eea;
+  color: white;
+}
+
+.btn-setup:hover {
+  background: #5568d3;
+}
+
+.api-config {
+  background: #f0f7ff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #b3d9ff;
+}
+
+.api-help {
+  font-size: 13px;
+  color: #5f6368;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.api-help a {
   color: #1a73e8;
   text-decoration: none;
   font-weight: 600;
 }
 
-.setup-actions {
+.button-row {
   display: flex;
-  gap: 6px;
+  gap: 10px;
 }
 
-.setup-actions .btn {
+.btn-primary,
+.btn-secondary {
   flex: 1;
+  height: 48px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.btn-secondary:hover {
+  background: #e8e8ea;
 }
 
 .api-active {
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  background: #ecfdf5;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #6ee7b7;
 }
 
-.api-status {
-  font-size: 12px;
-  color: #059669;
+.active-indicator {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1;
-}
-
-.api-actions {
-  display: flex;
-  gap: 6px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
-  background: #059669;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -1565,685 +1343,644 @@ body {
   }
 }
 
-.filter-card {
-  margin-bottom: 16px;
+.status-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #047857;
 }
 
-.filter-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.search-input {
-  padding: 10px 12px;
-  font-size: 13px;
-}
-
-.date-range {
+.button-row-small {
   display: flex;
   gap: 8px;
-  align-items: center;
 }
 
-.date-range input {
-  flex: 1;
-  padding: 8px 10px;
-  font-size: 12px;
+.btn-small,
+.btn-small-outline {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.date-separator {
-  color: #999;
-  font-size: 12px;
-  white-space: nowrap;
+.btn-small {
+  background: #10b981;
+  color: white;
+  border: none;
 }
 
-.filter-stats {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e5e5e5;
-  font-size: 12px;
-  color: #999;
+.btn-small:hover:not(:disabled) {
+  background: #059669;
 }
 
-.stat-text {
-  font-weight: 500;
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999;
+.btn-small-outline {
+  background: transparent;
+  color: #047857;
+  border: 2px solid #6ee7b7;
 }
 
-.empty-icon {
-  font-size: 48px;
-  display: block;
-  margin-bottom: 12px;
+.btn-small-outline:hover {
+  background: #d1fae5;
 }
 
-.empty-text {
-  font-size: 14px;
-  margin: 0;
+/* ============================================
+   STATS SECTION
+   ============================================ */
+.stats-section {
+  background: #f9f9f9;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
   background: white;
+  padding: 20px;
+  border-radius: 12px;
   border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 16px;
   text-align: center;
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #999;
+  font-size: 13px;
+  font-weight: 600;
+  color: #86868b;
   text-transform: uppercase;
-  margin-bottom: 8px;
   letter-spacing: 0.5px;
+  margin-bottom: 8px;
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1d1d1d;
-  margin-bottom: 4px;
+  font-size: 32px;
+  font-weight: 800;
+  color: #1d1d1f;
+  letter-spacing: -0.02em;
 }
 
-.portfolio-card {
+.profit-card {
   background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.portfolio-row {
+  padding: 24px;
+  border-radius: 12px;
+  border: 2px solid #e5e5e5;
   display: flex;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e5e5e5;
+  gap: 20px;
 }
 
-.portfolio-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.profit-card.gain {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
 }
 
-.portfolio-label {
-  font-size: 12px;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
-
-.portfolio-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1d1d1d;
-}
-
-.portfolio-divider {
-  width: 1px;
-  height: 40px;
-  background: #e5e5e5;
-  margin: 0 20px;
-}
-
-.portfolio-profit-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  background: #f9f9f9;
-}
-
-.portfolio-profit-row.gain {
-  background: #f0fdf4;
-}
-
-.portfolio-profit-row.loss {
+.profit-card.loss {
   background: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .profit-icon {
-  font-size: 28px;
-  font-weight: 700;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-}
-
-.portfolio-profit-row.gain .profit-icon {
-  background: #d1fae5;
-  color: #059669;
-}
-
-.portfolio-profit-row.loss .profit-icon {
-  background: #fee2e2;
-  color: #dc2626;
+  font-size: 48px;
+  flex-shrink: 0;
 }
 
 .profit-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex: 1;
 }
 
 .profit-label {
-  font-size: 12px;
-  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .profit-amount {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 40px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
 }
 
-.portfolio-profit-row.gain .profit-amount {
+.profit-card.gain .profit-amount {
   color: #059669;
 }
 
-.portfolio-profit-row.loss .profit-amount {
+.profit-card.loss .profit-amount {
   color: #dc2626;
 }
 
 .profit-percent {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.portfolio-profit-row.gain .profit-percent {
-  color: #059669;
+.profit-card.gain .profit-percent {
+  color: #047857;
 }
 
-.portfolio-profit-row.loss .profit-percent {
-  color: #dc2626;
+.profit-card.loss .profit-percent {
+  color: #b91c1c;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-  align-items: flex-end;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.input {
-  padding: 8px 12px;
+/* ============================================
+   CALCULATOR & CONVERTER
+   ============================================ */
+.calculator-card,
+.converter-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
   border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 13px;
-  font-family: inherit;
+}
+
+.calc-inputs,
+.converter-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.calc-group,
+.converter-input,
+.converter-output {
+  flex: 1;
+}
+
+.calc-input,
+.calc-select,
+.converter-field {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  background: white;
+  color: #1d1d1f;
   transition: all 0.2s;
 }
 
-.input:focus {
+.calc-input:focus,
+.calc-select:focus,
+.converter-field:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-.input-small {
-  padding: 6px 10px;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: inherit;
-}
-
-.result-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  background: #f0f0f0;
-  border-radius: 6px;
+.calc-result,
+.converter-result {
   text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
 }
 
 .result-label {
-  font-size: 11px;
-  color: #999;
+  font-size: 13px;
+  font-weight: 600;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  opacity: 0.9;
 }
 
 .result-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1d1d1d;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-.btn {
+.converter-arrow {
+  font-size: 32px;
+  color: #86868b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.converter-result {
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  background: #f9f9f9;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  color: #1d1d1f;
+}
+
+.converter-info {
+  text-align: center;
+  margin: 16px 0;
+}
+
+.info-badge {
+  display: inline-block;
   padding: 8px 16px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 13px;
+  background: #f0f7ff;
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 20px;
+}
+
+.quick-ref {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ref-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.ref-gram {
   font-weight: 600;
+  color: #6b7280;
+}
+
+.ref-equal {
+  color: #d1d5db;
+}
+
+.ref-chi {
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+/* ============================================
+   UNITS GRID
+   ============================================ */
+.units-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.unit-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.unit-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.unit-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.unit-price {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1d1d1f;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.unit-weight {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ============================================
+   PURCHASE FORM
+   ============================================ */
+.purchase-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+}
+
+.purchase-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-input {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  background: white;
+  color: #1d1d1f;
+  transition: all 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.btn-add {
+  width: 100%;
+  height: 52px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: inherit;
-  margin-top: 12px;
 }
 
-.btn-primary {
-  background: #1a73e8;
-  color: white;
-  margin: 0;
+.btn-add:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: #1765cc;
-}
-
-.btn-primary:disabled {
+.btn-add:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn-secondary {
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #e5e5e5;
-}
-
-.btn-secondary:hover {
-  background: #e8e8e8;
-}
-
-.btn-small {
-  padding: 4px 8px;
-  background: #f0f0f0;
-  color: #666;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.btn-small:hover {
-  background: #e8e8e8;
-}
-
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s;
-  color: #666;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #333;
-}
-
-.icon-btn-small {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: #f0f0f0;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.icon-btn-small:hover {
-  background: #e8e8e8;
-  border-color: #d0d0d0;
-}
-
-.button-group {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.conversion-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 16px;
-}
-
-.conversion-item {
-  text-align: center;
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 6px;
-}
-
-.conversion-label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-
-.conversion-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1d1d1d;
-  margin-bottom: 4px;
-}
-
-.conversion-unit {
-  font-size: 11px;
-  color: #999;
-}
-
-.history-header {
+/* ============================================
+   MY PURCHASES LIST
+   ============================================ */
+.purchases-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.purchases-header .section-title {
+  margin: 0;
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sort-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.sort-select {
+  height: 44px;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  background: white;
+  color: #1d1d1f;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 180px;
+}
+
+.sort-select:hover {
+  border-color: #667eea;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
 .purchases-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-.purchase-card {
+.purchase-item {
   background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 2px solid #e5e5e5;
   overflow: hidden;
   transition: all 0.2s;
 }
 
-.purchase-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-color: #d0d0d0;
-}
-
-.purchase-card.editing {
-  background: #f0f7ff;
-  border-color: #1a73e8;
+.purchase-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .purchase-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 16px 20px;
   background: #f9f9f9;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .purchase-date {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  color: #666;
+  color: #6b7280;
 }
 
 .purchase-amount {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1d1d1d;
+  font-size: 20px;
+  font-weight: 800;
+  color: #1d1d1f;
 }
 
-.purchase-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+.purchase-details {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px 16px;
   border-bottom: 1px solid #e5e5e5;
 }
 
-.purchase-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.purchase-label {
-  font-size: 11px;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
-
-.purchase-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1d1d1d;
-}
-
-.purchase-footer {
+.detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+}
+
+.detail-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.detail-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.purchase-profit {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.purchase-profit.profit {
+  background: #ecfdf5;
+}
+
+.purchase-profit.loss {
+  background: #fef2f2;
 }
 
 .profit-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  flex: 1;
 }
 
-.purchase-footer .profit-label {
-  font-size: 11px;
-  color: #999;
+.profit-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 600;
 }
 
-.profit-display {
+.profit-amount {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.purchase-profit.profit .profit-amount {
+  color: #059669;
+}
+
+.purchase-profit.loss .profit-amount {
+  color: #dc2626;
+}
+
+.profit-percent {
   font-size: 16px;
   font-weight: 700;
 }
 
-.purchase-footer.profit .profit-display {
-  color: #059669;
+.purchase-profit.profit .profit-percent {
+  color: #047857;
 }
 
-.purchase-footer.loss .profit-display {
+.purchase-profit.loss .profit-percent {
+  color: #b91c1c;
+}
+
+.btn-delete {
+  height: 48px;
+  padding: 0 20px;
+  background: #fef2f2;
   color: #dc2626;
-}
-
-.purchase-footer .profit-percent {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.purchase-footer.profit .profit-percent {
-  color: #059669;
-}
-
-.purchase-footer.loss .profit-percent {
-  color: #dc2626;
-}
-
-.purchase-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.edit-mode {
-  padding: 16px;
-}
-
-.edit-title {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1d1d1d;
-}
-
-.edit-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.action-btn {
-  padding: 6px 10px;
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+  border: 2px solid #fca5a5;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
-.action-btn:hover {
-  background: #e8e8e8;
-  border-color: #d0d0d0;
+.btn-delete:hover {
+  background: #fee2e2;
+  border-color: #f87171;
 }
 
-.action-btn.sm {
-  padding: 4px 8px;
-  font-size: 10px;
-}
-
-.action-btn.danger:hover {
-  background: #ffebee;
-  border-color: #ef5350;
-  color: #c62828;
-}
-
-.action-btn.success {
-  background: #d1fae5;
-  color: #059669;
-  border-color: #a7f3d0;
-}
-
-.action-btn.success:hover {
-  background: #a7f3d0;
-  border-color: #6ee7b7;
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.settings-content {
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  pointer-events: none;
 }
 
-.setting-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.setting-item:last-child {
-  border-bottom: none;
-}
-
-.setting-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-}
-
-.setting-value {
-  font-size: 13px;
-  color: #333;
+.toast {
+  background: rgba(29, 29, 31, 0.95);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(20px);
+  pointer-events: auto;
+  min-width: 250px;
 }
 
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.2s ease;
+.toast-success {
+  background: rgba(16, 185, 129, 0.95);
 }
 
-.expand-enter-from,
-.expand-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
+.toast-error {
+  background: rgba(220, 38, 38, 0.95);
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.toast-icon {
+  font-size: 20px;
 }
 
 .toast-enter-active,
@@ -2257,8 +1994,38 @@ body {
   transform: translateX(30px);
 }
 
+/* ============================================
+   TRANSITIONS
+   ============================================ */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease;
+  max-height: 500px;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -2266,47 +2033,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d0d0d0;
-  border-radius: 4px;
+  background: #d1d5db;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b0b0b0;
+  background: #9ca3af;
 }
 
-@media (max-width: 1024px) {
-  .window {
-    max-width: 100%;
-    border-radius: 0;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .filter-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .conversion-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .converter-container {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .converter-arrow {
-    transform: rotate(90deg);
-    margin: -4px 0;
-  }
-}
-
+/* ============================================
+   RESPONSIVE - TABLET
+   ============================================ */
 @media (max-width: 768px) {
   .app {
     padding: 0;
@@ -2314,794 +2051,294 @@ body {
   }
 
   .window {
-    border-radius: 0;
     max-width: 100%;
-    height: 100vh;
+    border-radius: 0;
     max-height: 100vh;
   }
 
-  .window-content {
-    max-height: calc(100vh - 44px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+  .title-bar {
+    height: 48px;
+    padding: 0 16px;
   }
 
-  .hero-section,
-  .stats-section,
-  .calculator-section,
-  .conversions-section,
-  .purchase-section,
-  .history-section,
-  .settings-section,
-  .converter-section {
-    padding: 12px 12px;
-    border-bottom: 1px solid #f0f0f0;
+  .btn-text {
+    display: inline;
+  }
+
+  section {
+    padding: 24px 20px;
   }
 
   .section-title {
-    font-size: 15px;
-    font-weight: 600;
-    margin: 0 0 12px 0;
+    font-size: 20px;
+    margin-bottom: 16px;
   }
 
-  .card-header {
-    padding: 10px 12px;
+  .api-prompt {
+    flex-wrap: wrap;
   }
 
-  .card-title {
-    font-size: 14px;
+  .prompt-actions {
+    width: 100%;
+    margin-top: 8px;
   }
 
-  .card-content {
-    padding: 12px;
-  }
-
-  .hero-card .card-content {
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .price-display-section {
-    padding: 8px 0;
+  .btn-demo,
+  .btn-setup {
+    flex: 1;
   }
 
   .price-value {
-    font-size: 40px;
-    margin-bottom: 2px;
+    font-size: 48px;
   }
 
-  .price-label {
-    font-size: 12px;
-  }
-
-  .price-breakdown {
-    font-size: 32px;
-    margin: 12px 0;
-    padding: 12px;
-  }
-
-  .price-meta {
-    font-size: 11px;
-    margin-top: 4px;
-  }
-
-  .price-input-section {
-    padding: 12px;
-    border: 1px solid #e5e5e5;
-  }
-
-  .input-group {
-    gap: 6px;
-  }
-
-  .price-input {
-    padding: 10px;
-    font-size: 16px;
-  }
-
-  .price-helper {
-    font-size: 11px;
-  }
-
-  .setup-prompt {
-    padding: 10px;
-    border-radius: 6px;
-  }
-
-  .setup-title {
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-
-  .api-setup-form {
-    padding: 10px;
-  }
-
-  .setup-input-group {
-    gap: 6px;
-  }
-
-  .api-input-wrapper {
-    gap: 6px;
-  }
-
-  .setup-actions {
-    gap: 4px;
-    flex-direction: column;
-  }
-
-  .setup-actions .btn {
-    width: 100%;
-    padding: 8px 10px;
-    font-size: 12px;
-  }
-
-  .api-active {
-    padding: 10px;
-    gap: 8px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .api-actions {
-    width: 100%;
-    display: flex;
-    gap: 6px;
-  }
-
-  .api-actions .btn-small {
-    flex: 1;
-  }
-
-  .portfolio-row {
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-  }
-
-  .portfolio-divider {
-    display: none;
-  }
-
-  .portfolio-item {
-    width: 100%;
-  }
-
-  .portfolio-label {
-    font-size: 11px;
-  }
-
-  .portfolio-value {
-    font-size: 20px;
-  }
-
-  .portfolio-profit-row {
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .profit-icon {
-    width: 40px;
-    height: 40px;
+  .damlung-value {
     font-size: 24px;
   }
 
-  .profit-amount {
-    font-size: 22px;
-  }
-
-  .form-row {
+  .stats-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
   }
 
-  .form-group {
-    gap: 4px;
-  }
-
-  .form-label {
-    font-size: 11px;
-    margin-bottom: 4px;
-  }
-
-  .input,
-  .input-small {
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 6px;
-  }
-
-  .filter-card {
-    margin-bottom: 12px;
-  }
-
-  .filter-controls {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .filter-group {
-    gap: 4px;
-  }
-
-  .search-input {
-    padding: 10px;
-    font-size: 14px;
-  }
-
-  .date-range {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .date-range input {
-    width: 100%;
-    padding: 10px;
-    font-size: 14px;
-  }
-
-  .date-separator {
-    display: none;
-  }
-
-  .filter-stats {
-    margin-top: 8px;
-    padding-top: 8px;
-    font-size: 11px;
-  }
-
-  .result-display {
-    padding: 10px;
-    border-radius: 6px;
-  }
-
-  .result-label {
-    font-size: 10px;
-  }
-
-  .result-value {
-    font-size: 18px;
-  }
-
-  .conversion-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .conversion-item {
-    padding: 10px;
-  }
-
-  .conversion-label {
-    font-size: 11px;
-    margin-bottom: 3px;
-  }
-
-  .conversion-value {
-    font-size: 16px;
-    margin-bottom: 3px;
-  }
-
-  .conversion-unit {
-    font-size: 10px;
-  }
-
-  .converter-container {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .converter-input-group,
-  .converter-output-group {
-    flex: 1;
-  }
-
-  .converter-arrow {
-    transform: rotate(90deg);
-    margin: -4px 0;
-  }
-
-  .converter-scale {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .converter-info {
+  .profit-card {
     flex-direction: column;
     text-align: center;
   }
 
-  .btn {
-    padding: 10px 12px;
-    font-size: 13px;
-    border-radius: 6px;
-    width: 100%;
+  .purchase-form {
+    grid-template-columns: 1fr;
   }
 
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
+  .filter-row,
+  .date-filters {
+    grid-template-columns: 1fr;
   }
 
-  .btn-small {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-
-  .icon-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  .icon-btn-small {
-    width: 40px;
-    height: 40px;
-  }
-
-  .button-group {
-    gap: 6px;
-    margin-top: 10px;
+  .calc-inputs,
+  .converter-row {
     flex-direction: column;
   }
 
-  .button-group .btn {
-    width: 100%;
+  .converter-arrow {
+    transform: rotate(90deg);
   }
 
-  .purchase-card {
-    border-radius: 6px;
+  .units-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .purchase-header {
-    padding: 10px 12px;
-    gap: 8px;
-  }
-
-  .purchase-date {
-    font-size: 12px;
-  }
-
-  .purchase-amount {
-    font-size: 13px;
-  }
-
-  .purchase-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 10px 12px;
-  }
-
-  .purchase-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .purchase-label {
-    font-size: 10px;
-  }
-
-  .purchase-value {
-    font-size: 13px;
-    text-align: right;
-  }
-
-  .purchase-footer {
+  .purchase-profit {
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
-  .purchase-actions {
-    width: 100%;
-    gap: 4px;
-  }
-
-  .action-btn {
-    flex: 1;
-    padding: 8px 10px;
-    font-size: 11px;
-  }
-
-  .action-btn.sm {
-    padding: 8px 10px;
-    flex: 1;
-  }
-
-  .edit-mode {
-    padding: 12px;
-  }
-
-  .edit-title {
-    font-size: 13px;
-    margin-bottom: 10px;
-  }
-
-  .edit-form {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .edit-field {
-    gap: 4px;
-  }
-
-  .edit-actions {
-    gap: 6px;
+  .btn-delete {
     width: 100%;
   }
 
-  .edit-actions .action-btn {
-    width: 100%;
-  }
-
-  .settings-grid {
-    grid-template-columns: 1fr;
+  .purchases-header {
+    flex-direction: column;
+    align-items: stretch;
     gap: 12px;
   }
 
-  .settings-content {
-    gap: 10px;
-  }
-
-  .setting-item {
-    padding: 8px 0;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .setting-value {
-    margin-top: 4px;
-  }
-
-  .empty-state {
-    padding: 30px 20px;
-  }
-
-  .empty-icon {
-    font-size: 40px;
-    margin-bottom: 10px;
-  }
-
-  .empty-text {
-    font-size: 13px;
-  }
-
-  .toast-container {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-  }
-
-  .toast {
+  .sort-control {
     width: 100%;
-    font-size: 12px;
-    padding: 10px 12px;
+  }
+
+  .sort-select {
+    flex: 1;
+    min-width: 0;
   }
 }
 
+/* ============================================
+   RESPONSIVE - MOBILE
+   ============================================ */
 @media (max-width: 480px) {
-  .app {
-    padding: 0;
-  }
-
   .title-bar {
-    height: 38px;
-    padding: 0 10px;
-    gap: 4px;
-  }
-
-  .traffic-lights {
-    gap: 4px;
-  }
-
-  .light {
-    width: 9px;
-    height: 9px;
+    height: 44px;
+    padding: 0 12px;
+    gap: 8px;
   }
 
   .title {
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .title-buttons {
-    gap: 4px;
-  }
-
-  .title-btn {
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
-    padding: 0;
-  }
-
-  .title-refresh-btn {
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
-    padding: 0;
-  }
-
-  .price-source {
-    font-size: 10px;
-    padding: 2px 6px;
-  }
-
-  .hero-section,
-  .stats-section,
-  .calculator-section,
-  .conversions-section,
-  .purchase-section,
-  .history-section,
-  .settings-section,
-  .converter-section {
-    padding: 10px 10px;
-  }
-
-  .section-title {
     font-size: 14px;
-    margin-bottom: 10px;
   }
 
-  .card-header {
-    padding: 10px;
+  .btn-text {
+    display: none;
   }
 
-  .card-title {
-    font-size: 13px;
-  }
-
-  .card-content {
-    padding: 10px;
-  }
-
-  .hero-card .card-content {
-    padding: 10px;
-    gap: 10px;
-  }
-
-  .price-display-section {
-    padding: 6px 0;
-  }
-
-  .price-value {
-    font-size: 32px;
-    margin-bottom: 2px;
-  }
-
-  .price-label {
-    font-size: 10px;
-  }
-
-  .price-breakdown {
-    font-size: 11px;
-    margin: 4px 0;
-    padding: 4px;
-  }
-
-  .price-meta {
-    font-size: 10px;
-    margin-top: 2px;
-  }
-
-  .price-input-section {
-    padding: 10px;
-  }
-
-  .input-group {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .btn-primary {
-    width: 100%;
-  }
-
-  .price-input {
-    width: 100%;
-    padding: 10px;
-  }
-
-  .price-helper {
-    font-size: 10px;
-  }
-
-  .setup-prompt {
-    padding: 8px;
-  }
-
-  .setup-title {
-    font-size: 11px;
-  }
-
-  .setup-info {
-    font-size: 10px;
-    margin-bottom: 6px;
-  }
-
-  .demo-key {
-    font-size: 9px;
-  }
-
-  .api-setup-form {
-    padding: 8px;
-  }
-
-  .api-input-wrapper {
-    gap: 4px;
-  }
-
-  .api-info {
-    font-size: 10px;
-  }
-
-  .portfolio-row {
-    padding: 10px;
-    gap: 10px;
-  }
-
-  .portfolio-value {
-    font-size: 18px;
-  }
-
-  .portfolio-profit-row {
-    padding: 10px;
-  }
-
-  .profit-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-  }
-
-  .profit-content {
-    gap: 2px;
-  }
-
-  .profit-label {
-    font-size: 10px;
-  }
-
-  .profit-amount {
-    font-size: 18px;
-  }
-
-  .profit-percent {
-    font-size: 11px;
-  }
-
-  .form-row {
-    gap: 8px;
-  }
-
-  .form-label {
-    font-size: 10px;
-    margin-bottom: 3px;
-  }
-
-  .input {
-    padding: 9px;
+  .btn-icon {
     font-size: 16px;
   }
 
-  .filter-controls {
-    gap: 8px;
+  section {
+    padding: 20px 16px;
   }
 
-  .search-input {
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+
+  .api-prompt {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .prompt-icon {
+    font-size: 28px;
+    align-self: center;
+  }
+
+  .prompt-content {
+    text-align: center;
+  }
+
+  .prompt-title {
     font-size: 14px;
   }
 
-  .date-range input {
-    font-size: 14px;
-    padding: 9px;
+  .prompt-text {
+    font-size: 12px;
   }
 
-  .conversion-grid {
-    gap: 8px;
+  .prompt-actions {
+    width: 100%;
+    margin-top: 12px;
   }
 
-  .conversion-item {
-    padding: 8px;
+  .btn-demo,
+  .btn-setup {
+    flex: 1;
+    height: 44px;
+    font-size: 13px;
   }
 
-  .conversion-value {
-    font-size: 14px;
+  .hero-card {
+    padding: 20px;
   }
 
-  .converter-scale {
+  .price-header h1 {
+    font-size: 20px;
+  }
+
+  .price-value {
+    font-size: 40px;
+  }
+
+  .damlung-value {
+    font-size: 20px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+  }
+
+  .profit-amount {
+    font-size: 32px;
+  }
+
+  .result-value {
+    font-size: 28px;
+  }
+
+  .unit-price {
+    font-size: 24px;
+  }
+
+  .detail-value {
+    font-size: 16px;
+  }
+
+  .item-profit .profit-value {
+    font-size: 20px;
+  }
+
+  .units-grid {
     grid-template-columns: 1fr;
-    gap: 8px;
   }
 
-  .converter-container {
-    gap: 10px;
+  .quick-ref {
+    grid-template-columns: 1fr;
   }
 
   .purchase-header {
-    padding: 9px 10px;
+    padding: 14px 16px;
   }
 
   .purchase-date {
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .purchase-amount {
-    font-size: 12px;
+    font-size: 18px;
   }
 
-  .purchase-row {
-    padding: 9px 10px;
-    gap: 8px;
+  .purchase-details {
+    padding: 16px;
+    gap: 10px;
   }
 
-  .purchase-label {
-    font-size: 9px;
+  .detail-value {
+    font-size: 18px;
   }
 
-  .purchase-value {
-    font-size: 12px;
+  .purchase-profit {
+    padding: 16px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .purchase-footer {
-    padding: 9px 10px;
-    gap: 8px;
+  .profit-amount {
+    font-size: 24px;
   }
 
-  .purchase-actions {
-    gap: 3px;
+  .profit-percent {
+    font-size: 14px;
   }
 
-  .action-btn {
-    padding: 6px 8px;
-    font-size: 10px;
+  .btn-delete {
+    width: 100%;
+    height: 44px;
   }
 
-  .btn {
-    padding: 9px 10px;
-    font-size: 12px;
+  .purchases-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
-  .btn-small {
-    padding: 5px 8px;
-    font-size: 10px;
+  .sort-control {
+    width: 100%;
   }
 
-  .icon-btn-small {
-    width: 36px;
-    height: 36px;
+  .sort-label {
+    font-size: 13px;
   }
 
-  .setting-label {
-    font-size: 12px;
+  .sort-select {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    font-size: 14px;
   }
 
-  .setting-value {
-    font-size: 12px;
-  }
-
-  .edit-form {
-    gap: 8px;
-  }
-
-  .edit-mode {
-    padding: 10px;
-  }
-
-  .edit-title {
-    font-size: 12px;
+  .toast-container {
+    left: 12px;
+    right: 12px;
+    top: 12px;
   }
 
   .toast {
-    font-size: 11px;
-    padding: 8px 10px;
-    border-radius: 6px;
-  }
-
-  .toast-icon {
-    font-size: 12px;
+    min-width: auto;
+    width: 100%;
+    font-size: 14px;
+    padding: 14px 16px;
   }
 }
 </style>
