@@ -294,31 +294,67 @@
             </div>
 
             <div class="purchases-list">
-              <div v-for="purchase in sortedPurchases" :key="purchase.id" class="purchase-item">
-                <div class="purchase-header">
-                  <div class="purchase-date">{{ formatDate(purchase.date) }}</div>
-                  <div class="purchase-amount">{{ purchase.amount }} Chi</div>
-                </div>
+              <div v-for="purchase in sortedPurchases" :key="purchase.id" class="purchase-item"
+                :class="{ editing: editingId === purchase.id }">
 
-                <div class="purchase-details">
-                  <div class="detail-row">
-                    <span class="detail-label">Paid</span>
-                    <span class="detail-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</span>
+                <!-- View Mode -->
+                <template v-if="editingId !== purchase.id">
+                  <div class="purchase-header">
+                    <div class="purchase-date">{{ formatDate(purchase.date) }}</div>
+                    <div class="purchase-amount">{{ purchase.amount }} Chi</div>
                   </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Worth Now</span>
-                    <span class="detail-value">{{ getWorthTodayTotalCached(purchase) }}</span>
-                  </div>
-                </div>
 
-                <div class="purchase-profit" :class="getProfitClassCached(purchase.id)">
-                  <div class="profit-info">
-                    <span class="profit-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</span>
-                    <span class="profit-amount">{{ getProfitDisplayCached(purchase.id) }}</span>
-                    <span class="profit-percent">{{ getProfitPercentCached(purchase.id) }}</span>
+                  <div class="purchase-details">
+                    <div class="detail-row">
+                      <span class="detail-label">Paid</span>
+                      <span class="detail-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Worth Now</span>
+                      <span class="detail-value">{{ getWorthTodayTotalCached(purchase) }}</span>
+                    </div>
                   </div>
-                  <button @click="deletePurchase(purchase.id)" class="btn-delete">Delete</button>
-                </div>
+
+                  <div class="purchase-profit" :class="getProfitClassCached(purchase.id)">
+                    <div class="profit-info">
+                      <span class="profit-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</span>
+                      <span class="profit-amount">{{ getProfitDisplayCached(purchase.id) }}</span>
+                      <span class="profit-percent">{{ getProfitPercentCached(purchase.id) }}</span>
+                    </div>
+                    <div class="purchase-actions">
+                      <button @click="startEdit(purchase)" class="btn-edit">Edit</button>
+                      <button @click="deletePurchase(purchase.id)" class="btn-delete">Delete</button>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Edit Mode -->
+                <template v-else>
+                  <div class="edit-header">
+                    <h3>Edit Purchase</h3>
+                    <button @click="cancelEdit" class="btn-close">×</button>
+                  </div>
+                  <div class="edit-form">
+                    <div class="edit-field">
+                      <label class="input-label">Date</label>
+                      <input v-model="editingPurchase.date" type="date" class="edit-input">
+                    </div>
+                    <div class="edit-field">
+                      <label class="input-label">Amount (Chi)</label>
+                      <input v-model.number="editingPurchase.amount" type="number" step="0.01" class="edit-input"
+                        inputmode="decimal">
+                    </div>
+                    <div class="edit-field">
+                      <label class="input-label">Price Paid (USD)</label>
+                      <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" class="edit-input"
+                        inputmode="decimal">
+                    </div>
+                  </div>
+                  <div class="edit-actions">
+                    <button @click="saveEdit(purchase.id)" class="btn-save">Save Changes</button>
+                    <button @click="cancelEdit" class="btn-cancel">Cancel</button>
+                  </div>
+                </template>
               </div>
             </div>
           </section>
@@ -601,6 +637,27 @@ export default {
       const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
       const currentValue = ozEquivalent * this.currentPrice;
       return this.formatCurrencyDisplay(currentValue);
+    },
+
+    startEdit(purchase) {
+      this.editingId = purchase.id;
+      this.editingPurchase = { ...purchase };
+    },
+
+    saveEdit(purchaseId) {
+      const index = this.purchases.findIndex(p => p.id === purchaseId);
+      if (index !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
+        this.purchases[index] = { ...this.purchases[index], ...this.editingPurchase };
+        this.savePurchases();
+        this.purchaseCache.clear();
+        this.editingId = null;
+        this.showToast('Purchase updated', 'success');
+      }
+    },
+
+    cancelEdit() {
+      this.editingId = null;
+      this.editingPurchase = null;
     },
 
     getCurrentDate() {
@@ -1922,12 +1979,17 @@ section {
   color: #b91c1c;
 }
 
+.purchase-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-edit,
 .btn-delete {
   height: 48px;
   padding: 0 20px;
-  background: #fef2f2;
-  color: #dc2626;
-  border: 2px solid #fca5a5;
+  border: none;
   border-radius: 10px;
   font-size: 15px;
   font-weight: 700;
@@ -1936,9 +1998,139 @@ section {
   white-space: nowrap;
 }
 
+.btn-edit {
+  background: #667eea;
+  color: white;
+}
+
+.btn-edit:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-delete {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 2px solid #fca5a5;
+}
+
 .btn-delete:hover {
   background: #fee2e2;
   border-color: #f87171;
+}
+
+/* Edit Mode */
+.purchase-item.editing {
+  border-color: #667eea;
+  background: #f9fafb;
+}
+
+.edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #f0f7ff;
+  border-bottom: 2px solid #667eea;
+}
+
+.edit-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0;
+}
+
+.btn-close {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: #1d1d1f;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+.edit-form {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-input {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  border: 2px solid #e5e5e5;
+  border-radius: 10px;
+  background: white;
+  color: #1d1d1f;
+  transition: all 0.2s;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.edit-actions {
+  padding: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.btn-save,
+.btn-cancel {
+  flex: 1;
+  height: 52px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save {
+  background: #10b981;
+  color: white;
+}
+
+.btn-save:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-cancel {
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.btn-cancel:hover {
+  background: #e8e8ea;
 }
 
 /* ============================================
@@ -2130,10 +2322,35 @@ section {
   .purchase-profit {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
-  .btn-delete {
+  .purchase-actions {
     width: 100%;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    flex: 1;
+    height: 44px;
+  }
+
+  .edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-input {
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .edit-actions {
+    flex-direction: column;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    height: 48px;
   }
 
   .purchases-header {
@@ -2291,19 +2508,55 @@ section {
     padding: 16px;
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
 
-  .profit-amount {
-    font-size: 24px;
+  .purchase-actions {
+    width: 100%;
   }
 
-  .profit-percent {
+  .btn-edit,
+  .btn-delete {
+    flex: 1;
+    height: 44px;
     font-size: 14px;
   }
 
-  .btn-delete {
-    width: 100%;
-    height: 44px;
+  .edit-header {
+    padding: 14px 16px;
+  }
+
+  .edit-header h3 {
+    font-size: 16px;
+  }
+
+  .btn-close {
+    width: 32px;
+    height: 32px;
+    font-size: 28px;
+  }
+
+  .edit-form {
+    padding: 16px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .edit-input {
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .edit-actions {
+    padding: 16px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    height: 48px;
+    font-size: 15px;
   }
 
   .purchases-header {
