@@ -305,8 +305,8 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['CLUB-881']
   },
   {
-    name: 'Hibiki Amemiya', cover: '',
-    url: 'EBWH-111',  // Custom cover
+    name: 'Hibiki Amemiya', cover: 'PPPE-353',
+    url: '',  // Custom cover
     compilations: [''], mainWorks: ['HZGD-327','PRTD-034','WAAA-550','PPPE-353','EBWH-111']
   },
   {
@@ -315,7 +315,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['FC2PPV-3087371','OFJE-567','SNOS-114','SNOS-073', 'FC2PPV-3104502','SNOS-073', 'FC2PPV-4203485', 'FWAY-002', 'FWAY-060', 'JDKR-032', 'MIRD-259', 'OFES-013', 'SNOS-001', 'SONE-021', 'SONE-063', 'SONE-155', 'SONE-188', 'SONE-503', 'SONE-508', 'SONE-776', 'SONE-865', 'SONE-914', 'SONE-978', 'SSIS-889', 'SSIS-890', 'SSIS-945', 'SSIS-978', 'TZ-124']
   },
   {
-    name: 'Mio Kimijima', cover: '',
+    name: 'Mio Kimijima', cover: 'JUY-543',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['200GANA-1996','200GANA-1707','HND-511', 'HND-547', 'IQQQ-024', 'IPX-083', 'JUY-543', 'JUY-606', 'MIAE-226', 'NIMA-007', 'NITR-388', 'PPPD-686', 'URPW-039']
   },
@@ -361,7 +361,7 @@ export const DEFAULT_ARTISTS = [
   },
   {
     name: 'Rei Kamiki', cover: '',
-    url: 'https://javtiful.com/media/videos/tmb/25787/1.jpg',  // Custom cover
+    url: 'https://pics.dmm.co.jp/mono/movie/adult/1start070/1start070pl.jpg',  // Custom cover
     compilations: [''], mainWorks: ['START-070', 'START-398', 'STARS-734', 'STARS-979', 'REBDB-686', 'STARS-573', 'STARS-778']
   },
   {
@@ -390,7 +390,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['SHKD-713', 'MBYD-289', 'IPX-461']
   },
   {
-    name: 'Sakura Kirishima', cover: '',
+    name: 'Sakura Kirishima', cover: 'VOSS-094',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['LUXU-994','ARA-219','HTR-005-2','071616_341','050516-153','ARA-327','562-SAKURA-01','HEYZO-1212','080218-314','031516-117','040816-133','MAAN-121','LUXU-948','050617-001','562-SAKURA-K03','GANA-1857','LUXU-873','AP-363', 'DVAJ-360', 'EKDV-514', 'FSET-797', 'MAXVR-7', 'MDBK-260', 'MKMP-001', 'REAL-679', 'UMMA-001', 'URPW-013', 'VOSS-094']
   },
