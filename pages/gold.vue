@@ -1,7 +1,6 @@
-<!-- pages/index.vue - GOLD TRACKER (IMPROVED UI) -->
-
+<!-- pages/index.vue - GOLD TRACKER (NUXT 2 SINGLE PAGE) -->
 <template>
-  <div class="app">
+  <div class="app" :class="{ dark: isDarkMode }">
     <!-- Toast Notifications -->
     <div class="toast-container">
       <Transition-group name="toast">
@@ -23,14 +22,17 @@
         </div>
         <div class="title">Gold Tracker</div>
         <div class="title-buttons">
+          <button @click="toggleDarkMode" class="title-btn" :title="`Switch to ${isDarkMode ? 'light' : 'dark'} mode`">
+            <span class="btn-icon">{{ isDarkMode ? '☀️' : '🌙' }}</span>
+          </button>
           <button v-if="purchases.length > 0" @click="exportData('csv')" class="title-btn" title="Export CSV">
             <span class="btn-text">Export</span>
             <span class="btn-icon">⬇</span>
           </button>
-          <button v-if="apiKey && goldPrice > 0" @click="handleRefresh" :disabled="loading" class="title-btn"
+          <button v-if="apiKey && currentPrice > 0" @click="handleRefresh" :disabled="isLoading" class="title-btn"
             title="Refresh price">
             <span class="btn-text">Refresh</span>
-            <span class="refresh-icon" :class="{ spinning: loading }">↻</span>
+            <span class="refresh-icon" :class="{ spinning: isLoading }">↻</span>
           </button>
         </div>
       </div>
@@ -48,32 +50,29 @@
                 </span>
               </div>
 
-              <!-- Main Price Display -->
               <div class="price-display">
                 <div class="price-main">
-                  <div class="price-value">{{ formatCurrencyDisplay(currentPrice) }}</div>
+                  <div class="price-value">{{ formatCurrency(currentPrice) }}</div>
                   <div class="price-unit">per troy ounce</div>
                 </div>
 
                 <div class="price-damlung">
-                  <span class="damlung-value">{{ formatCurrencyDisplay(currentPrice * DAMLUNG_TO_OZ) }}</span>
+                  <span class="damlung-value">{{ formatCurrency(currentPrice * DAMLUNG_TO_OZ) }}</span>
                   <span class="damlung-label">per Damlung (ដំឡឹង)</span>
                 </div>
 
                 <div class="price-timestamp">{{ lastUpdated }}</div>
               </div>
 
-              <!-- Manual Price Input -->
               <div class="price-input-card">
                 <label class="input-label">Set Custom Price</label>
                 <div class="input-row">
                   <input v-model.number="manualPrice" type="number" step="0.01" placeholder="Enter price in USD"
-                    class="price-input" inputmode="decimal" @keyup.enter="applyCustomPrice">
+                    class="price-input" inputmode="decimal" @keyup.enter="applyCustomPrice" />
                   <button @click="applyCustomPrice" class="btn-apply">Apply</button>
                 </div>
               </div>
 
-              <!-- API Configuration -->
               <div class="api-section">
                 <div v-if="!apiKey || apiKey === 'goldapi-3yrz5zhtl5zcyqg4-io'" class="api-prompt">
                   <div class="prompt-icon">💡</div>
@@ -92,7 +91,7 @@
                     <label class="input-label">API Key</label>
                     <div class="input-row">
                       <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'"
-                        placeholder="Enter your API key" class="api-input">
+                        placeholder="Enter your API key" class="api-input" />
                       <button @click="toggleApiKeyVisibility" class="btn-toggle">
                         {{ showApiKey ? '👁️' : '👁️‍🗨️' }}
                       </button>
@@ -113,8 +112,8 @@
                     <span class="status-text">Live updates active</span>
                   </div>
                   <div class="button-row-small">
-                    <button @click="handleRefresh" :disabled="loading" class="btn-small">
-                      {{ loading ? 'Updating...' : 'Refresh Now' }}
+                    <button @click="handleRefresh" :disabled="isLoading" class="btn-small">
+                      {{ isLoading ? 'Updating...' : 'Refresh Now' }}
                     </button>
                     <button @click="removeApiKey" class="btn-small-outline">Disconnect</button>
                   </div>
@@ -129,20 +128,21 @@
             <div class="stats-grid">
               <div class="stat-card">
                 <div class="stat-label">Total Invested</div>
-                <div class="stat-value">{{ memoizedTotalInvested }}</div>
+                <div class="stat-value">{{ formatCurrency(totals.invested) }}</div>
               </div>
               <div class="stat-card">
                 <div class="stat-label">Current Worth</div>
-                <div class="stat-value">{{ memoizedCurrentValue }}</div>
+                <div class="stat-value">{{ formatCurrency(totals.currentValue) }}</div>
               </div>
             </div>
 
-            <div class="profit-card" :class="memoizedProfitLoss >= 0 ? 'gain' : 'loss'">
-              <div class="profit-icon">{{ memoizedProfitLoss >= 0 ? '📈' : '📉' }}</div>
+            <div class="profit-card" :class="totals.profit >= 0 ? 'gain' : 'loss'">
+              <div class="profit-icon">{{ totals.profit >= 0 ? '📈' : '📉' }}</div>
               <div class="profit-content">
-                <div class="profit-label">{{ memoizedProfitLoss >= 0 ? 'Total Gain' : 'Total Loss' }}</div>
-                <div class="profit-amount">{{ memoizedProfitLossDisplay }}</div>
-                <div class="profit-percent">{{ memoizedProfitChangePercent }}</div>
+                <div class="profit-label">{{ totals.profit >= 0 ? 'Total Gain' : 'Total Loss' }}</div>
+                <div class="profit-amount">{{ formatCurrency(Math.abs(totals.profit)) }}</div>
+                <div class="profit-percent">{{ (totals.profit >= 0 ? '+' : '-') }}{{
+    Math.abs(totals.profitPercent).toFixed(2) }}%</div>
               </div>
             </div>
           </section>
@@ -155,7 +155,7 @@
                 <div class="calc-group">
                   <label class="input-label">Amount</label>
                   <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0"
-                    class="calc-input" inputmode="decimal">
+                    class="calc-input" inputmode="decimal" />
                 </div>
                 <div class="calc-group">
                   <label class="input-label">Unit</label>
@@ -171,7 +171,8 @@
               <Transition name="fade">
                 <div v-if="calculatorAmount > 0" class="calc-result">
                   <div class="result-label">Value</div>
-                  <div class="result-value">{{ memoizedCalculatorResult }}</div>
+                  <div class="result-value">{{ formatCurrency(calculateValue(calculatorAmount, calculatorUnit,
+    currentPrice)) }}</div>
                 </div>
               </Transition>
             </div>
@@ -185,12 +186,12 @@
                 <div class="converter-input">
                   <label class="input-label">Grams</label>
                   <input v-model.number="gramAmount" type="number" min="0" step="0.1" placeholder="0.00"
-                    class="converter-field" inputmode="decimal">
+                    class="converter-field" inputmode="decimal" />
                 </div>
                 <div class="converter-arrow">→</div>
                 <div class="converter-output">
                   <label class="input-label">Chi (ជី)</label>
-                  <div class="converter-result">{{ memoizedGramToChi }}</div>
+                  <div class="converter-result">{{ gramToChi(gramAmount).toFixed(2) }}</div>
                 </div>
               </div>
 
@@ -198,28 +199,58 @@
                 <span class="info-badge">1 Chi = 3.75g</span>
               </div>
 
-              <div class="quick-ref">
-                <div class="ref-item">
-                  <span class="ref-gram">3.75g</span>
-                  <span class="ref-equal">=</span>
-                  <span class="ref-chi">1 Chi</span>
-                </div>
-                <div class="ref-item">
-                  <span class="ref-gram">7.5g</span>
-                  <span class="ref-equal">=</span>
-                  <span class="ref-chi">2 Chi</span>
-                </div>
-                <div class="ref-item">
-                  <span class="ref-gram">18.75g</span>
-                  <span class="ref-equal">=</span>
-                  <span class="ref-chi">5 Chi</span>
-                </div>
-                <div class="ref-item">
-                  <span class="ref-gram">37.5g</span>
-                  <span class="ref-equal">=</span>
-                  <span class="ref-chi">10 Chi</span>
-                </div>
-              </div>
+             <div class="quick-ref">
+  <div class="ref-item">
+    <span class="ref-gram">3.75g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">1 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">7.5g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">2 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">11.25g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">3 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">15g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">4 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">18.75g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">5 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">22.5g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">6 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">26.25g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">7 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">30g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">8 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">33.75g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">9 Chi</span>
+  </div>
+  <div class="ref-item">
+    <span class="ref-gram">37.5g</span>
+    <span class="ref-equal">=</span>
+    <span class="ref-chi">10 Chi</span>
+  </div>
+</div>
             </div>
           </section>
 
@@ -229,22 +260,22 @@
             <div class="units-grid">
               <div class="unit-card">
                 <div class="unit-name">Chi (ជី)</div>
-                <div class="unit-price">{{ memoizedChiPrice }}</div>
+                <div class="unit-price">{{ formatCurrency(currentPrice * CHI_TO_OZ) }}</div>
                 <div class="unit-weight">3.75 grams</div>
               </div>
               <div class="unit-card">
                 <div class="unit-name">Gram</div>
-                <div class="unit-price">{{ memoizedGramPrice }}</div>
+                <div class="unit-price">{{ formatCurrency(currentPrice * GRAM_TO_OZ) }}</div>
                 <div class="unit-weight">1 gram</div>
               </div>
               <div class="unit-card">
                 <div class="unit-name">Damlung</div>
-                <div class="unit-price">{{ memoizedDamlungPrice }}</div>
+                <div class="unit-price">{{ formatCurrency(currentPrice * DAMLUNG_TO_OZ) }}</div>
                 <div class="unit-weight">37.5 grams</div>
               </div>
               <div class="unit-card">
                 <div class="unit-name">Troy Oz</div>
-                <div class="unit-price">{{ formatCurrencyDisplay(currentPrice) }}</div>
+                <div class="unit-price">{{ formatCurrency(currentPrice) }}</div>
                 <div class="unit-weight">31.1 grams</div>
               </div>
             </div>
@@ -258,16 +289,16 @@
                 <div class="form-field">
                   <label class="input-label">Amount (Chi)</label>
                   <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
-                    class="form-input" inputmode="decimal">
+                    class="form-input" inputmode="decimal" />
                 </div>
                 <div class="form-field">
                   <label class="input-label">Price Paid (USD)</label>
                   <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
-                    class="form-input" inputmode="decimal">
+                    class="form-input" inputmode="decimal" />
                 </div>
                 <div class="form-field">
                   <label class="input-label">Date</label>
-                  <input v-model="newPurchase.date" type="date" class="form-input" :max="getCurrentDate()">
+                  <input v-model="newPurchase.date" type="date" class="form-input" :max="getCurrentDate()" />
                 </div>
               </div>
               <button @click="addPurchase" :disabled="!canAddPurchase()" class="btn-add">
@@ -296,7 +327,6 @@
             <div class="purchases-list">
               <div v-for="purchase in sortedPurchases" :key="purchase.id" class="purchase-item"
                 :class="{ editing: editingId === purchase.id }">
-
                 <!-- View Mode -->
                 <template v-if="editingId !== purchase.id">
                   <div class="purchase-header">
@@ -307,19 +337,19 @@
                   <div class="purchase-details">
                     <div class="detail-row">
                       <span class="detail-label">Paid</span>
-                      <span class="detail-value">{{ formatCurrencyDisplay(purchase.totalPaid) }}</span>
+                      <span class="detail-value">{{ formatCurrency(purchase.totalPaid) }}</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Worth Now</span>
-                      <span class="detail-value">{{ getWorthTodayTotalCached(purchase) }}</span>
+                      <span class="detail-value">{{ formatCurrency(purchase.amount * CHI_TO_OZ * currentPrice) }}</span>
                     </div>
                   </div>
 
-                  <div class="purchase-profit" :class="getProfitClassCached(purchase.id)">
+                  <div class="purchase-profit" :class="getProfitValue(purchase.id) >= 0 ? 'profit' : 'loss'">
                     <div class="profit-info">
-                      <span class="profit-label">{{ getProfitValueCached(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</span>
-                      <span class="profit-amount">{{ getProfitDisplayCached(purchase.id) }}</span>
-                      <span class="profit-percent">{{ getProfitPercentCached(purchase.id) }}</span>
+                      <span class="profit-label">{{ getProfitValue(purchase.id) >= 0 ? 'Gain' : 'Loss' }}</span>
+                      <span class="profit-amount">{{ formatCurrency(Math.abs(getProfitValue(purchase.id))) }}</span>
+                      <span class="profit-percent">{{ getProfitPercent(purchase.id) }}</span>
                     </div>
                     <div class="purchase-actions">
                       <button @click="startEdit(purchase)" class="btn-edit">Edit</button>
@@ -337,17 +367,17 @@
                   <div class="edit-form">
                     <div class="edit-field">
                       <label class="input-label">Date</label>
-                      <input v-model="editingPurchase.date" type="date" class="edit-input">
+                      <input v-model="editingPurchase.date" type="date" class="edit-input" />
                     </div>
                     <div class="edit-field">
                       <label class="input-label">Amount (Chi)</label>
                       <input v-model.number="editingPurchase.amount" type="number" step="0.01" class="edit-input"
-                        inputmode="decimal">
+                        inputmode="decimal" />
                     </div>
                     <div class="edit-field">
                       <label class="input-label">Price Paid (USD)</label>
                       <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" class="edit-input"
-                        inputmode="decimal">
+                        inputmode="decimal" />
                     </div>
                   </div>
                   <div class="edit-actions">
@@ -358,7 +388,6 @@
               </div>
             </div>
           </section>
-
         </main>
       </div>
     </div>
@@ -367,7 +396,7 @@
 
 <script>
 export default {
-  name: 'GoldTrackerImproved',
+  name: 'GoldTracker',
 
   head() {
     return {
@@ -377,25 +406,28 @@ export default {
         { hid: 'viewport', name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' },
         { hid: 'apple-mobile-web-app-capable', name: 'apple-mobile-web-app-capable', content: 'yes' },
         { hid: 'apple-mobile-web-app-status-bar-style', name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-        { hid: 'theme-color', name: 'theme-color', content: '#ffffff' }
-      ]
-    }
+        { hid: 'theme-color', name: 'theme-color', content: '#ffffff' },
+      ],
+    };
   },
 
   data() {
     return {
+      // Constants
       TROY_OUNCE_TO_GRAM: 31.1035,
       CHI_TO_OZ: 3.75 / 31.1035,
       CHI_TO_GRAM: 3.75,
       GRAM_TO_OZ: 1 / 31.1035,
       DAMLUNG_TO_OZ: 37.5 / 31.1035,
 
-      goldPrice: 0,
+      // Price state
+      currentPrice: 0,
       manualPrice: null,
       isApiPrice: false,
-      loading: false,
+      isLoading: false,
       lastUpdated: 'No price set',
 
+      // API state
       apiKey: '',
       apiKeyInput: '',
       showApiKey: false,
@@ -403,99 +435,47 @@ export default {
       apiBaseUrl: 'https://www.goldapi.io/api',
       alternativeApiUrl: 'https://api.metals.live/v1/spot',
 
+      // Calculator state
       calculatorAmount: 1,
       calculatorUnit: 'chi',
       gramAmount: 0,
 
+      // Purchases state
       purchases: [],
       newPurchase: {
         amount: null,
         totalPaid: null,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
       },
-
       editingId: null,
       editingPurchase: null,
-
       purchaseSortBy: 'date-desc',
 
-      cache: { gold: { data: null, timestamp: null } },
-      fallbackPrice: 2200,
-      purchaseCache: new Map(),
+      // Cache
       formatCache: new Map(),
+      purchaseCache: new Map(),
 
+      // UI state
+      isDarkMode: false,
       toasts: [],
-      toastId: 0
+      toastId: 0,
     };
   },
 
   computed: {
-    currentPrice() {
-      return this.goldPrice > 0 ? this.goldPrice : 0;
-    },
-
-    memoizedGramToChi() {
-      if (!this.gramAmount || this.gramAmount <= 0) return '0.00';
-      const chi = this.gramAmount / this.CHI_TO_GRAM;
-      return chi.toFixed(2);
-    },
-
-    memoizedChiPrice() {
-      return this.formatCurrencyDisplay(this.currentPrice * this.CHI_TO_OZ);
-    },
-
-    memoizedGramPrice() {
-      return this.formatCurrencyDisplay(this.currentPrice * this.GRAM_TO_OZ);
-    },
-
-    memoizedDamlungPrice() {
-      return this.formatCurrencyDisplay(this.currentPrice * this.DAMLUNG_TO_OZ);
-    },
-
-    memoizedTotalInvested() {
-      const total = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      return this.formatCurrencyDisplay(total);
-    },
-
-    memoizedCurrentValue() {
-      let sum = 0;
-      for (let p of this.purchases) {
-        sum += p.amount * this.CHI_TO_OZ * this.currentPrice;
-      }
-      return this.formatCurrencyDisplay(sum);
-    },
-
-    memoizedProfitLoss() {
-      let current = 0;
-      for (let p of this.purchases) {
-        current += p.amount * this.CHI_TO_OZ * this.currentPrice;
-      }
+    totals() {
       const invested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      return current - invested;
-    },
-
-    memoizedProfitLossDisplay() {
-      return this.formatCurrencyDisplay(Math.abs(this.memoizedProfitLoss));
-    },
-
-    memoizedProfitChangePercent() {
-      const invested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
-      if (invested === 0) return '0.00%';
-      const percent = (Math.abs(this.memoizedProfitLoss) / invested) * 100;
-      const sign = this.memoizedProfitLoss >= 0 ? '+' : '-';
-      return `${sign}${percent.toFixed(2)}%`;
-    },
-
-    memoizedCalculatorResult() {
-      if (!this.calculatorAmount || !this.currentPrice) return '$0.00';
-      let ozAmount;
-      switch (this.calculatorUnit) {
-        case 'chi': ozAmount = this.calculatorAmount * this.CHI_TO_OZ; break;
-        case 'gram': ozAmount = this.calculatorAmount * this.GRAM_TO_OZ; break;
-        case 'damlung': ozAmount = this.calculatorAmount * this.DAMLUNG_TO_OZ; break;
-        default: ozAmount = this.calculatorAmount;
+      let currentValue = 0;
+      for (let p of this.purchases) {
+        currentValue += p.amount * this.CHI_TO_OZ * this.currentPrice;
       }
-      return this.formatCurrencyDisplay(ozAmount * this.currentPrice);
+      const profit = currentValue - invested;
+      return {
+        invested,
+        currentValue,
+        profit,
+        profitPercent: invested > 0 ? (profit / invested) * 100 : 0,
+      };
     },
 
     sortedPurchases() {
@@ -511,25 +491,26 @@ export default {
         case 'amount-desc':
           return sorted.sort((a, b) => b.amount - a.amount);
         case 'profit-asc':
-          return sorted.sort((a, b) => this.getProfitValueCached(a.id) - this.getProfitValueCached(b.id));
+          return sorted.sort((a, b) => this.getProfitValue(a.id) - this.getProfitValue(b.id));
         case 'profit-desc':
-          return sorted.sort((a, b) => this.getProfitValueCached(b.id) - this.getProfitValueCached(a.id));
+          return sorted.sort((a, b) => this.getProfitValue(b.id) - this.getProfitValue(a.id));
         default:
           return sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
       }
-    }
+    },
   },
 
   methods: {
+    // Utility methods
     showToast(message, type = 'info') {
       const id = this.toastId++;
       this.toasts.push({ id, message, type });
       setTimeout(() => {
-        this.toasts = this.toasts.filter(t => t.id !== id);
+        this.toasts = this.toasts.filter((t) => t.id !== id);
       }, 3000);
     },
 
-    formatCurrencyDisplay(value) {
+    formatCurrency(value) {
       if (!value) return '$0.00';
       const rounded = Math.round(value * 100) / 100;
       const key = rounded.toFixed(2);
@@ -543,12 +524,43 @@ export default {
       return formatted;
     },
 
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    },
+
+    // Conversion methods
+    gramToChi(grams) {
+      if (!grams || grams <= 0) return 0;
+      return grams / this.CHI_TO_GRAM;
+    },
+
+    calculateValue(amount, unit, price) {
+      if (!amount || amount <= 0 || !price) return 0;
+      let ozAmount;
+      switch (unit) {
+        case 'chi':
+          ozAmount = amount * this.CHI_TO_OZ;
+          break;
+        case 'gram':
+          ozAmount = amount * this.GRAM_TO_OZ;
+          break;
+        case 'damlung':
+          ozAmount = amount * this.DAMLUNG_TO_OZ;
+          break;
+        default:
+          ozAmount = amount;
+      }
+      return ozAmount * price;
+    },
+
+    // Price methods
     applyCustomPrice() {
       if (!this.manualPrice || this.manualPrice <= 0) {
         this.showToast('Enter a valid price', 'error');
         return;
       }
-      this.goldPrice = this.manualPrice;
+      this.currentPrice = this.manualPrice;
       this.isApiPrice = false;
       this.lastUpdated = 'just now (manual)';
       this.savePrice();
@@ -597,69 +609,25 @@ export default {
       }
     },
 
-    getWorthTodayPerChiCached(purchase) {
-      const key = `worth-${purchase.id}-${this.currentPrice}`;
-      if (this.purchaseCache.has(key)) return this.purchaseCache.get(key);
-      const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
-      const currentValue = ozEquivalent * this.currentPrice;
-      const pricePerChi = currentValue / purchase.amount;
-      const result = this.formatCurrencyDisplay(pricePerChi);
-      this.purchaseCache.set(key, result);
-      return result;
-    },
-
-    getProfitValueCached(purchaseId) {
-      const purchase = this.purchases.find(p => p.id === purchaseId);
+    // Purchase calculation methods
+    getProfitValue(purchaseId) {
+      const purchase = this.purchases.find((p) => p.id === purchaseId);
       if (!purchase) return 0;
       const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
       const currentValue = ozEquivalent * this.currentPrice;
       return currentValue - purchase.totalPaid;
     },
 
-    getProfitDisplayCached(purchaseId) {
-      return this.formatCurrencyDisplay(Math.abs(this.getProfitValueCached(purchaseId)));
-    },
-
-    getProfitPercentCached(purchaseId) {
-      const purchase = this.purchases.find(p => p.id === purchaseId);
+    getProfitPercent(purchaseId) {
+      const purchase = this.purchases.find((p) => p.id === purchaseId);
       if (!purchase) return '0.00%';
-      const profit = this.getProfitValueCached(purchaseId);
+      const profit = this.getProfitValue(purchaseId);
       const percentage = (profit / purchase.totalPaid) * 100;
       const sign = profit >= 0 ? '+' : '-';
       return `${sign}${Math.abs(percentage).toFixed(2)}%`;
     },
 
-    getProfitClassCached(purchaseId) {
-      return this.getProfitValueCached(purchaseId) >= 0 ? 'profit' : 'loss';
-    },
-
-    getWorthTodayTotalCached(purchase) {
-      const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
-      const currentValue = ozEquivalent * this.currentPrice;
-      return this.formatCurrencyDisplay(currentValue);
-    },
-
-    startEdit(purchase) {
-      this.editingId = purchase.id;
-      this.editingPurchase = { ...purchase };
-    },
-
-    saveEdit(purchaseId) {
-      const index = this.purchases.findIndex(p => p.id === purchaseId);
-      if (index !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
-        this.purchases[index] = { ...this.purchases[index], ...this.editingPurchase };
-        this.savePurchases();
-        this.purchaseCache.clear();
-        this.editingId = null;
-        this.showToast('Purchase updated', 'success');
-      }
-    },
-
-    cancelEdit() {
-      this.editingId = null;
-      this.editingPurchase = null;
-    },
-
+    // Purchase CRUD methods
     getCurrentDate() {
       return new Date().toISOString().split('T')[0];
     },
@@ -674,31 +642,48 @@ export default {
         id: Date.now(),
         amount: this.newPurchase.amount,
         totalPaid: this.newPurchase.totalPaid,
-        date: this.newPurchase.date
+        date: this.newPurchase.date,
       });
       this.savePurchases();
       this.purchaseCache.clear();
-      this.newPurchase = { amount: null, totalPaid: null, date: new Date().toISOString().split('T')[0] };
+      this.newPurchase = { amount: null, totalPaid: null, date: this.getCurrentDate() };
       this.showToast('Purchase added', 'success');
+    },
+
+    startEdit(purchase) {
+      this.editingId = purchase.id;
+      this.editingPurchase = { ...purchase };
+    },
+
+    saveEdit(purchaseId) {
+      const index = this.purchases.findIndex((p) => p.id === purchaseId);
+      if (index !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
+        this.purchases[index] = { ...this.purchases[index], ...this.editingPurchase };
+        this.savePurchases();
+        this.purchaseCache.clear();
+        this.editingId = null;
+        this.showToast('Purchase updated', 'success');
+      }
+    },
+
+    cancelEdit() {
+      this.editingId = null;
+      this.editingPurchase = null;
     },
 
     deletePurchase(purchaseId) {
       if (confirm('Delete this purchase?')) {
-        this.purchases = this.purchases.filter(p => p.id !== purchaseId);
+        this.purchases = this.purchases.filter((p) => p.id !== purchaseId);
         this.savePurchases();
         this.purchaseCache.clear();
         this.showToast('Purchase deleted', 'info');
       }
     },
 
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    },
-
+    // Storage methods
     savePrice() {
       if (process.client) {
-        localStorage.setItem('goldPrice', this.goldPrice);
+        localStorage.setItem('goldPrice', this.currentPrice);
         localStorage.setItem('isApiPrice', this.isApiPrice);
       }
     },
@@ -719,6 +704,28 @@ export default {
       }
     },
 
+    loadSavedData() {
+      if (!process.client) return;
+      try {
+        const saved = localStorage.getItem('goldPrice');
+        if (saved) {
+          this.currentPrice = parseFloat(saved);
+          const wasApi = localStorage.getItem('isApiPrice') === 'true';
+          this.isApiPrice = wasApi;
+        }
+
+        const savedApiKey = localStorage.getItem('apiKey');
+        if (savedApiKey) {
+          this.apiKey = savedApiKey;
+        }
+
+        this.loadPurchases();
+      } catch (e) {
+        console.error('Error loading saved data');
+      }
+    },
+
+    // Export methods
     exportData(format) {
       try {
         let content, filename, type;
@@ -729,16 +736,16 @@ export default {
           type = 'application/json';
         } else if (format === 'csv') {
           const headers = ['Date', 'Amount (Chi)', 'Price Per Chi', 'Total Paid', 'Current Value', 'Gain/Loss', 'Change %'];
-          const rows = this.purchases.map(p => [
+          const rows = this.purchases.map((p) => [
             this.formatDate(p.date),
             p.amount,
-            this.formatCurrencyDisplay(p.totalPaid / p.amount),
-            this.formatCurrencyDisplay(p.totalPaid),
-            this.formatCurrencyDisplay(p.amount * this.CHI_TO_OZ * this.currentPrice),
-            this.formatCurrencyDisplay(Math.abs(this.getProfitValueCached(p.id))),
-            this.getProfitPercentCached(p.id)
+            this.formatCurrency(p.totalPaid / p.amount),
+            this.formatCurrency(p.totalPaid),
+            this.formatCurrency(p.amount * this.CHI_TO_OZ * this.currentPrice),
+            this.formatCurrency(Math.abs(this.getProfitValue(p.id))),
+            this.getProfitPercent(p.id),
           ]);
-          content = [headers, ...rows].map(row => row.join(',')).join('\n');
+          content = [headers, ...rows].map((row) => row.join(',')).join('\n');
           filename = `gold-tracker-${new Date().toISOString().split('T')[0]}.csv`;
           type = 'text/csv';
         }
@@ -759,27 +766,10 @@ export default {
       }
     },
 
-    async handleRefresh() {
+    // API methods
+    handleRefresh() {
       if (!this.apiKey) return;
-      await this.fetchMetalPrice(true);
-    },
-
-    async tryAlternativeApi() {
-      try {
-        const response = await fetch(this.alternativeApiUrl);
-        if (!response.ok) throw new Error('Failed');
-        const data = await response.json();
-        if (data && typeof data.gold === 'number') {
-          this.goldPrice = data.gold;
-          this.isApiPrice = true;
-          this.lastUpdated = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          this.savePrice();
-          return true;
-        }
-      } catch (e) {
-        console.error('Alternative API failed');
-      }
-      return false;
+      this.fetchMetalPrice(true);
     },
 
     async fetchMetalPrice(userRequested = false) {
@@ -788,19 +778,7 @@ export default {
         return;
       }
 
-      const now = new Date();
-      const cached = this.cache.gold;
-      const cacheAge = cached.timestamp ? (now - new Date(cached.timestamp)) / (1000 * 60 * 60) : 999;
-
-      if (cached.data && cacheAge < 24 && !userRequested) {
-        this.goldPrice = cached.data.price;
-        this.isApiPrice = true;
-        this.lastUpdated = cacheAge > 1 ? `${Math.floor(cacheAge)}h ago` : 'just now';
-        this.savePrice();
-        return;
-      }
-
-      this.loading = true;
+      this.isLoading = true;
 
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 8000);
@@ -810,9 +788,9 @@ export default {
         const fetchPromise = fetch(`${this.apiBaseUrl}/XAU/USD`, {
           headers: {
             'x-access-token': this.apiKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          method: 'GET'
+          method: 'GET',
         });
 
         const response = await Promise.race([fetchPromise, timeoutPromise]);
@@ -820,62 +798,82 @@ export default {
         if (response.ok) {
           const data = await response.json();
           if (data && typeof data.price === 'number') {
-            this.goldPrice = data.price;
+            this.currentPrice = data.price;
             this.isApiPrice = true;
-            this.cache.gold = { data, timestamp: now.toISOString() };
             this.lastUpdated = 'just now';
             this.savePrice();
             this.purchaseCache.clear();
             this.showToast('Price updated from API', 'success');
-            this.loading = false;
+            this.isLoading = false;
             return;
           }
         }
         throw new Error(`API error: ${response.status}`);
       } catch (error) {
         console.error('API Error:', error);
-        const altSuccess = await this.tryAlternativeApi();
-        if (!altSuccess && cached.data) {
-          this.goldPrice = cached.data.price;
-          this.isApiPrice = true;
-          this.lastUpdated = 'Cached';
-          this.showToast('Using cached price', 'info');
-        } else if (!altSuccess) {
-          this.showToast('Failed to fetch price', 'error');
-        }
-        this.loading = false;
+        this.showToast('Failed to fetch price', 'error');
+        this.isLoading = false;
       }
     },
 
-    loadSavedData() {
-      if (!process.client) return;
-      try {
-        const saved = localStorage.getItem('goldPrice');
-        if (saved) {
-          this.goldPrice = parseFloat(saved);
-          const wasApi = localStorage.getItem('isApiPrice') === 'true';
-          this.isApiPrice = wasApi;
-        }
-
-        const savedApiKey = localStorage.getItem('apiKey');
-        if (savedApiKey) {
-          this.apiKey = savedApiKey;
-        }
-
-        this.loadPurchases();
-      } catch (e) {
-        console.error('Error loading saved data');
+    // Theme methods
+    toggleDarkMode() {
+      this.isDarkMode = !this.isDarkMode;
+      if (process.client) {
+        localStorage.setItem('isDarkMode', this.isDarkMode);
+        document.documentElement.style.colorScheme = this.isDarkMode ? 'dark' : 'light';
       }
-    }
+    },
   },
 
   mounted() {
-    this.loadSavedData();
-  }
-}
+    if (process.client) {
+      // Load saved theme
+      const savedTheme = localStorage.getItem('isDarkMode');
+      this.isDarkMode = savedTheme === 'true';
+      document.documentElement.style.colorScheme = this.isDarkMode ? 'dark' : 'light';
+
+      // Load saved data
+      this.loadSavedData();
+    }
+  },
+};
 </script>
 
 <style scoped>
+/* ============================================
+   CSS VARIABLES FOR THEMING
+   ============================================ */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9f9f9;
+  --bg-tertiary: #f5f5f7;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6b7280;
+  --text-tertiary: #86868b;
+  --accent-primary: #667eea;
+  --accent-secondary: #764ba2;
+  --accent-success: #10b981;
+  --accent-danger: #dc2626;
+  --accent-warning: #f59e0b;
+  --border-color: #e5e5e5;
+}
+
+.app.dark {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --bg-tertiary: #3a3a3a;
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-tertiary: #86868b;
+  --accent-primary: #8b9eff;
+  --accent-secondary: #a78bfa;
+  --accent-success: #34d399;
+  --accent-danger: #f87171;
+  --accent-warning: #fbbf24;
+  --border-color: #404040;
+}
+
 /* ============================================
    BASE & RESET
    ============================================ */
@@ -888,12 +886,13 @@ export default {
 html,
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f7;
-  color: #1d1d1f;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
@@ -910,18 +909,24 @@ body {
   justify-content: center;
   padding: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: background 0.3s ease;
+}
+
+.app.dark {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
 }
 
 .window {
   width: 100%;
   max-width: 900px;
-  background: #ffffff;
+  background: var(--bg-primary);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   max-height: 95vh;
+  transition: background-color 0.3s ease;
 }
 
 /* ============================================
@@ -929,13 +934,14 @@ body {
    ============================================ */
 .title-bar {
   height: 52px;
-  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
-  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   padding: 0 20px;
   gap: 16px;
   flex-shrink: 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .traffic-lights {
@@ -971,7 +977,7 @@ body {
   flex: 1;
   font-size: 15px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
@@ -988,7 +994,7 @@ body {
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -996,8 +1002,16 @@ body {
   gap: 6px;
 }
 
+.app.dark .title-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .title-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.08);
+}
+
+.app.dark .title-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .title-btn:disabled {
@@ -1039,13 +1053,13 @@ body {
 
 section {
   padding: 32px 28px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .section-title {
   font-size: 22px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin-bottom: 20px;
   letter-spacing: -0.02em;
 }
@@ -1054,12 +1068,12 @@ section {
    HERO SECTION - PRICE DISPLAY
    ============================================ */
 .hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
   color: white;
 }
 
 .hero-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-primary);
   border-radius: 16px;
   padding: 28px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -1075,7 +1089,7 @@ section {
 .price-header h1 {
   font-size: 24px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.02em;
 }
@@ -1085,8 +1099,8 @@ section {
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  background: #f5f5f7;
-  color: #86868b;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
 }
 
 .price-source.api {
@@ -1094,10 +1108,15 @@ section {
   color: #047857;
 }
 
+.app.dark .price-source.api {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
 .price-display {
   text-align: center;
   padding: 24px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 24px;
 }
 
@@ -1108,7 +1127,7 @@ section {
 .price-value {
   font-size: 56px;
   font-weight: 800;
-  color: #1d1d1f;
+  color: var(--text-primary);
   line-height: 1;
   margin-bottom: 8px;
   letter-spacing: -0.03em;
@@ -1116,7 +1135,7 @@ section {
 
 .price-unit {
   font-size: 15px;
-  color: #86868b;
+  color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1132,10 +1151,18 @@ section {
   margin-bottom: 12px;
 }
 
+.app.dark .price-damlung {
+  background: rgba(139, 158, 255, 0.1);
+}
+
 .damlung-value {
   font-size: 28px;
   font-weight: 700;
   color: #1a73e8;
+}
+
+.app.dark .damlung-value {
+  color: #8b9eff;
 }
 
 .damlung-label {
@@ -1144,9 +1171,13 @@ section {
   font-weight: 500;
 }
 
+.app.dark .damlung-label {
+  color: #9ca3af;
+}
+
 .price-timestamp {
   font-size: 13px;
-  color: #86868b;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -1157,7 +1188,7 @@ section {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -1169,10 +1200,10 @@ section {
 }
 
 .price-input-card {
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-color);
 }
 
 .input-row {
@@ -1186,10 +1217,10 @@ section {
   height: 48px;
   padding: 0 16px;
   font-size: 17px;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: #1d1d1f;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: all 0.2s;
   font-weight: 500;
 }
@@ -1197,7 +1228,7 @@ section {
 .price-input:focus,
 .api-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
@@ -1205,7 +1236,7 @@ section {
 .btn-toggle {
   height: 48px;
   padding: 0 20px;
-  background: #667eea;
+  background: var(--accent-primary);
   color: white;
   border: none;
   border-radius: 10px;
@@ -1218,7 +1249,7 @@ section {
 
 .btn-apply:hover,
 .btn-toggle:hover {
-  background: #5568d3;
+  background: var(--accent-secondary);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
@@ -1233,10 +1264,10 @@ section {
    API SECTION
    ============================================ */
 .api-section {
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-color);
 }
 
 .api-prompt {
@@ -1247,6 +1278,11 @@ section {
   background: #fffbf0;
   border: 2px solid #ffd66b;
   border-radius: 12px;
+}
+
+.app.dark .api-prompt {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
 }
 
 .prompt-icon {
@@ -1261,13 +1297,13 @@ section {
 .prompt-title {
   font-size: 15px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .prompt-text {
   font-size: 13px;
-  color: #5f6368;
+  color: var(--text-secondary);
 }
 
 .prompt-actions {
@@ -1290,7 +1326,7 @@ section {
 }
 
 .btn-demo {
-  background: #10b981;
+  background: var(--accent-success);
   color: white;
 }
 
@@ -1301,12 +1337,12 @@ section {
 }
 
 .btn-setup {
-  background: #667eea;
+  background: var(--accent-primary);
   color: white;
 }
 
 .btn-setup:hover {
-  background: #5568d3;
+  background: var(--accent-secondary);
 }
 
 .api-config {
@@ -1316,15 +1352,20 @@ section {
   border: 2px solid #b3d9ff;
 }
 
+.app.dark .api-config {
+  background: rgba(139, 158, 255, 0.1);
+  border-color: rgba(139, 158, 255, 0.3);
+}
+
 .api-help {
   font-size: 13px;
-  color: #5f6368;
+  color: var(--text-secondary);
   margin-top: 8px;
   margin-bottom: 16px;
 }
 
 .api-help a {
-  color: #1a73e8;
+  color: var(--accent-primary);
   text-decoration: none;
   font-weight: 600;
 }
@@ -1347,23 +1388,23 @@ section {
 }
 
 .btn-primary {
-  background: #667eea;
+  background: var(--accent-primary);
   color: white;
 }
 
 .btn-primary:hover {
-  background: #5568d3;
+  background: var(--accent-secondary);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .btn-secondary {
-  background: #f5f5f7;
-  color: #1d1d1f;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .btn-secondary:hover {
-  background: #e8e8ea;
+  background: var(--bg-tertiary);
 }
 
 .api-active {
@@ -1371,6 +1412,11 @@ section {
   padding: 20px;
   border-radius: 12px;
   border: 2px solid #6ee7b7;
+}
+
+.app.dark .api-active {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
 .active-indicator {
@@ -1383,7 +1429,7 @@ section {
 .status-dot {
   width: 10px;
   height: 10px;
-  background: #10b981;
+  background: var(--accent-success);
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -1406,6 +1452,10 @@ section {
   color: #047857;
 }
 
+.app.dark .status-text {
+  color: #6ee7b7;
+}
+
 .button-row-small {
   display: flex;
   gap: 8px;
@@ -1423,7 +1473,7 @@ section {
 }
 
 .btn-small {
-  background: #10b981;
+  background: var(--accent-success);
   color: white;
   border: none;
 }
@@ -1443,15 +1493,24 @@ section {
   border: 2px solid #6ee7b7;
 }
 
+.app.dark .btn-small-outline {
+  color: #6ee7b7;
+  border-color: rgba(110, 231, 183, 0.3);
+}
+
 .btn-small-outline:hover {
   background: #d1fae5;
+}
+
+.app.dark .btn-small-outline:hover {
+  background: rgba(110, 231, 183, 0.1);
 }
 
 /* ============================================
    STATS SECTION
    ============================================ */
 .stats-section {
-  background: #f9f9f9;
+  background: var(--bg-secondary);
 }
 
 .stats-grid {
@@ -1462,17 +1521,17 @@ section {
 }
 
 .stat-card {
-  background: white;
+  background: var(--bg-primary);
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-color);
   text-align: center;
 }
 
 .stat-label {
   font-size: 13px;
   font-weight: 600;
-  color: #86868b;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -1481,15 +1540,15 @@ section {
 .stat-value {
   font-size: 32px;
   font-weight: 800;
-  color: #1d1d1f;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .profit-card {
-  background: white;
+  background: var(--bg-primary);
   padding: 24px;
   border-radius: 12px;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   display: flex;
   align-items: center;
   gap: 20px;
@@ -1500,9 +1559,19 @@ section {
   border-color: #6ee7b7;
 }
 
+.app.dark .profit-card.gain {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
 .profit-card.loss {
   background: #fef2f2;
   border-color: #fca5a5;
+}
+
+.app.dark .profit-card.loss {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 .profit-icon {
@@ -1517,7 +1586,7 @@ section {
 .profit-label {
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -1534,8 +1603,16 @@ section {
   color: #059669;
 }
 
+.app.dark .profit-card.gain .profit-amount {
+  color: #6ee7b7;
+}
+
 .profit-card.loss .profit-amount {
   color: #dc2626;
+}
+
+.app.dark .profit-card.loss .profit-amount {
+  color: #f87171;
 }
 
 .profit-percent {
@@ -1547,8 +1624,16 @@ section {
   color: #047857;
 }
 
+.app.dark .profit-card.gain .profit-percent {
+  color: #6ee7b7;
+}
+
 .profit-card.loss .profit-percent {
   color: #b91c1c;
+}
+
+.app.dark .profit-card.loss .profit-percent {
+  color: #fca5a5;
 }
 
 /* ============================================
@@ -1556,10 +1641,10 @@ section {
    ============================================ */
 .calculator-card,
 .converter-card {
-  background: white;
+  background: var(--bg-primary);
   padding: 24px;
   border-radius: 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-color);
 }
 
 .calc-inputs,
@@ -1583,10 +1668,10 @@ section {
   padding: 0 16px;
   font-size: 18px;
   font-weight: 600;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: #1d1d1f;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
@@ -1594,7 +1679,7 @@ section {
 .calc-select:focus,
 .converter-field:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
@@ -1602,7 +1687,7 @@ section {
 .converter-result {
   text-align: center;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
   border-radius: 12px;
   color: white;
 }
@@ -1624,7 +1709,7 @@ section {
 
 .converter-arrow {
   font-size: 32px;
-  color: #86868b;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1638,10 +1723,10 @@ section {
   justify-content: center;
   font-size: 24px;
   font-weight: 700;
-  background: #f9f9f9;
-  border: 2px solid #e5e5e5;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  color: #1d1d1f;
+  color: var(--text-primary);
 }
 
 .converter-info {
@@ -1659,6 +1744,11 @@ section {
   border-radius: 20px;
 }
 
+.app.dark .info-badge {
+  background: rgba(139, 158, 255, 0.1);
+  color: #8b9eff;
+}
+
 .quick-ref {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1672,23 +1762,27 @@ section {
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background: #f9f9f9;
+  background: var(--bg-secondary);
   border-radius: 8px;
   font-size: 14px;
 }
 
 .ref-gram {
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .ref-equal {
   color: #d1d5db;
 }
 
+.app.dark .ref-equal {
+  color: #4b5563;
+}
+
 .ref-chi {
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--text-primary);
 }
 
 /* ============================================
@@ -1701,23 +1795,23 @@ section {
 }
 
 .unit-card {
-  background: white;
+  background: var(--bg-primary);
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-color);
   text-align: center;
   transition: all 0.2s;
 }
 
 .unit-card:hover {
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .unit-name {
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -1726,14 +1820,14 @@ section {
 .unit-price {
   font-size: 28px;
   font-weight: 800;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin-bottom: 4px;
   letter-spacing: -0.02em;
 }
 
 .unit-weight {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   font-weight: 500;
 }
 
@@ -1741,10 +1835,10 @@ section {
    PURCHASE FORM
    ============================================ */
 .purchase-card {
-  background: white;
+  background: var(--bg-primary);
   padding: 24px;
   border-radius: 12px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--border-color);
 }
 
 .purchase-form {
@@ -1764,23 +1858,23 @@ section {
   padding: 0 16px;
   font-size: 18px;
   font-weight: 600;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: #1d1d1f;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
 .btn-add {
   width: 100%;
   height: 52px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
   color: white;
   border: none;
   border-radius: 10px;
@@ -1825,7 +1919,7 @@ section {
 .sort-label {
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -1834,22 +1928,22 @@ section {
   padding: 0 16px;
   font-size: 15px;
   font-weight: 600;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: #1d1d1f;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
   min-width: 180px;
 }
 
 .sort-select:hover {
-  border-color: #667eea;
+  border-color: var(--accent-primary);
 }
 
 .sort-select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
@@ -1860,15 +1954,15 @@ section {
 }
 
 .purchase-item {
-  background: white;
+  background: var(--bg-primary);
   border-radius: 12px;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   overflow: hidden;
   transition: all 0.2s;
 }
 
 .purchase-item:hover {
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
@@ -1877,20 +1971,20 @@ section {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #e5e5e5;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .purchase-date {
   font-size: 15px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .purchase-amount {
   font-size: 20px;
   font-weight: 800;
-  color: #1d1d1f;
+  color: var(--text-primary);
 }
 
 .purchase-details {
@@ -1898,7 +1992,7 @@ section {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .detail-row {
@@ -1910,7 +2004,7 @@ section {
 .detail-label {
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -1918,7 +2012,7 @@ section {
 .detail-value {
   font-size: 20px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--text-primary);
 }
 
 .purchase-profit {
@@ -1933,8 +2027,16 @@ section {
   background: #ecfdf5;
 }
 
+.app.dark .purchase-profit.profit {
+  background: rgba(16, 185, 129, 0.1);
+}
+
 .purchase-profit.loss {
   background: #fef2f2;
+}
+
+.app.dark .purchase-profit.loss {
+  background: rgba(220, 38, 38, 0.1);
 }
 
 .profit-info {
@@ -1947,7 +2049,7 @@ section {
 .profit-label {
   font-size: 13px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1962,8 +2064,16 @@ section {
   color: #059669;
 }
 
+.app.dark .purchase-profit.profit .profit-amount {
+  color: #6ee7b7;
+}
+
 .purchase-profit.loss .profit-amount {
   color: #dc2626;
+}
+
+.app.dark .purchase-profit.loss .profit-amount {
+  color: #f87171;
 }
 
 .profit-percent {
@@ -1975,8 +2085,16 @@ section {
   color: #047857;
 }
 
+.app.dark .purchase-profit.profit .profit-percent {
+  color: #6ee7b7;
+}
+
 .purchase-profit.loss .profit-percent {
   color: #b91c1c;
+}
+
+.app.dark .purchase-profit.loss .profit-percent {
+  color: #fca5a5;
 }
 
 .purchase-actions {
@@ -1999,12 +2117,12 @@ section {
 }
 
 .btn-edit {
-  background: #667eea;
+  background: var(--accent-primary);
   color: white;
 }
 
 .btn-edit:hover {
-  background: #5568d3;
+  background: var(--accent-secondary);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
@@ -2015,15 +2133,26 @@ section {
   border: 2px solid #fca5a5;
 }
 
+.app.dark .btn-delete {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: #f87171;
+}
+
 .btn-delete:hover {
   background: #fee2e2;
   border-color: #f87171;
 }
 
+.app.dark .btn-delete:hover {
+  background: rgba(220, 38, 38, 0.2);
+  border-color: #fca5a5;
+}
+
 /* Edit Mode */
 .purchase-item.editing {
-  border-color: #667eea;
-  background: #f9fafb;
+  border-color: var(--accent-primary);
+  background: var(--bg-secondary);
 }
 
 .edit-header {
@@ -2031,14 +2160,14 @@ section {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: #f0f7ff;
-  border-bottom: 2px solid #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  border-bottom: 2px solid var(--accent-primary);
 }
 
 .edit-header h3 {
   font-size: 18px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -2049,7 +2178,7 @@ section {
   background: none;
   border: none;
   font-size: 32px;
-  color: #6b7280;
+  color: var(--text-secondary);
   cursor: pointer;
   line-height: 1;
   transition: all 0.2s;
@@ -2059,9 +2188,13 @@ section {
 }
 
 .btn-close:hover {
-  color: #1d1d1f;
+  color: var(--text-primary);
   background: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
+}
+
+.app.dark .btn-close:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .edit-form {
@@ -2069,7 +2202,7 @@ section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .edit-field {
@@ -2082,16 +2215,16 @@ section {
   padding: 0 16px;
   font-size: 18px;
   font-weight: 600;
-  border: 2px solid #e5e5e5;
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: #1d1d1f;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .edit-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
@@ -2114,7 +2247,7 @@ section {
 }
 
 .btn-save {
-  background: #10b981;
+  background: var(--accent-success);
   color: white;
 }
 
@@ -2125,12 +2258,12 @@ section {
 }
 
 .btn-cancel {
-  background: #f5f5f7;
-  color: #1d1d1f;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .btn-cancel:hover {
-  background: #e8e8ea;
+  background: var(--bg-tertiary);
 }
 
 /* ============================================
@@ -2229,8 +2362,16 @@ section {
   border-radius: 10px;
 }
 
+.app.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+.app.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 /* ============================================
@@ -2266,20 +2407,6 @@ section {
     margin-bottom: 16px;
   }
 
-  .api-prompt {
-    flex-wrap: wrap;
-  }
-
-  .prompt-actions {
-    width: 100%;
-    margin-top: 8px;
-  }
-
-  .btn-demo,
-  .btn-setup {
-    flex: 1;
-  }
-
   .price-value {
     font-size: 48px;
   }
@@ -2298,11 +2425,6 @@ section {
   }
 
   .purchase-form {
-    grid-template-columns: 1fr;
-  }
-
-  .filter-row,
-  .date-filters {
     grid-template-columns: 1fr;
   }
 
@@ -2400,41 +2522,6 @@ section {
     margin-bottom: 14px;
   }
 
-  .api-prompt {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 14px;
-  }
-
-  .prompt-icon {
-    font-size: 28px;
-    align-self: center;
-  }
-
-  .prompt-content {
-    text-align: center;
-  }
-
-  .prompt-title {
-    font-size: 14px;
-  }
-
-  .prompt-text {
-    font-size: 12px;
-  }
-
-  .prompt-actions {
-    width: 100%;
-    margin-top: 12px;
-  }
-
-  .btn-demo,
-  .btn-setup {
-    flex: 1;
-    height: 44px;
-    font-size: 13px;
-  }
-
   .hero-card {
     padding: 20px;
   }
@@ -2467,14 +2554,6 @@ section {
     font-size: 24px;
   }
 
-  .detail-value {
-    font-size: 16px;
-  }
-
-  .item-profit .profit-value {
-    font-size: 20px;
-  }
-
   .units-grid {
     grid-template-columns: 1fr;
   }
@@ -2498,10 +2577,6 @@ section {
   .purchase-details {
     padding: 16px;
     gap: 10px;
-  }
-
-  .detail-value {
-    font-size: 18px;
   }
 
   .purchase-profit {
