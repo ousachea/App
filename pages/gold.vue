@@ -1286,6 +1286,7 @@ body {
   padding: 24px;
   border-radius: 6px;
   border: 1px solid #e5e5e5;
+  margin-bottom: 16px;
 }
 
 .help-text {
