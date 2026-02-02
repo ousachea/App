@@ -15,13 +15,16 @@
     <div class="container">
       <!-- Header -->
       <header class="header">
-        <h1 class="app-title">Gold Tracker</h1>
+        <h1 class="app-title">{{ t.appTitle }}</h1>
         <div class="header-actions">
+          <button @click="toggleLanguage" class="btn-ghost btn-lang">
+            {{ language === 'en' ? 'ខ្មែរ' : 'EN' }}
+          </button>
           <button v-if="purchases.length > 0" @click="exportData('csv')" class="btn-ghost">
-            Export CSV
+            {{ t.exportCSV }}
           </button>
           <button v-if="apiKey && currentPrice > 0" @click="handleRefresh" :disabled="isLoading" class="btn-ghost">
-            {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+            {{ isLoading ? t.refreshing : t.refresh }}
           </button>
         </div>
       </header>
@@ -32,7 +35,7 @@
         <section class="section">
           <div class="card card-primary">
             <div class="price-header">
-              <h2 class="section-title">Current Gold Price</h2>
+              <h2 class="section-title">{{ t.currentGoldPrice }}</h2>
               <span class="badge" :class="{ 'badge-live': isApiPrice }">
                 {{ isApiPrice ? 'Live' : 'Manual' }}
               </span>
@@ -40,23 +43,23 @@
 
             <div class="price-display">
               <div class="price-main">{{ formatCurrency(currentPrice) }}</div>
-              <div class="price-sub">per troy ounce</div>
+              <div class="price-sub">{{ t.perTroyOunce }}</div>
             </div>
 
             <div class="price-damlung">
               <div class="damlung-value">{{ formatCurrency(currentPrice * DAMLUNG_TO_OZ) }}</div>
-              <div class="damlung-label">per Damlung (ដំឡឹង)</div>
+              <div class="damlung-label">{{ t.perDamlung }}</div>
             </div>
 
             <div class="price-time">{{ lastUpdated }}</div>
 
             <!-- Manual Price Input -->
             <div class="input-group">
-              <label class="label">Set Custom Price</label>
+              <label class="label">{{ t.setCustomPrice }}</label>
               <div class="input-row">
-                <input v-model.number="manualPrice" type="number" step="0.01" placeholder="Enter price in USD"
+                <input v-model.number="manualPrice" type="number" step="0.01" `:placeholder="t.enterPrice" `
                   class="input" inputmode="decimal" @keyup.enter="applyCustomPrice" />
-                <button @click="applyCustomPrice" class="btn-primary">Apply</button>
+                <button @click="applyCustomPrice" class="btn-primary">{{ t.apply }}</button>
               </div>
             </div>
 
@@ -64,21 +67,21 @@
             <div class="api-section">
               <div v-if="!apiKey || apiKey === 'goldapi-3yrz5zhtl5zcyqg4-io'" class="api-prompt">
                 <div class="prompt-content">
-                  <div class="prompt-title">Enable Live Updates</div>
-                  <div class="prompt-text">Connect to Gold API for automatic price updates</div>
+                  <div class="prompt-title">{{ t.enableLiveUpdates }}</div>
+                  <div class="prompt-text">{{ t.connectToAPI }}</div>
                 </div>
                 <div class="prompt-actions">
-                  <button @click="useDemoApi" class="btn-secondary">Use Demo</button>
-                  <button @click="toggleApiSetup" class="btn-primary">Setup API</button>
+                  <button @click="useDemoApi" class="btn-secondary">{{ t.useDemo }}</button>
+                  <button @click="toggleApiSetup" class="btn-primary">{{ t.setupAPI }}</button>
                 </div>
               </div>
 
               <transition name="expand">
                 <div v-if="showApiSetup" class="api-config">
-                  <label class="label">API Key</label>
+                  <label class="label">{{ t.apiKey }}</label>
                   <div class="input-row">
-                    <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'"
-                      placeholder="Enter your API key" class="input" />
+                    <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'" `:placeholder="t.enterAPIKey"
+                      ` class="input" />
                     <button @click="toggleApiKeyVisibility" class="btn-ghost">
                       {{ showApiKey ? '👁️' : '👁️‍🗨️' }}
                     </button>
@@ -87,8 +90,8 @@
                     Get a free key at <a href="https://www.goldapi.io" target="_blank">goldapi.io</a>
                   </div>
                   <div class="button-row">
-                    <button @click="saveApiKey" class="btn-primary">Save & Connect</button>
-                    <button @click="toggleApiSetup" class="btn-ghost">Cancel</button>
+                    <button @click="saveApiKey" class="btn-primary">{{ t.saveConnect }}</button>
+                    <button @click="toggleApiSetup" class="btn-ghost">{{ t.cancel }}</button>
                   </div>
                 </div>
               </transition>
@@ -96,13 +99,13 @@
               <div v-if="isApiPrice" class="api-active">
                 <div class="status-row">
                   <span class="status-dot"></span>
-                  <span class="status-text">Live updates active</span>
+                  <span class="status-text">{{ t.liveUpdatesActive }}</span>
                 </div>
                 <div class="button-row">
                   <button @click="handleRefresh" :disabled="isLoading" class="btn-secondary">
                     {{ isLoading ? 'Updating...' : 'Refresh Now' }}
                   </button>
-                  <button @click="removeApiKey" class="btn-ghost">Disconnect</button>
+                  <button @click="removeApiKey" class="btn-ghost">{{ t.disconnect }}</button>
                 </div>
               </div>
             </div>
@@ -111,15 +114,15 @@
 
         <!-- Portfolio Stats -->
         <section v-if="purchases.length > 0" class="section">
-          <h2 class="section-title">Portfolio Summary</h2>
+          <h2 class="section-title">{{ t.portfolioSummary }}</h2>
 
           <div class="stats-grid">
             <div class="stat-card">
-              <div class="stat-label">Total Invested</div>
+              <div class="stat-label">{{ t.totalInvested }}</div>
               <div class="stat-value">{{ formatCurrency(totals.invested) }}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Current Worth</div>
+              <div class="stat-label">{{ t.currentWorth }}</div>
               <div class="stat-value">{{ formatCurrency(totals.currentValue) }}</div>
             </div>
             <div class="stat-card" :class="totals.profit >= 0 ? 'stat-gain' : 'stat-loss'">
@@ -133,30 +136,30 @@
 
         <!-- Quick Calculator -->
         <section class="section">
-          <h2 class="section-title">Quick Calculator</h2>
+          <h2 class="section-title">{{ t.quickCalculator }}</h2>
           <div class="card">
             <div class="calc-inputs">
               <div class="input-group">
-                <label class="label">Amount</label>
+                <label class="label">{{ t.amount }}</label>
                 <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0" class="input"
                   inputmode="decimal" />
               </div>
               <div class="input-group">
-                <label class="label">Unit</label>
+                <label class="label">{{ t.unit }}</label>
                 <select v-model="calculatorUnit" class="input">
-                  <option value="li">Li (លី)</option>
-                  <option value="hun">Hun (ហុន)</option>
-                  <option value="chi">Chi (ជី)</option>
-                  <option value="gram">Gram</option>
-                  <option value="damlung">Damlung (ដំឡឹង)</option>
-                  <option value="oz">Troy Ounce</option>
+                  <option value="li">{{ t.li }}</option>
+                  <option value="hun">{{ t.hun }}</option>
+                  <option value="chi">{{ t.chi }}</option>
+                  <option value="gram">{{ t.gram }}</option>
+                  <option value="damlung">{{ t.damlung }}</option>
+                  <option value="oz">{{ t.troyOz }}</option>
                 </select>
               </div>
             </div>
 
             <transition name="fade">
               <div v-if="calculatorAmount > 0" class="calc-result">
-                <div class="result-label">Estimated Value</div>
+                <div class="result-label">{{ t.estimatedValue }}</div>
                 <div class="result-value">{{ formatCurrency(calculateValue(calculatorAmount, calculatorUnit,
           currentPrice)) }}</div>
               </div>
@@ -166,22 +169,22 @@
 
         <!-- Gram to Chi Converter -->
         <section class="section">
-          <h2 class="section-title">Gram ↔ Chi Converter</h2>
+          <h2 class="section-title">{{ t.gramChiConverter }}</h2>
           <div class="card">
             <div class="converter-row">
               <div class="input-group">
-                <label class="label">Grams</label>
+                <label class="label">{{ t.grams }}</label>
                 <input v-model.number="gramAmount" type="number" min="0" step="0.1" placeholder="0.00" class="input"
                   inputmode="decimal" />
               </div>
               <div class="converter-equals">=</div>
               <div class="input-group">
-                <label class="label">Chi (ជី)</label>
+                <label class="label">{{ t.chi }}</label>
                 <div class="converter-result">{{ gramToChi(gramAmount).toFixed(2) }}</div>
               </div>
             </div>
 
-            <div class="converter-info">1 Chi = 3.75 grams</div>
+            <div class="converter-info">{{ t.chiConverterInfo }}</div>
 
             <div class="quick-ref">
               <div class="ref-item" v-for="n in 10" :key="n">
@@ -194,25 +197,25 @@
 
         <!-- Li/Hun/Chi Converter -->
         <section class="section">
-          <h2 class="section-title">Li ↔ Hun ↔ Chi Converter</h2>
+          <h2 class="section-title">{{ t.liHunChiConverter }}</h2>
           <div class="card">
             <div class="converter-grid">
               <div class="input-group">
-                <label class="label">Li (លី)</label>
+                <label class="label">{{ t.li }}</label>
                 <input v-model.number="liAmount" type="number" min="0" step="1" placeholder="0" class="input"
                   inputmode="decimal" />
               </div>
               <div class="input-group">
-                <label class="label">Hun (ហុន)</label>
+                <label class="label">{{ t.hun }}</label>
                 <div class="converter-result">{{ liToHun(liAmount).toFixed(1) }}</div>
               </div>
               <div class="input-group">
-                <label class="label">Chi (ជី)</label>
+                <label class="label">{{ t.chi }}</label>
                 <div class="converter-result">{{ liToChi(liAmount).toFixed(2) }}</div>
               </div>
             </div>
 
-            <div class="converter-info">10 Li = 1 Hun • 10 Hun = 1 Chi • 100 Li = 1 Chi</div>
+            <div class="converter-info">{{ t.liHunChiInfo }}</div>
 
             <div class="quick-ref">
               <div class="ref-item">
@@ -253,25 +256,25 @@
 
         <!-- Price by Unit -->
         <section class="section">
-          <h2 class="section-title">Price by Unit</h2>
+          <h2 class="section-title">{{ t.priceByUnit }}</h2>
           <div class="units-grid">
             <div class="unit-card">
-              <div class="unit-name">Li (លី)</div>
+              <div class="unit-name">{{ t.li }}</div>
               <div class="unit-price">{{ formatCurrency(currentPrice * LI_TO_OZ) }}</div>
               <div class="unit-weight">0.0375 grams</div>
             </div>
             <div class="unit-card">
-              <div class="unit-name">Hun (ហុន)</div>
+              <div class="unit-name">{{ t.hun }}</div>
               <div class="unit-price">{{ formatCurrency(currentPrice * HUN_TO_OZ) }}</div>
               <div class="unit-weight">0.375 grams</div>
             </div>
             <div class="unit-card">
-              <div class="unit-name">Chi (ជី)</div>
+              <div class="unit-name">{{ t.chi }}</div>
               <div class="unit-price">{{ formatCurrency(currentPrice * CHI_TO_OZ) }}</div>
               <div class="unit-weight">3.75 grams</div>
             </div>
             <div class="unit-card">
-              <div class="unit-name">Gram</div>
+              <div class="unit-name">{{ t.gram }}</div>
               <div class="unit-price">{{ formatCurrency(currentPrice * GRAM_TO_OZ) }}</div>
               <div class="unit-weight">1 gram</div>
             </div>
@@ -290,21 +293,21 @@
 
         <!-- Add Purchase -->
         <section class="section">
-          <h2 class="section-title">Add New Purchase</h2>
+          <h2 class="section-title">{{ t.addNewPurchase }}</h2>
           <div class="card">
             <div class="purchase-form">
               <div class="input-group">
-                <label class="label">Amount (Chi)</label>
+                <label class="label">{{ t.amountChi }}</label>
                 <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
                   class="input" inputmode="decimal" />
               </div>
               <div class="input-group">
-                <label class="label">Price Paid (USD)</label>
+                <label class="label">{{ t.pricePaid }}</label>
                 <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
                   class="input" inputmode="decimal" />
               </div>
               <div class="input-group">
-                <label class="label">Date</label>
+                <label class="label">{{ t.date }}</label>
                 <input v-model="newPurchase.date" type="date" class="input" :max="getCurrentDate()" />
               </div>
             </div>
@@ -317,16 +320,16 @@
         <!-- My Purchases -->
         <section v-if="purchases.length > 0" class="section">
           <div class="purchases-header">
-            <h2 class="section-title">My Purchases</h2>
+            <h2 class="section-title">{{ t.myPurchases }}</h2>
             <div class="sort-control">
-              <label class="label-inline">Sort by</label>
+              <label class="label-inline">{{ t.sortBy }}</label>
               <select v-model="purchaseSortBy" class="input input-sm">
-                <option value="date-desc">Newest First</option>
-                <option value="date-asc">Oldest First</option>
-                <option value="amount-desc">Highest Amount</option>
-                <option value="amount-asc">Lowest Amount</option>
-                <option value="profit-desc">Highest Profit</option>
-                <option value="profit-asc">Lowest Profit</option>
+                <option value="date-desc">{{ t.newestFirst }}</option>
+                <option value="date-asc">{{ t.oldestFirst }}</option>
+                <option value="amount-desc">{{ t.highestAmount }}</option>
+                <option value="amount-asc">{{ t.lowestAmount }}</option>
+                <option value="profit-desc">{{ t.highestProfit }}</option>
+                <option value="profit-asc">{{ t.lowestProfit }}</option>
               </select>
             </div>
           </div>
@@ -343,11 +346,11 @@
 
                 <div class="purchase-details">
                   <div class="detail-row">
-                    <span class="detail-label">Paid</span>
+                    <span class="detail-label">{{ t.paid }}</span>
                     <span class="detail-value">{{ formatCurrency(purchase.totalPaid) }}</span>
                   </div>
                   <div class="detail-row">
-                    <span class="detail-label">Current Worth</span>
+                    <span class="detail-label">{{ t.currentWorth }}</span>
                     <span class="detail-value">{{ formatCurrency(purchase.amount * CHI_TO_OZ * currentPrice) }}</span>
                   </div>
                   <div class="detail-row detail-profit"
@@ -362,36 +365,36 @@
                 </div>
 
                 <div class="purchase-actions">
-                  <button @click="startEdit(purchase)" class="btn-ghost">Edit</button>
-                  <button @click="deletePurchase(purchase.id)" class="btn-ghost btn-danger">Delete</button>
+                  <button @click="startEdit(purchase)" class="btn-ghost">{{ t.edit }}</button>
+                  <button @click="deletePurchase(purchase.id)" class="btn-ghost btn-danger">{{ t.delete }}</button>
                 </div>
               </template>
 
               <!-- Edit Mode -->
               <template v-else>
                 <div class="edit-header">
-                  <h3>Edit Purchase</h3>
+                  <h3>{{ t.editPurchase }}</h3>
                   <button @click="cancelEdit" class="btn-ghost btn-sm">×</button>
                 </div>
                 <div class="edit-form">
                   <div class="input-group">
-                    <label class="label">Date</label>
+                    <label class="label">{{ t.date }}</label>
                     <input v-model="editingPurchase.date" type="date" class="input" />
                   </div>
                   <div class="input-group">
-                    <label class="label">Amount (Chi)</label>
+                    <label class="label">{{ t.amountChi }}</label>
                     <input v-model.number="editingPurchase.amount" type="number" step="0.01" class="input"
                       inputmode="decimal" />
                   </div>
                   <div class="input-group">
-                    <label class="label">Price Paid (USD)</label>
+                    <label class="label">{{ t.pricePaid }}</label>
                     <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" class="input"
                       inputmode="decimal" />
                   </div>
                 </div>
                 <div class="edit-actions">
-                  <button @click="saveEdit(purchase.id)" class="btn-primary">Save Changes</button>
-                  <button @click="cancelEdit" class="btn-ghost">Cancel</button>
+                  <button @click="saveEdit(purchase.id)" class="btn-primary">{{ t.saveChanges }}</button>
+                  <button @click="cancelEdit" class="btn-ghost">{{ t.cancel }}</button>
                 </div>
               </template>
             </div>
@@ -401,7 +404,7 @@
 
       <!-- Footer -->
       <footer class="footer">
-        <p>Gold Tracker © 2024</p>
+        <p>{{ t.footer }}</p>
       </footer>
     </div>
   </div>
@@ -477,10 +480,159 @@ export default {
       // UI state
       toasts: [],
       toastId: 0,
+      language: 'en', // 'en' or 'km'
     };
   },
 
   computed: {
+    t() {
+      const translations = {
+        en: {
+          appTitle: 'Gold Tracker',
+          exportCSV: 'Export CSV',
+          refresh: 'Refresh',
+          refreshing: 'Refreshing...',
+          currentGoldPrice: 'Current Gold Price',
+          live: 'Live',
+          manual: 'Manual',
+          perTroyOunce: 'per troy ounce',
+          perDamlung: 'per Damlung (ដំឡឹង)',
+          setCustomPrice: 'Set Custom Price',
+          enterPrice: 'Enter price in USD',
+          apply: 'Apply',
+          enableLiveUpdates: 'Enable Live Updates',
+          connectToAPI: 'Connect to Gold API for automatic price updates',
+          useDemo: 'Use Demo',
+          setupAPI: 'Setup API',
+          apiKey: 'API Key',
+          enterAPIKey: 'Enter your API key',
+          getFreeKey: 'Get a free key at',
+          saveConnect: 'Save & Connect',
+          cancel: 'Cancel',
+          liveUpdatesActive: 'Live updates active',
+          refreshNow: 'Refresh Now',
+          updating: 'Updating...',
+          disconnect: 'Disconnect',
+          portfolioSummary: 'Portfolio Summary',
+          totalInvested: 'Total Invested',
+          currentWorth: 'Current Worth',
+          totalGain: 'Total Gain',
+          totalLoss: 'Total Loss',
+          quickCalculator: 'Quick Calculator',
+          amount: 'Amount',
+          unit: 'Unit',
+          estimatedValue: 'Estimated Value',
+          gramChiConverter: 'Gram ↔ Chi Converter',
+          grams: 'Grams',
+          chiConverterInfo: '1 Chi = 3.75 grams',
+          liHunChiConverter: 'Li ↔ Hun ↔ Chi Converter',
+          liHunChiInfo: '10 Li = 1 Hun • 10 Hun = 1 Chi • 100 Li = 1 Chi',
+          priceByUnit: 'Price by Unit',
+          addNewPurchase: 'Add New Purchase',
+          amountChi: 'Amount (Chi)',
+          pricePaid: 'Price Paid (USD)',
+          date: 'Date',
+          addPurchase: 'Add Purchase',
+          myPurchases: 'My Purchases',
+          sortBy: 'Sort by',
+          newestFirst: 'Newest First',
+          oldestFirst: 'Oldest First',
+          highestAmount: 'Highest Amount',
+          lowestAmount: 'Lowest Amount',
+          highestProfit: 'Highest Profit',
+          lowestProfit: 'Lowest Profit',
+          paid: 'Paid',
+          currentWorthLabel: 'Current Worth',
+          gain: 'Gain',
+          loss: 'Loss',
+          edit: 'Edit',
+          delete: 'Delete',
+          editPurchase: 'Edit Purchase',
+          saveChanges: 'Save Changes',
+          footer: 'Gold Tracker © 2024',
+          // Units
+          li: 'Li (លី)',
+          hun: 'Hun (ហុន)',
+          chi: 'ជី',
+          gram: 'Gram',
+          damlung: 'Damlung (ដំឡឹង)',
+          troyOz: 'Troy Ounce',
+        },
+        km: {
+          appTitle: 'តាមដានមាស',
+          exportCSV: 'នាំចេញ CSV',
+          refresh: 'ធ្វើបច្ចុប្បន្នភាព',
+          refreshing: 'កំពុងធ្វើបច្ចុប្បន្នភាព...',
+          currentGoldPrice: 'តម្លៃមាសបច្ចុប្បន្ន',
+          live: 'បន្តផ្ទាល់',
+          manual: 'ដោយដៃ',
+          perTroyOunce: 'ក្នុងមួយ troy ounce',
+          perDamlung: 'ក្នុងមួយដំឡឹង',
+          setCustomPrice: 'កំណត់តម្លៃផ្ទាល់ខ្លួន',
+          enterPrice: 'បញ្ចូលតម្លៃជាដុល្លារ',
+          apply: 'អនុវត្ត',
+          enableLiveUpdates: 'បើកការធ្វើបច្ចុប្បន្នភាពផ្ទាល់',
+          connectToAPI: 'ភ្ជាប់ទៅ Gold API សម្រាប់ការធ្វើបច្ចុប្បន្នភាពស្វ័យប្រវត្តិ',
+          useDemo: 'ប្រើសាកល្បង',
+          setupAPI: 'រៀបចំ API',
+          apiKey: 'API Key',
+          enterAPIKey: 'បញ្ចូល API key របស់អ្នក',
+          getFreeKey: 'ទទួលបានកូនសោឥតគិតថ្លៃនៅ',
+          saveConnect: 'រក្សាទុក និងភ្ជាប់',
+          cancel: 'បោះបង់',
+          liveUpdatesActive: 'ការធ្វើបច្ចុប្បន្នភាពផ្ទាល់កំពុងដំណើរការ',
+          refreshNow: 'តម្លៃឥឡូវនេះ',
+          updating: 'កំពុងធ្វើបច្ចុប្បន្នភាព...',
+          disconnect: 'ផ្តាច់',
+          portfolioSummary: 'សង្ខេបវិនិយោគ',
+          totalInvested: 'វិនិយោគសរុប',
+          currentWorth: 'តម្លៃបច្ចុប្បន្ន',
+          totalGain: 'ប្រាក់ចំណេញសរុប',
+          totalLoss: 'ខាតសរុប',
+          quickCalculator: 'ម៉ាស៊ីនគណនារហ័ស',
+          amount: 'ចំនួន',
+          unit: 'ឯកតា',
+          estimatedValue: 'តម្លៃប៉ាន់ស្មាន',
+          gramChiConverter: 'ក្រាម ↔ ជី ប្តូរ',
+          grams: 'ក្រាម',
+          chiConverterInfo: '១ ជី = ៣.៧៥ ក្រាម',
+          liHunChiConverter: 'លី ↔ ហុន ↔ ជី ប្តូរ',
+          liHunChiInfo: '១០ លី = ១ ហុន • ១០ ហុន = ១ ជី • ១០០ លី = ១ ជី',
+          priceByUnit: 'តម្លៃតាមឯកតា',
+          addNewPurchase: 'បន្ថែមការទិញថ្មី',
+          amountChi: 'ចំនួន (ជី)',
+          pricePaid: 'តម្លៃបានបង់ (USD)',
+          date: 'កាលបរិច្ឆេទ',
+          addPurchase: 'បន្ថែមការទិញ',
+          myPurchases: 'ការទិញរបស់ខ្ញុំ',
+          sortBy: 'តម្រៀបតាម',
+          newestFirst: 'ថ្មីបំផុតមុន',
+          oldestFirst: 'ចាស់បំផុតមុន',
+          highestAmount: 'ចំនួនខ្ពស់បំផុត',
+          lowestAmount: 'ចំនួនទាបបំផុត',
+          highestProfit: 'ប្រាក់ចំណេញខ្ពស់បំផុត',
+          lowestProfit: 'ប្រាក់ចំណេញទាបបំផុត',
+          paid: 'បានបង់',
+          currentWorthLabel: 'តម្លៃបច្ចុប្បន្ន',
+          gain: 'ប្រាក់ចំណេញ',
+          loss: 'ខាត',
+          edit: 'កែសម្រួល',
+          delete: 'លុប',
+          editPurchase: 'កែសម្រួលការទិញ',
+          saveChanges: 'រក្សាទុកការផ្លាស់ប្តូរ',
+          footer: 'តាមដានមាស © ២០២៤',
+          // Units
+          li: 'លី',
+          hun: 'ហុន',
+          chi: 'ជី',
+          gram: 'ក្រាម',
+          damlung: 'ដំឡឹង',
+          troyOz: 'Troy Ounce',
+        },
+      };
+      return translations[this.language];
+    },
+
     totals() {
       const invested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
       let currentValue = 0;
@@ -861,6 +1013,13 @@ export default {
       this.fetchMetalPrice(true);
     },
 
+    toggleLanguage() {
+      this.language = this.language === 'en' ? 'km' : 'en';
+      if (process.client) {
+        localStorage.setItem('language', this.language);
+      }
+    },
+
     async fetchMetalPrice(userRequested = false) {
       if (!this.apiKey) {
         this.showToast('API key not configured', 'info');
@@ -908,6 +1067,12 @@ export default {
 
   mounted() {
     if (process.client) {
+      // Load saved language
+      const savedLanguage = localStorage.getItem('language');
+      if (savedLanguage) {
+        this.language = savedLanguage;
+      }
+
       this.loadSavedData();
     }
   },
@@ -944,7 +1109,7 @@ body {
 }
 
 .container {
-  max-width: 800px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0;
 }
@@ -958,7 +1123,7 @@ body {
 .header {
   background: #fff;
   border-bottom: 1px solid #e5e5e5;
-  padding: 24px 32px;
+  padding: 24px 64px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -981,13 +1146,15 @@ body {
 }
 
 .main {
-  padding: 48px 32px;
+  padding: 48px 64px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .footer {
   background: #fff;
   border-top: 1px solid #e5e5e5;
-  padding: 32px;
+  padding: 32px 64px;
   text-align: center;
   color: #737373;
   font-size: 14px;
@@ -1237,6 +1404,17 @@ body {
   font-size: 18px;
 }
 
+.btn-lang {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 16px;
+}
+
+.btn-lang {
+  font-weight: 600;
+  min-width: 50px;
+}
+
 .button-row {
   display: flex;
   gap: 12px;
@@ -1286,7 +1464,6 @@ body {
   padding: 24px;
   border-radius: 6px;
   border: 1px solid #e5e5e5;
-  margin-bottom: 16px;
 }
 
 .help-text {
@@ -1352,6 +1529,13 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
 }
 
 .stat-card {
@@ -1518,6 +1702,13 @@ body {
   gap: 16px;
 }
 
+@media (min-width: 1024px) {
+  .units-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 20px;
+  }
+}
+
 .unit-card {
   background: #fff;
   border: 1px solid #e5e5e5;
@@ -1560,6 +1751,13 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .purchase-form {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
 }
 
 /* ============================================
@@ -1804,6 +2002,7 @@ body {
   }
 
   .header-actions {
+    width: 100%;
     justify-content: flex-end;
   }
 
