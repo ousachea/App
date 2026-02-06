@@ -62,10 +62,34 @@
             <!-- Manual Price Input -->
             <div class="input-group">
               <label class="label">{{ t.setCustomPrice }}</label>
+
+              <!-- Unit Toggle -->
+              <div class="price-unit-toggle">
+                <button @click="priceUnit = 'oz'" :class="['unit-btn', { active: priceUnit === 'oz' }]">
+                  {{ t.perTroyOunce }}
+                </button>
+                <button @click="priceUnit = 'damlung'" :class="['unit-btn', { active: priceUnit === 'damlung' }]">
+                  {{ t.perDamlung }}
+                </button>
+              </div>
+
+              <!-- Price Input -->
               <div class="input-row">
                 <input v-model="manualPrice" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
-                  :placeholder="t.enterPrice" class="input" @keyup.enter="applyCustomPrice" />
+                  :placeholder="priceUnit === 'oz' ? t.enterPriceOz : t.enterPriceDamlung" class="input"
+                  @keyup.enter="applyCustomPrice" />
                 <button @click="applyCustomPrice" class="btn-primary">{{ t.apply }}</button>
+              </div>
+
+              <!-- Conversion Preview -->
+              <div v-if="manualPrice && parseFloat(manualPrice) > 0" class="price-preview">
+                <span class="preview-label">{{ t.equivalent }}:</span>
+                <span class="preview-value">
+                  {{ priceUnit === 'oz'
+      ? formatCurrency(parseFloat(manualPrice) * DAMLUNG_TO_OZ) + ' per Damlung'
+      : formatCurrency(parseFloat(manualPrice) / DAMLUNG_TO_OZ) + ' per Troy Oz'
+                  }}
+                </span>
               </div>
             </div>
 
@@ -434,6 +458,7 @@ export default {
       // Price state
       currentPrice: 0,
       manualPrice: '',
+      priceUnit: 'oz', // 'oz' or 'damlung'
       isApiPrice: false,
       isLoading: false,
       lastUpdated: 'No price set',
@@ -491,6 +516,9 @@ export default {
           perDamlung: 'per Damlung (ដំឡឹង)',
           setCustomPrice: 'Set Custom Price',
           enterPrice: 'Enter price in USD',
+          enterPriceOz: 'Enter price per troy ounce',
+          enterPriceDamlung: 'Enter price per Damlung',
+          equivalent: 'Equivalent',
           apply: 'Apply',
           enableLiveUpdates: 'Enable Live Updates',
           connectToAPI: 'Connect to Gold API for automatic price updates',
@@ -561,6 +589,9 @@ export default {
           perDamlung: 'ក្នុងមួយដំឡឹង',
           setCustomPrice: 'កំណត់តម្លៃផ្ទាល់ខ្លួន',
           enterPrice: 'បញ្ចូលតម្លៃជាដុល្លារ',
+          enterPriceOz: 'បញ្ចូលតម្លៃក្នុងមួយ troy ounce',
+          enterPriceDamlung: 'បញ្ចូលតម្លៃក្នុងមួយដំឡឹង',
+          equivalent: 'ស្មើនឹង',
           apply: 'អនុវត្ត',
           enableLiveUpdates: 'បើកការធ្វើបច្ចុប្បន្នភាពផ្ទាល់',
           connectToAPI: 'ភ្ជាប់ទៅ Gold API សម្រាប់ការធ្វើបច្ចុប្បន្នភាពស្វ័យប្រវត្តិ',
@@ -759,9 +790,16 @@ export default {
         this.showToast('Enter a valid price', 'error');
         return;
       }
-      this.currentPrice = price;
+
+      // Convert to troy ounce price (our base unit)
+      if (this.priceUnit === 'damlung') {
+        this.currentPrice = price / this.DAMLUNG_TO_OZ;
+      } else {
+        this.currentPrice = price;
+      }
+
       this.isApiPrice = false;
-      this.lastUpdated = 'just now (manual)';
+      this.lastUpdated = `just now (manual - ${this.priceUnit === 'oz' ? 'per oz' : 'per damlung'})`;
       this.savePrice();
       this.purchaseCache.clear();
       this.showToast('Price updated', 'success');
@@ -1421,6 +1459,62 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* Price Unit Toggle */
+.price-unit-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: #f5f5f5;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.unit-btn {
+  flex: 1;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #737373;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.unit-btn.active {
+  background: #fff;
+  color: #1a1a1a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.unit-btn:hover:not(.active) {
+  color: #1a1a1a;
+}
+
+/* Price Preview */
+.price-preview {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #fafafa;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.preview-label {
+  color: #737373;
+  font-weight: 500;
+}
+
+.preview-value {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
 .input {
   width: 100%;
   height: 44px;
@@ -1446,11 +1540,24 @@ body {
 }
 
 select.input {
+  background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23525252' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 16px center;
   padding-right: 40px;
   cursor: pointer;
+  border: 2px solid #d4d4d4;
+}
+
+select.input:focus {
+  border-color: #1a1a1a;
+  outline: none;
+}
+
+select.input option {
+  padding: 12px;
+  background: #fff;
+  color: #1a1a1a;
 }
 
 .input-sm {
@@ -2157,6 +2264,17 @@ select.input-sm {
 
   .damlung-value {
     font-size: 20px;
+  }
+
+  .unit-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .price-preview {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
   }
 
   .stats-grid {
