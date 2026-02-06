@@ -12,6 +12,13 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['---',]
   },
   {
+    name: 'Anri Okita',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['SOE-823','HND-128','MIDE-213','WANZ-265','PPPD-288','MIDE-095','WANZ-062','SOE-636']
+  },
+  {
     name: 'Goddess Jun',
     cover: '',
     url: '',  // Custom cover
@@ -190,7 +197,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Collection', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['LUXU-1631','DOCD-008','300MAAN-546','300MIUM-527','LUXU-1814','LUXU-1478','LUXU-1041','259LUXU-1511', 'LUXU-1621','LUXU-950','LUXU-1561','259LUXU-1518', '259LUXU-1571', '259LUXU-1610', '259LUXU-1618', '259LUXU-1621', '259LUXU-1631', '259LUXU-688', '259LUXU-743', 'ADN-630', 'ARA-412', 'CLUB-855', 'DDHP-044', 'FC2-PPV-2864495', 'GANA-2858', 'JUFE-028', 'JUL-872', 'KTB-018', 'MIUM-681', 'MIUM-742', 'MIUM-811', 'NTK-391', 'ORECS-132', 'SSNI-362', 'SUKE-043', 'SUKE-053', 'TOUKA-01',]
+    compilations: [''], mainWorks: ['LUXU-1631','SGK-117','EVA-178','GANA-3003','SIRO-5232','ORECO-907','MAAN-1022','NTK-825','DANDY-923','EBOD-911','sone-306','DOCD-008','300MAAN-546','300MIUM-527','LUXU-1814','LUXU-1478','LUXU-1041','259LUXU-1511', 'LUXU-1621','LUXU-950','LUXU-1561','259LUXU-1518', '259LUXU-1571', '259LUXU-1610', '259LUXU-1618', '259LUXU-1621', '259LUXU-1631', '259LUXU-688', '259LUXU-743', 'ADN-630', 'ARA-412', 'CLUB-855', 'DDHP-044', 'FC2-PPV-2864495', 'GANA-2858', 'JUFE-028', 'JUL-872', 'KTB-018', 'MIUM-681', 'MIUM-742', 'MIUM-811', 'NTK-391', 'ORECS-132', 'SSNI-362', 'SUKE-043', 'SUKE-053', 'TOUKA-01',]
   },
   {
     name: 'Ema Yuina', cover: '',
@@ -277,7 +284,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Mary Tachibana', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['NKKD-322', 'ROYD-175']
+    compilations: [''], mainWorks: ['NKKD-322', 'ROYD-175','DASS-843','KAM-125']
   },
   {
     name: 'Meguri', cover: '',
