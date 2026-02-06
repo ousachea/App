@@ -389,7 +389,7 @@ export default {
           customPrice: 'Custom Price',
           enterCustomPrice: 'Enter price',
           customAPIUrl: 'Custom API URL',
-          enterAPIUrl: 'https://api.example.com/gold/price',
+          enterAPIUrl: 'goldapi-xxxxxxxxxx-io',
           saveAPI: 'Save API',
           getAPIKey: '🔑 Get API Key',
           usingCustomAPI: 'Using custom API endpoint',
@@ -441,7 +441,7 @@ export default {
           customPrice: 'តម្លៃផ្ទាល់ខ្លួន',
           enterCustomPrice: 'បញ្ចូលតម្លៃ',
           customAPIUrl: 'URL API ផ្ទាល់ខ្លួន',
-          enterAPIUrl: 'https://api.example.com/gold/price',
+          enterAPIUrl: 'goldapi-xxxxxxxxxx-io',
           saveAPI: 'រក្សាទុក API',
           getAPIKey: '🔑 ទទួលបាន API Key',
           usingCustomAPI: 'កំពុងប្រើ API ផ្ទាល់ខ្លួន',
@@ -644,7 +644,13 @@ export default {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-        const apiUrl = this.customApiUrl || 'https://api.gold-api.com/price/XAU'
+        // Construct API URL from the saved key format
+        let apiUrl = 'https://api.gold-api.com/price/XAU'
+        if (this.customApiUrl && this.customApiUrl.trim() !== '') {
+          // Convert format: goldapi-3yrz5zhtl5zcyqg4-io -> https://goldapi-3yrz5zhtl5zcyqg4.io/price/XAU
+          const apiKey = this.customApiUrl.trim()
+          apiUrl = `https://${apiKey.replace(/-io$/, '.io')}/price/XAU`
+        }
 
         const response = await fetch(apiUrl, {
           signal: controller.signal,
