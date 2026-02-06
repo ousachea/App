@@ -66,30 +66,59 @@
               <!-- Unit Toggle -->
               <div class="price-unit-toggle">
                 <button @click="priceUnit = 'oz'" :class="['unit-btn', { active: priceUnit === 'oz' }]">
-                  {{ t.perTroyOunce }}
+                  Troy Oz
                 </button>
                 <button @click="priceUnit = 'damlung'" :class="['unit-btn', { active: priceUnit === 'damlung' }]">
-                  {{ t.perDamlung }}
+                  Damlung
+                </button>
+                <button @click="priceUnit = 'chi'" :class="['unit-btn', { active: priceUnit === 'chi' }]">
+                  Chi
                 </button>
               </div>
 
               <!-- Price Input -->
               <div class="input-row">
                 <input v-model="manualPrice" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
-                  :placeholder="priceUnit === 'oz' ? t.enterPriceOz : t.enterPriceDamlung" class="input"
-                  @keyup.enter="applyCustomPrice" />
+                  :placeholder="priceUnit === 'oz' ? t.enterPriceOz : priceUnit === 'damlung' ? t.enterPriceDamlung : t.enterPriceChi"
+                  class="input" @keyup.enter="applyCustomPrice" />
                 <button @click="applyCustomPrice" class="btn-primary">{{ t.apply }}</button>
               </div>
 
               <!-- Conversion Preview -->
               <div v-if="manualPrice && parseFloat(manualPrice) > 0" class="price-preview">
-                <span class="preview-label">{{ t.equivalent }}:</span>
-                <span class="preview-value">
-                  {{ priceUnit === 'oz'
-      ? formatCurrency(parseFloat(manualPrice) * DAMLUNG_TO_OZ) + ' per Damlung'
-      : formatCurrency(parseFloat(manualPrice) / DAMLUNG_TO_OZ) + ' per Troy Oz'
-                  }}
-                </span>
+                <div class="preview-item">
+                  <span class="preview-label">Troy Oz:</span>
+                  <span class="preview-value">
+                    {{ priceUnit === 'oz'
+      ? formatCurrency(parseFloat(manualPrice))
+      : priceUnit === 'damlung'
+        ? formatCurrency(parseFloat(manualPrice) / DAMLUNG_TO_OZ)
+        : formatCurrency(parseFloat(manualPrice) / CHI_TO_OZ)
+                    }}
+                  </span>
+                </div>
+                <div class="preview-item">
+                  <span class="preview-label">Damlung:</span>
+                  <span class="preview-value">
+                    {{ priceUnit === 'oz'
+      ? formatCurrency(parseFloat(manualPrice) * DAMLUNG_TO_OZ)
+      : priceUnit === 'damlung'
+        ? formatCurrency(parseFloat(manualPrice))
+        : formatCurrency((parseFloat(manualPrice) / CHI_TO_OZ) * DAMLUNG_TO_OZ)
+                    }}
+                  </span>
+                </div>
+                <div class="preview-item">
+                  <span class="preview-label">Chi:</span>
+                  <span class="preview-value">
+                    {{ priceUnit === 'oz'
+      ? formatCurrency(parseFloat(manualPrice) * CHI_TO_OZ)
+      : priceUnit === 'damlung'
+        ? formatCurrency((parseFloat(manualPrice) / DAMLUNG_TO_OZ) * CHI_TO_OZ)
+        : formatCurrency(parseFloat(manualPrice))
+                    }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -338,7 +367,7 @@
         <!-- My Purchases -->
         <section v-if="purchases.length > 0" class="section">
           <div class="purchases-header">
-            <h2 class="section-title">{{ t.myPurchases }}</h2>
+            <h2 class="section-title" style="margin-bottom: 0;">{{ t.myPurchases }}</h2>
             <div class="sort-control">
               <label class="label-inline">{{ t.sortBy }}</label>
               <select v-model="purchaseSortBy" class="input input-sm">
@@ -458,7 +487,7 @@ export default {
       // Price state
       currentPrice: 0,
       manualPrice: '',
-      priceUnit: 'oz', // 'oz' or 'damlung'
+      priceUnit: 'oz', // 'oz', 'damlung', or 'chi'
       isApiPrice: false,
       isLoading: false,
       lastUpdated: 'No price set',
@@ -518,6 +547,7 @@ export default {
           enterPrice: 'Enter price in USD',
           enterPriceOz: 'Enter price per troy ounce',
           enterPriceDamlung: 'Enter price per Damlung',
+          enterPriceChi: 'Enter price per Chi',
           equivalent: 'Equivalent',
           apply: 'Apply',
           enableLiveUpdates: 'Enable Live Updates',
@@ -591,6 +621,7 @@ export default {
           enterPrice: 'បញ្ចូលតម្លៃជាដុល្លារ',
           enterPriceOz: 'បញ្ចូលតម្លៃក្នុងមួយ troy ounce',
           enterPriceDamlung: 'បញ្ចូលតម្លៃក្នុងមួយដំឡឹង',
+          enterPriceChi: 'បញ្ចូលតម្លៃក្នុងមួយជី',
           equivalent: 'ស្មើនឹង',
           apply: 'អនុវត្ត',
           enableLiveUpdates: 'បើកការធ្វើបច្ចុប្បន្នភាពផ្ទាល់',
@@ -794,12 +825,15 @@ export default {
       // Convert to troy ounce price (our base unit)
       if (this.priceUnit === 'damlung') {
         this.currentPrice = price / this.DAMLUNG_TO_OZ;
+      } else if (this.priceUnit === 'chi') {
+        this.currentPrice = price / this.CHI_TO_OZ;
       } else {
         this.currentPrice = price;
       }
 
       this.isApiPrice = false;
-      this.lastUpdated = `just now (manual - ${this.priceUnit === 'oz' ? 'per oz' : 'per damlung'})`;
+      const unitLabel = this.priceUnit === 'oz' ? 'per oz' : this.priceUnit === 'damlung' ? 'per damlung' : 'per chi';
+      this.lastUpdated = `just now (manual - ${unitLabel})`;
       this.savePrice();
       this.purchaseCache.clear();
       this.showToast('Price updated', 'success');
@@ -1461,19 +1495,19 @@ body {
 
 /* Price Unit Toggle */
 .price-unit-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
   background: #f5f5f5;
   padding: 4px;
   border-radius: 6px;
+  margin-bottom: 12px;
 }
 
 .unit-btn {
-  flex: 1;
-  padding: 8px 16px;
+  padding: 10px 12px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -1481,6 +1515,7 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
 }
 
 .unit-btn.active {
@@ -1496,23 +1531,37 @@ body {
 /* Price Preview */
 .price-preview {
   margin-top: 12px;
-  padding: 12px 16px;
+  padding: 16px;
   background: #fafafa;
-  border-radius: 4px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.preview-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+  padding: 8px;
+  background: #fff;
+  border-radius: 4px;
 }
 
 .preview-label {
   color: #737373;
   font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .preview-value {
   color: #1a1a1a;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 14px;
 }
 
 .input {
@@ -1655,10 +1704,10 @@ select.input-sm {
 }
 
 .btn-sm {
-  height: 32px;
+  height: 28px;
   padding: 0;
-  width: 32px;
-  font-size: 18px;
+  width: 28px;
+  font-size: 16px;
 }
 
 .btn-lang {
@@ -1994,21 +2043,42 @@ select.input-sm {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  gap: 24px;
+  margin-bottom: 16px;
+  gap: 16px;
 }
 
 .sort-control {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .purchases-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
   -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  .purchases-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .purchases-list {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .purchases-list {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
 }
 
 .purchase-card {
@@ -2017,6 +2087,9 @@ select.input-sm {
   border-radius: 8px;
   overflow: hidden;
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .purchase-card:hover {
@@ -2031,29 +2104,30 @@ select.input-sm {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 12px 16px;
   background: #fafafa;
   border-bottom: 1px solid #e5e5e5;
 }
 
 .purchase-date {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: #737373;
 }
 
 .purchase-amount {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .purchase-details {
-  padding: 24px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   border-bottom: 1px solid #f5f5f5;
+  flex-grow: 1;
 }
 
 .detail-row {
@@ -2063,7 +2137,7 @@ select.input-sm {
 }
 
 .detail-label {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   color: #737373;
   text-transform: uppercase;
@@ -2071,20 +2145,21 @@ select.input-sm {
 }
 
 .detail-value {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .detail-profit {
-  padding-top: 16px;
+  padding-top: 10px;
   border-top: 1px solid #f5f5f5;
 }
 
 .detail-percent {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   text-align: right;
+  margin-top: 2px;
 }
 
 .profit-positive .detail-value,
@@ -2100,9 +2175,18 @@ select.input-sm {
 }
 
 .purchase-actions {
-  padding: 20px 24px;
+  padding: 12px 16px;
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.purchase-actions .btn-ghost {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 80px;
 }
 
 /* Edit Mode */
@@ -2110,29 +2194,39 @@ select.input-sm {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 12px 16px;
   background: #fafafa;
   border-bottom: 1px solid #e5e5e5;
 }
 
 .edit-header h3 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .edit-form {
-  padding: 24px;
+  padding: 16px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 12px;
   border-bottom: 1px solid #f5f5f5;
 }
 
 .edit-actions {
-  padding: 20px 24px;
+  padding: 12px 16px;
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.edit-actions .btn-primary,
+.edit-actions .btn-ghost {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 100px;
 }
 
 /* ============================================
@@ -2247,6 +2341,15 @@ select.input-sm {
     margin-bottom: 48px;
   }
 
+  .section:has(.purchases-list) {
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
   .card {
     border-radius: 0;
     border-left: none;
@@ -2266,15 +2369,32 @@ select.input-sm {
     font-size: 20px;
   }
 
+  .price-unit-toggle {
+    gap: 4px;
+  }
+
   .unit-btn {
-    font-size: 12px;
-    padding: 6px 12px;
+    font-size: 11px;
+    padding: 8px 8px;
   }
 
   .price-preview {
-    flex-direction: column;
-    gap: 4px;
-    text-align: center;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .preview-item {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+
+  .preview-label {
+    font-size: 12px;
+  }
+
+  .preview-value {
+    font-size: 13px;
   }
 
   .stats-grid {
@@ -2315,11 +2435,17 @@ select.input-sm {
   .purchases-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .sort-control {
     width: 100%;
+  }
+
+  .purchases-list {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .purchase-card {
@@ -2328,9 +2454,64 @@ select.input-sm {
     border-right: none;
   }
 
+  .purchase-header {
+    padding: 8px 12px;
+  }
+
+  .purchase-date {
+    font-size: 11px;
+  }
+
+  .purchase-amount {
+    font-size: 13px;
+  }
+
+  .purchase-details {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .detail-label {
+    font-size: 10px;
+  }
+
+  .detail-value {
+    font-size: 13px;
+  }
+
+  .detail-profit {
+    padding-top: 6px;
+  }
+
+  .detail-percent {
+    font-size: 11px;
+    margin-top: 0;
+  }
+
+  .edit-form {
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .edit-form .input-group {
+    margin-bottom: 0;
+  }
+
   .purchase-actions,
   .edit-actions {
     flex-direction: column;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .purchase-actions .btn-ghost,
+  .edit-actions .btn-primary,
+  .edit-actions .btn-ghost {
+    width: 100%;
+    flex: none;
+    height: 32px;
+    font-size: 12px;
   }
 
   .toast-container {
@@ -2377,6 +2558,66 @@ select.input-sm {
 
   .units-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Extra compact purchase cards */
+  .purchase-header {
+    padding: 6px 12px;
+  }
+
+  .purchase-date {
+    font-size: 10px;
+  }
+
+  .purchase-amount {
+    font-size: 12px;
+  }
+
+  .purchase-details {
+    padding: 8px 12px;
+    gap: 5px;
+  }
+
+  .detail-label {
+    font-size: 9px;
+  }
+
+  .detail-value {
+    font-size: 12px;
+  }
+
+  .detail-percent {
+    font-size: 10px;
+  }
+
+  .detail-profit {
+    padding-top: 5px;
+  }
+
+  .purchase-actions,
+  .edit-actions {
+    padding: 6px 12px;
+    gap: 5px;
+  }
+
+  .purchase-actions .btn-ghost,
+  .edit-actions .btn-primary,
+  .edit-actions .btn-ghost {
+    height: 30px;
+    font-size: 11px;
+  }
+
+  .edit-header {
+    padding: 6px 12px;
+  }
+
+  .edit-header h3 {
+    font-size: 12px;
+  }
+
+  .edit-form {
+    padding: 8px 12px;
+    gap: 8px;
   }
 
   .footer {
