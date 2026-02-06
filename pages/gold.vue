@@ -1,6 +1,11 @@
-<!-- pages/index.vue - GOLD TRACKER (MINIMAL DESIGN) -->
+<!-- pages/index.vue - GOLD TRACKER (iOS FIXED VERSION) -->
 <template>
   <div class="app">
+    <!-- Offline Banner -->
+    <div v-if="!isOnline" class="offline-banner">
+      ⚠️ No internet connection - Using cached data
+    </div>
+
     <!-- Toast Notifications -->
     <div class="toast-container">
       <transition-group name="toast">
@@ -23,8 +28,9 @@
           <button v-if="purchases.length > 0" @click="exportData('csv')" class="btn-ghost">
             {{ t.exportCSV }}
           </button>
-          <button v-if="apiKey && currentPrice > 0" @click="handleRefresh" :disabled="isLoading" class="btn-ghost">
-            {{ isLoading ? t.refreshing : t.refresh }}
+          <button v-if="apiKey && currentPrice > 0" @click="handleRefresh" :disabled="isLoading || !isOnline"
+            class="btn-ghost">
+            {{ isLoading ? t.refreshing : !isOnline ? 'Offline' : t.refresh }}
           </button>
         </div>
       </header>
@@ -57,8 +63,8 @@
             <div class="input-group">
               <label class="label">{{ t.setCustomPrice }}</label>
               <div class="input-row">
-                <input v-model.number="manualPrice" type="number" step="0.01" `:placeholder="t.enterPrice" `
-                  class="input" inputmode="decimal" @keyup.enter="applyCustomPrice" />
+                <input v-model="manualPrice" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+                  :placeholder="t.enterPrice" class="input" @keyup.enter="applyCustomPrice" />
                 <button @click="applyCustomPrice" class="btn-primary">{{ t.apply }}</button>
               </div>
             </div>
@@ -80,8 +86,8 @@
                 <div v-if="showApiSetup" class="api-config">
                   <label class="label">{{ t.apiKey }}</label>
                   <div class="input-row">
-                    <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'" `:placeholder="t.enterAPIKey"
-                      ` class="input" />
+                    <input v-model="apiKeyInput" :type="showApiKey ? 'text' : 'password'" :placeholder="t.enterAPIKey"
+                      class="input" />
                     <button @click="toggleApiKeyVisibility" class="btn-ghost">
                       {{ showApiKey ? '👁️' : '👁️‍🗨️' }}
                     </button>
@@ -102,8 +108,8 @@
                   <span class="status-text">{{ t.liveUpdatesActive }}</span>
                 </div>
                 <div class="button-row">
-                  <button @click="handleRefresh" :disabled="isLoading" class="btn-secondary">
-                    {{ isLoading ? 'Updating...' : 'Refresh Now' }}
+                  <button @click="handleRefresh" :disabled="isLoading || !isOnline" class="btn-secondary">
+                    {{ isLoading ? 'Updating...' : !isOnline ? 'Offline' : 'Refresh Now' }}
                   </button>
                   <button @click="removeApiKey" class="btn-ghost">{{ t.disconnect }}</button>
                 </div>
@@ -129,7 +135,7 @@
               <div class="stat-label">{{ totals.profit >= 0 ? 'Total Gain' : 'Total Loss' }}</div>
               <div class="stat-value">{{ formatCurrency(Math.abs(totals.profit)) }}</div>
               <div class="stat-percent">{{ (totals.profit >= 0 ? '+' : '-') }}{{
-          Math.abs(totals.profitPercent).toFixed(2) }}%</div>
+      Math.abs(totals.profitPercent).toFixed(2) }}%</div>
             </div>
           </div>
         </section>
@@ -141,8 +147,8 @@
             <div class="calc-inputs">
               <div class="input-group">
                 <label class="label">{{ t.amount }}</label>
-                <input v-model.number="calculatorAmount" type="number" min="0" step="0.1" placeholder="0" class="input"
-                  inputmode="decimal" />
+                <input v-model="calculatorAmount" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+                  placeholder="0" class="input" />
               </div>
               <div class="input-group">
                 <label class="label">{{ t.unit }}</label>
@@ -158,10 +164,10 @@
             </div>
 
             <transition name="fade">
-              <div v-if="calculatorAmount > 0" class="calc-result">
+              <div v-if="parseFloat(calculatorAmount) > 0" class="calc-result">
                 <div class="result-label">{{ t.estimatedValue }}</div>
-                <div class="result-value">{{ formatCurrency(calculateValue(calculatorAmount, calculatorUnit,
-          currentPrice)) }}</div>
+                <div class="result-value">{{ formatCurrency(calculateValue(parseFloat(calculatorAmount), calculatorUnit,
+      currentPrice)) }}</div>
               </div>
             </transition>
           </div>
@@ -174,24 +180,31 @@
             <div class="converter-row">
               <div class="input-group">
                 <label class="label">{{ t.grams }}</label>
-                <input v-model.number="gramAmount" type="number" min="0" step="0.1" placeholder="0.00" class="input"
-                  inputmode="decimal" />
+                <select v-model="gramAmount" class="input">
+                  <option value="0">Select grams</option>
+                  <option value="3.75">3.75g (1 Chi)</option>
+                  <option value="7.5">7.50g (2 Chi)</option>
+                  <option value="11.25">11.25g (3 Chi)</option>
+                  <option value="15">15.00g (4 Chi)</option>
+                  <option value="18.75">18.75g (5 Chi)</option>
+                  <option value="22.5">22.50g (6 Chi)</option>
+                  <option value="26.25">26.25g (7 Chi)</option>
+                  <option value="30">30.00g (8 Chi)</option>
+                  <option value="33.75">33.75g (9 Chi)</option>
+                  <option value="37.5">37.50g (10 Chi)</option>
+                  <option value="50">50.00g</option>
+                  <option value="75">75.00g</option>
+                  <option value="100">100.00g</option>
+                </select>
               </div>
               <div class="converter-equals">=</div>
               <div class="input-group">
                 <label class="label">{{ t.chi }}</label>
-                <div class="converter-result">{{ gramToChi(gramAmount).toFixed(2) }}</div>
+                <div class="converter-result">{{ gramToChi(parseFloat(gramAmount)).toFixed(2) }}</div>
               </div>
             </div>
 
             <div class="converter-info">{{ t.chiConverterInfo }}</div>
-
-            <div class="quick-ref">
-              <div class="ref-item" v-for="n in 10" :key="n">
-                <span class="ref-gram">{{ (n * 3.75).toFixed(2) }}g</span>
-                <span class="ref-chi">{{ n }} Chi</span>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -202,55 +215,36 @@
             <div class="converter-grid">
               <div class="input-group">
                 <label class="label">{{ t.li }}</label>
-                <input v-model.number="liAmount" type="number" min="0" step="1" placeholder="0" class="input"
-                  inputmode="decimal" />
+                <select v-model="liAmount" class="input">
+                  <option value="0">Select Li</option>
+                  <option value="10">10 Li (1 Hun)</option>
+                  <option value="20">20 Li (2 Hun)</option>
+                  <option value="30">30 Li (3 Hun)</option>
+                  <option value="40">40 Li (4 Hun)</option>
+                  <option value="50">50 Li (5 Hun)</option>
+                  <option value="60">60 Li (6 Hun)</option>
+                  <option value="70">70 Li (7 Hun)</option>
+                  <option value="80">80 Li (8 Hun)</option>
+                  <option value="90">90 Li (9 Hun)</option>
+                  <option value="100">100 Li (1 Chi)</option>
+                  <option value="200">200 Li (2 Chi)</option>
+                  <option value="300">300 Li (3 Chi)</option>
+                  <option value="400">400 Li (4 Chi)</option>
+                  <option value="500">500 Li (5 Chi)</option>
+                  <option value="1000">1000 Li (10 Chi)</option>
+                </select>
               </div>
               <div class="input-group">
                 <label class="label">{{ t.hun }}</label>
-                <div class="converter-result">{{ liToHun(liAmount).toFixed(1) }}</div>
+                <div class="converter-result">{{ liToHun(parseFloat(liAmount)).toFixed(1) }}</div>
               </div>
               <div class="input-group">
                 <label class="label">{{ t.chi }}</label>
-                <div class="converter-result">{{ liToChi(liAmount).toFixed(2) }}</div>
+                <div class="converter-result">{{ liToChi(parseFloat(liAmount)).toFixed(2) }}</div>
               </div>
             </div>
 
             <div class="converter-info">{{ t.liHunChiInfo }}</div>
-
-            <div class="quick-ref">
-              <div class="ref-item">
-                <span class="ref-gram">10 Li</span>
-                <span class="ref-chi">1 Hun</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">20 Li</span>
-                <span class="ref-chi">2 Hun</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">50 Li</span>
-                <span class="ref-chi">5 Hun</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">100 Li</span>
-                <span class="ref-chi">1 Chi</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">10 Hun</span>
-                <span class="ref-chi">1 Chi</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">20 Hun</span>
-                <span class="ref-chi">2 Chi</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">50 Hun</span>
-                <span class="ref-chi">5 Chi</span>
-              </div>
-              <div class="ref-item">
-                <span class="ref-gram">100 Hun</span>
-                <span class="ref-chi">10 Chi</span>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -298,13 +292,13 @@
             <div class="purchase-form">
               <div class="input-group">
                 <label class="label">{{ t.amountChi }}</label>
-                <input v-model.number="newPurchase.amount" type="number" step="0.01" min="0" placeholder="0.00"
-                  class="input" inputmode="decimal" />
+                <input v-model="newPurchase.amount" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+                  placeholder="0.00" class="input" />
               </div>
               <div class="input-group">
                 <label class="label">{{ t.pricePaid }}</label>
-                <input v-model.number="newPurchase.totalPaid" type="number" step="0.01" min="0" placeholder="0.00"
-                  class="input" inputmode="decimal" />
+                <input v-model="newPurchase.totalPaid" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+                  placeholder="0.00" class="input" />
               </div>
               <div class="input-group">
                 <label class="label">{{ t.date }}</label>
@@ -383,13 +377,13 @@
                   </div>
                   <div class="input-group">
                     <label class="label">{{ t.amountChi }}</label>
-                    <input v-model.number="editingPurchase.amount" type="number" step="0.01" class="input"
-                      inputmode="decimal" />
+                    <input v-model="editingPurchase.amount" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+                      class="input" />
                   </div>
                   <div class="input-group">
                     <label class="label">{{ t.pricePaid }}</label>
-                    <input v-model.number="editingPurchase.totalPaid" type="number" step="0.01" class="input"
-                      inputmode="decimal" />
+                    <input v-model="editingPurchase.totalPaid" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
+                      class="input" />
                   </div>
                 </div>
                 <div class="edit-actions">
@@ -432,15 +426,14 @@ export default {
       CHI_TO_GRAM: 3.75,
       GRAM_TO_OZ: 1 / 31.1035,
       DAMLUNG_TO_OZ: 37.5 / 31.1035,
-      // Cambodian units: 10 li = 1 hun, 10 hun = 1 chi
-      LI_TO_GRAM: 3.75 / 100, // 1 chi = 100 li
-      HUN_TO_GRAM: 3.75 / 10, // 1 chi = 10 hun
+      LI_TO_GRAM: 3.75 / 100,
+      HUN_TO_GRAM: 3.75 / 10,
       LI_TO_OZ: (3.75 / 100) / 31.1035,
       HUN_TO_OZ: (3.75 / 10) / 31.1035,
 
       // Price state
       currentPrice: 0,
-      manualPrice: null,
+      manualPrice: '',
       isApiPrice: false,
       isLoading: false,
       lastUpdated: 'No price set',
@@ -453,20 +446,16 @@ export default {
       apiBaseUrl: 'https://www.goldapi.io/api',
 
       // Calculator state
-      calculatorAmount: 1,
+      calculatorAmount: '1',
       calculatorUnit: 'chi',
-      gramAmount: 0,
-
-      // Li/Hun/Chi converter state
-      liAmount: 0,
-      hunAmount: 0,
-      chiAmount: 0,
+      gramAmount: '0',
+      liAmount: '0',
 
       // Purchases state
       purchases: [],
       newPurchase: {
-        amount: null,
-        totalPaid: null,
+        amount: '',
+        totalPaid: '',
         date: new Date().toISOString().split('T')[0],
       },
       editingId: null,
@@ -480,7 +469,10 @@ export default {
       // UI state
       toasts: [],
       toastId: 0,
-      language: 'en', // 'en' or 'km'
+      language: 'en',
+
+      // iOS/Network state
+      isOnline: true,
     };
   },
 
@@ -550,7 +542,6 @@ export default {
           editPurchase: 'Edit Purchase',
           saveChanges: 'Save Changes',
           footer: 'Gold Tracker © 2024',
-          // Units
           li: 'Li (លី)',
           hun: 'Hun (ហុន)',
           chi: 'ជី',
@@ -621,7 +612,6 @@ export default {
           editPurchase: 'កែសម្រួលការទិញ',
           saveChanges: 'រក្សាទុកការផ្លាស់ប្តូរ',
           footer: 'តាមដានមាស © ២០២៤',
-          // Units
           li: 'លី',
           hun: 'ហុន',
           chi: 'ជី',
@@ -634,10 +624,10 @@ export default {
     },
 
     totals() {
-      const invested = this.purchases.reduce((sum, p) => sum + p.totalPaid, 0);
+      const invested = this.purchases.reduce((sum, p) => sum + parseFloat(p.totalPaid), 0);
       let currentValue = 0;
       for (let p of this.purchases) {
-        currentValue += p.amount * this.CHI_TO_OZ * this.currentPrice;
+        currentValue += parseFloat(p.amount) * this.CHI_TO_OZ * this.currentPrice;
       }
       const profit = currentValue - invested;
       return {
@@ -657,9 +647,9 @@ export default {
         case 'date-desc':
           return sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
         case 'amount-asc':
-          return sorted.sort((a, b) => a.amount - b.amount);
+          return sorted.sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount));
         case 'amount-desc':
-          return sorted.sort((a, b) => b.amount - a.amount);
+          return sorted.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
         case 'profit-asc':
           return sorted.sort((a, b) => this.getProfitValue(a.id) - this.getProfitValue(b.id));
         case 'profit-desc':
@@ -671,7 +661,7 @@ export default {
   },
 
   methods: {
-    // Utility methods
+    // ==================== UTILITY METHODS ====================
     showToast(message, type = 'info') {
       const id = this.toastId++;
       this.toasts.push({ id, message, type });
@@ -699,13 +689,34 @@ export default {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     },
 
-    // Conversion methods
+    // ==================== SAFE LOCALSTORAGE ====================
+    safeLocalStorage(action, key, value = null) {
+      if (!process.client) return null;
+      try {
+        if (action === 'get') {
+          return localStorage.getItem(key);
+        } else if (action === 'set') {
+          localStorage.setItem(key, value);
+          return true;
+        } else if (action === 'remove') {
+          localStorage.removeItem(key);
+          return true;
+        }
+      } catch (e) {
+        console.warn(`localStorage ${action} failed:`, e);
+        if (action === 'set' && e.name === 'QuotaExceededError') {
+          this.showToast('Storage full', 'error');
+        }
+        return null;
+      }
+    },
+
+    // ==================== CONVERSION METHODS ====================
     gramToChi(grams) {
       if (!grams || grams <= 0) return 0;
       return grams / this.CHI_TO_GRAM;
     },
 
-    // Li/Hun/Chi conversions
     liToHun(li) {
       if (!li || li <= 0) return 0;
       return li / 10;
@@ -714,26 +725,6 @@ export default {
     liToChi(li) {
       if (!li || li <= 0) return 0;
       return li / 100;
-    },
-
-    hunToLi(hun) {
-      if (!hun || hun <= 0) return 0;
-      return hun * 10;
-    },
-
-    hunToChi(hun) {
-      if (!hun || hun <= 0) return 0;
-      return hun / 10;
-    },
-
-    chiToLi(chi) {
-      if (!chi || chi <= 0) return 0;
-      return chi * 100;
-    },
-
-    chiToHun(chi) {
-      if (!chi || chi <= 0) return 0;
-      return chi * 10;
     },
 
     calculateValue(amount, unit, price) {
@@ -761,13 +752,14 @@ export default {
       return ozAmount * price;
     },
 
-    // Price methods
+    // ==================== PRICE METHODS ====================
     applyCustomPrice() {
-      if (!this.manualPrice || this.manualPrice <= 0) {
+      const price = parseFloat(this.manualPrice);
+      if (!price || price <= 0 || isNaN(price)) {
         this.showToast('Enter a valid price', 'error');
         return;
       }
-      this.currentPrice = this.manualPrice;
+      this.currentPrice = price;
       this.isApiPrice = false;
       this.lastUpdated = 'just now (manual)';
       this.savePrice();
@@ -784,7 +776,7 @@ export default {
 
     useDemoApi() {
       this.apiKey = 'goldapi-3yrz5zhtl5zcyqg4-io';
-      if (process.client) localStorage.setItem('apiKey', this.apiKey);
+      this.safeLocalStorage('set', 'apiKey', this.apiKey);
       this.showToast('Demo API key activated', 'success');
       this.fetchMetalPrice(true);
     },
@@ -799,7 +791,7 @@ export default {
         return;
       }
       this.apiKey = this.apiKeyInput.trim();
-      if (process.client) localStorage.setItem('apiKey', this.apiKey);
+      this.safeLocalStorage('set', 'apiKey', this.apiKey);
       this.apiKeyInput = '';
       this.showApiKey = false;
       this.showApiSetup = false;
@@ -811,49 +803,50 @@ export default {
       if (confirm('Disable API and use manual prices?')) {
         this.apiKey = '';
         this.isApiPrice = false;
-        if (process.client) localStorage.removeItem('apiKey');
+        this.safeLocalStorage('remove', 'apiKey');
         this.showToast('API disabled', 'info');
       }
     },
 
-    // Purchase calculation methods
+    // ==================== PURCHASE METHODS ====================
     getProfitValue(purchaseId) {
       const purchase = this.purchases.find((p) => p.id === purchaseId);
       if (!purchase) return 0;
-      const ozEquivalent = purchase.amount * this.CHI_TO_OZ;
+      const ozEquivalent = parseFloat(purchase.amount) * this.CHI_TO_OZ;
       const currentValue = ozEquivalent * this.currentPrice;
-      return currentValue - purchase.totalPaid;
+      return currentValue - parseFloat(purchase.totalPaid);
     },
 
     getProfitPercent(purchaseId) {
       const purchase = this.purchases.find((p) => p.id === purchaseId);
       if (!purchase) return '0.00%';
       const profit = this.getProfitValue(purchaseId);
-      const percentage = (profit / purchase.totalPaid) * 100;
+      const percentage = (profit / parseFloat(purchase.totalPaid)) * 100;
       const sign = profit >= 0 ? '+' : '-';
       return `${sign}${Math.abs(percentage).toFixed(2)}%`;
     },
 
-    // Purchase CRUD methods
     getCurrentDate() {
       return new Date().toISOString().split('T')[0];
     },
 
     canAddPurchase() {
-      return this.newPurchase.amount > 0 && this.newPurchase.totalPaid > 0 && this.newPurchase.date;
+      const amount = parseFloat(this.newPurchase.amount);
+      const totalPaid = parseFloat(this.newPurchase.totalPaid);
+      return amount > 0 && totalPaid > 0 && this.newPurchase.date;
     },
 
     addPurchase() {
       if (!this.canAddPurchase()) return;
       this.purchases.push({
         id: Date.now(),
-        amount: this.newPurchase.amount,
-        totalPaid: this.newPurchase.totalPaid,
+        amount: parseFloat(this.newPurchase.amount),
+        totalPaid: parseFloat(this.newPurchase.totalPaid),
         date: this.newPurchase.date,
       });
       this.savePurchases();
       this.purchaseCache.clear();
-      this.newPurchase = { amount: null, totalPaid: null, date: this.getCurrentDate() };
+      this.newPurchase = { amount: '', totalPaid: '', date: this.getCurrentDate() };
       this.showToast('Purchase added', 'success');
     },
 
@@ -864,8 +857,16 @@ export default {
 
     saveEdit(purchaseId) {
       const index = this.purchases.findIndex((p) => p.id === purchaseId);
-      if (index !== -1 && this.editingPurchase.amount > 0 && this.editingPurchase.totalPaid > 0) {
-        this.purchases[index] = { ...this.purchases[index], ...this.editingPurchase };
+      const amount = parseFloat(this.editingPurchase.amount);
+      const totalPaid = parseFloat(this.editingPurchase.totalPaid);
+
+      if (index !== -1 && amount > 0 && totalPaid > 0) {
+        this.purchases[index] = {
+          ...this.purchases[index],
+          amount: amount,
+          totalPaid: totalPaid,
+          date: this.editingPurchase.date
+        };
         this.savePurchases();
         this.purchaseCache.clear();
         this.editingId = null;
@@ -887,21 +888,19 @@ export default {
       }
     },
 
-    // Storage methods
+    // ==================== STORAGE METHODS ====================
     savePrice() {
-      if (process.client) {
-        localStorage.setItem('goldPrice', this.currentPrice);
-        localStorage.setItem('isApiPrice', this.isApiPrice);
-      }
+      this.safeLocalStorage('set', 'goldPrice', this.currentPrice);
+      this.safeLocalStorage('set', 'isApiPrice', this.isApiPrice);
     },
 
     savePurchases() {
-      if (process.client) localStorage.setItem('purchases', JSON.stringify(this.purchases));
+      this.safeLocalStorage('set', 'purchases', JSON.stringify(this.purchases));
     },
 
     loadPurchases() {
       if (!process.client) return;
-      const saved = localStorage.getItem('purchases');
+      const saved = this.safeLocalStorage('get', 'purchases');
       if (saved) {
         try {
           this.purchases = JSON.parse(saved);
@@ -914,14 +913,14 @@ export default {
     loadSavedData() {
       if (!process.client) return;
       try {
-        const saved = localStorage.getItem('goldPrice');
+        const saved = this.safeLocalStorage('get', 'goldPrice');
         if (saved) {
           this.currentPrice = parseFloat(saved);
-          const wasApi = localStorage.getItem('isApiPrice') === 'true';
+          const wasApi = this.safeLocalStorage('get', 'isApiPrice') === 'true';
           this.isApiPrice = wasApi;
         }
 
-        const savedApiKey = localStorage.getItem('apiKey');
+        const savedApiKey = this.safeLocalStorage('get', 'apiKey');
         if (savedApiKey) {
           this.apiKey = savedApiKey;
         }
@@ -932,7 +931,7 @@ export default {
       }
     },
 
-    // Export methods
+    // ==================== EXPORT METHODS ====================
     exportData(format) {
       try {
         let content, filename, type;
@@ -942,7 +941,6 @@ export default {
           filename = `gold-tracker-${new Date().toISOString().split('T')[0]}.json`;
           type = 'application/json';
         } else if (format === 'csv') {
-          // Create properly formatted table
           const headers = ['Date', 'Amount (Chi)', 'Price Per Chi', 'Total Paid', 'Current Value', 'Gain/Loss', 'Change %', 'Status'];
 
           const rows = this.purchases.map((p) => {
@@ -961,10 +959,9 @@ export default {
             ];
           });
 
-          // Add summary row
           const summaryRow = [
             'TOTAL',
-            this.purchases.reduce((sum, p) => sum + p.amount, 0).toFixed(2),
+            this.purchases.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2),
             '-',
             this.formatCurrency(this.totals.invested),
             this.formatCurrency(this.totals.currentValue),
@@ -973,7 +970,6 @@ export default {
             this.totals.profit >= 0 ? 'GAIN' : 'LOSS'
           ];
 
-          // Helper function to escape CSV fields
           const escapeCSV = (field) => {
             if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
               return `"${field.replace(/"/g, '""')}"`;
@@ -981,7 +977,6 @@ export default {
             return field;
           };
 
-          // Create CSV content with proper table formatting
           const headerRow = headers.map(escapeCSV).join(',');
           const dataRows = rows.map(row => row.map(escapeCSV).join(',')).join('\n');
           const summary = summaryRow.map(escapeCSV).join(',');
@@ -1007,60 +1002,147 @@ export default {
       }
     },
 
-    // API methods
+    // ==================== API METHODS ====================
     handleRefresh() {
-      if (!this.apiKey) return;
-      this.fetchMetalPrice(true);
-    },
-
-    toggleLanguage() {
-      this.language = this.language === 'en' ? 'km' : 'en';
-      if (process.client) {
-        localStorage.setItem('language', this.language);
+      if (!this.isOnline) {
+        this.showToast('No internet connection', 'error');
+        return;
       }
-    },
 
-    async fetchMetalPrice(userRequested = false) {
       if (!this.apiKey) {
         this.showToast('API key not configured', 'info');
         return;
       }
 
-      this.isLoading = true;
+      this.fetchMetalPrice(true);
+    },
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 8000);
-      });
+    async fetchMetalPrice(userRequested = false, retryCount = 0) {
+      if (!this.apiKey) {
+        this.showToast('API key not configured', 'info');
+        return;
+      }
+
+      if (!this.isOnline) {
+        this.showToast('No internet connection', 'error');
+        return;
+      }
+
+      this.isLoading = true;
+      const maxRetries = 2;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
-        const fetchPromise = fetch(`${this.apiBaseUrl}/XAU/USD`, {
+        const response = await fetch(`${this.apiBaseUrl}/XAU/USD`, {
+          method: 'GET',
           headers: {
             'x-access-token': this.apiKey,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
-          method: 'GET',
+          mode: 'cors',
+          cache: 'no-cache',
+          credentials: 'omit',
+          signal: controller.signal,
         });
 
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data && typeof data.price === 'number') {
-            this.currentPrice = data.price;
-            this.isApiPrice = true;
-            this.lastUpdated = 'just now';
-            this.savePrice();
-            this.purchaseCache.clear();
-            this.showToast('Price updated from API', 'success');
-            this.isLoading = false;
-            return;
-          }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-        throw new Error(`API error: ${response.status}`);
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Invalid content type');
+        }
+
+        const data = await response.json();
+
+        if (data && typeof data.price === 'number' && data.price > 0) {
+          this.currentPrice = data.price;
+          this.isApiPrice = true;
+          this.lastUpdated = 'just now';
+          this.savePrice();
+          this.purchaseCache.clear();
+          this.showToast('Price updated from API', 'success');
+        } else {
+          throw new Error('Invalid price data');
+        }
       } catch (error) {
-        console.error('API Error:', error);
-        this.showToast('Failed to fetch price', 'error');
+        clearTimeout(timeoutId);
+
+        // Retry logic for iOS
+        if (retryCount < maxRetries && error.name !== 'AbortError') {
+          console.log(`Retrying API call (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return this.fetchMetalPrice(userRequested, retryCount + 1);
+        }
+
+        let errorMessage = 'Failed to fetch price';
+
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timeout';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+          errorMessage = 'Network error - check connection';
+        } else if (error.message.includes('CORS')) {
+          errorMessage = 'API blocked by browser';
+        } else if (error.message.includes('HTTP')) {
+          errorMessage = `API error: ${error.message}`;
+        }
+
+        console.error('API Error:', {
+          error: error,
+          message: error.message,
+          name: error.name,
+          retries: retryCount,
+          userAgent: navigator.userAgent,
+        });
+
+        this.showToast(errorMessage, 'error');
+      } finally {
         this.isLoading = false;
+      }
+    },
+
+    // ==================== LANGUAGE ====================
+    toggleLanguage() {
+      this.language = this.language === 'en' ? 'km' : 'en';
+      if (process.client) {
+        this.safeLocalStorage('set', 'language', this.language);
+      }
+    },
+
+    // ==================== NETWORK HANDLERS ====================
+    handleOnline() {
+      this.isOnline = true;
+      this.showToast('Connection restored', 'success');
+      if (this.apiKey && this.isApiPrice) {
+        setTimeout(() => this.fetchMetalPrice(false), 1000);
+      }
+    },
+
+    handleOffline() {
+      this.isOnline = false;
+      this.showToast('No internet connection', 'error');
+    },
+
+    // ==================== iOS COMPATIBILITY ====================
+    checkiOSCompatibility() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+      if (isIOS || isSafari) {
+        console.log('iOS/Safari detected - using enhanced compatibility mode');
+
+        // Check if in Private Browsing
+        try {
+          localStorage.setItem('test', 'test');
+          localStorage.removeItem('test');
+        } catch (e) {
+          this.showToast('Private mode detected - some features limited', 'info');
+        }
       }
     },
   },
@@ -1068,12 +1150,25 @@ export default {
   mounted() {
     if (process.client) {
       // Load saved language
-      const savedLanguage = localStorage.getItem('language');
+      const savedLanguage = this.safeLocalStorage('get', 'language');
       if (savedLanguage) {
         this.language = savedLanguage;
       }
 
       this.loadSavedData();
+      this.checkiOSCompatibility();
+
+      // Network status monitoring
+      window.addEventListener('online', this.handleOnline);
+      window.addEventListener('offline', this.handleOffline);
+      this.isOnline = navigator.onLine;
+    }
+  },
+
+  beforeDestroy() {
+    if (process.client) {
+      window.removeEventListener('online', this.handleOnline);
+      window.removeEventListener('offline', this.handleOffline);
     }
   },
 };
@@ -1087,6 +1182,10 @@ export default {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html {
+  height: -webkit-fill-available;
 }
 
 html,
@@ -1105,6 +1204,7 @@ body {
    ============================================ */
 .app {
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   background: #fafafa;
 }
 
@@ -1114,16 +1214,14 @@ body {
   padding: 0;
 }
 
-@media (max-width: 768px) {
-  .container {
-    max-width: 100%;
-  }
-}
-
+/* iOS Safe Areas */
 .header {
   background: #fff;
   border-bottom: 1px solid #e5e5e5;
   padding: 24px 64px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-left: max(64px, env(safe-area-inset-left));
+  padding-right: max(64px, env(safe-area-inset-right));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1147,17 +1245,41 @@ body {
 
 .main {
   padding: 48px 64px;
+  padding-left: max(64px, env(safe-area-inset-left));
+  padding-right: max(64px, env(safe-area-inset-right));
   max-width: 1400px;
   margin: 0 auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .footer {
   background: #fff;
   border-top: 1px solid #e5e5e5;
   padding: 32px 64px;
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+  padding-left: max(64px, env(safe-area-inset-left));
+  padding-right: max(64px, env(safe-area-inset-right));
   text-align: center;
   color: #737373;
   font-size: 14px;
+}
+
+/* ============================================
+   OFFLINE BANNER
+   ============================================ */
+.offline-banner {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 12px 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid #fde68a;
+  position: sticky;
+  top: 0;
+  z-index: 99;
 }
 
 /* ============================================
@@ -1303,13 +1425,15 @@ body {
   width: 100%;
   height: 44px;
   padding: 0 16px;
-  font-size: 15px;
+  font-size: 16px;
+  /* iOS zoom prevention */
   font-weight: 500;
   border: 1px solid #d4d4d4;
   border-radius: 6px;
   background: #fff;
   color: #1a1a1a;
   transition: all 0.2s;
+  -webkit-appearance: none;
 }
 
 .input:focus {
@@ -1321,9 +1445,23 @@ body {
   color: #a3a3a3;
 }
 
+select.input {
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23525252' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
 .input-sm {
   height: 36px;
-  font-size: 14px;
+  font-size: 16px;
+  /* iOS zoom prevention */
+}
+
+select.input-sm {
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .input-row {
@@ -1346,6 +1484,8 @@ body {
   transition: all 0.2s;
   border: none;
   white-space: nowrap;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary {
@@ -1371,6 +1511,11 @@ body {
   background: #e5e5e5;
 }
 
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .btn-ghost {
   background: transparent;
   color: #1a1a1a;
@@ -1380,6 +1525,11 @@ body {
 .btn-ghost:hover:not(:disabled) {
   background: #fafafa;
   border-color: #d4d4d4;
+}
+
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .btn-danger {
@@ -1408,10 +1558,6 @@ body {
   font-size: 13px;
   font-weight: 600;
   padding: 0 16px;
-}
-
-.btn-lang {
-  font-weight: 600;
   min-width: 50px;
 }
 
@@ -1667,32 +1813,6 @@ body {
   font-weight: 500;
 }
 
-.quick-ref {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.ref-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #fafafa;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.ref-gram {
-  font-weight: 500;
-  color: #737373;
-}
-
-.ref-chi {
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
 /* ============================================
    UNITS GRID
    ============================================ */
@@ -1781,6 +1901,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .purchase-card {
@@ -1912,8 +2033,8 @@ body {
    ============================================ */
 .toast-container {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(20px, env(safe-area-inset-right));
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -1993,6 +2114,9 @@ body {
 
   .header {
     padding: 20px 24px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
     flex-wrap: wrap;
     border-radius: 0;
   }
@@ -2008,6 +2132,8 @@ body {
 
   .main {
     padding: 32px 24px;
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
   }
 
   .section {
@@ -2068,10 +2194,6 @@ body {
     border-radius: 0;
   }
 
-  .quick-ref {
-    grid-template-columns: 1fr;
-  }
-
   .purchases-header {
     flex-direction: column;
     align-items: stretch;
@@ -2094,8 +2216,8 @@ body {
   }
 
   .toast-container {
-    left: 20px;
-    right: 20px;
+    left: max(20px, env(safe-area-inset-left));
+    right: max(20px, env(safe-area-inset-right));
   }
 
   .toast {
@@ -2104,17 +2226,24 @@ body {
 
   .footer {
     border-radius: 0;
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
   }
 }
 
 @media (max-width: 480px) {
   .header {
     padding: 16px 20px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
     border-radius: 0;
   }
 
   .main {
     padding: 24px 20px;
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
 
   .card {
@@ -2134,6 +2263,8 @@ body {
 
   .footer {
     border-radius: 0;
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
 }
 </style>
