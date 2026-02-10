@@ -1210,6 +1210,14 @@ export default {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent iOS zoom on input focus */
+input,
+select,
+textarea {
+  font-size: 17px !important;
+  min-height: 44px;
+}
+
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -1428,7 +1436,7 @@ button {
   padding: 10px;
   border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 17px;
   color: #334155;
   background: white;
 }
@@ -1683,7 +1691,7 @@ button {
   padding: 12px;
   border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 17px;
   color: #334155;
   background: white;
 }
@@ -1822,7 +1830,7 @@ button {
   padding: 12px;
   border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 17px;
   color: #334155;
   background: white;
 }
@@ -1837,7 +1845,7 @@ button {
   padding: 12px;
   border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 17px;
   color: #334155;
   background: white;
   -webkit-appearance: none;
@@ -1993,7 +2001,7 @@ button {
   padding: 10px;
   border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: 17px;
   color: #334155;
   background: white;
 }
@@ -2131,7 +2139,7 @@ button {
   padding: 8px;
   border: 2px solid #e2e8f0;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .edit-actions {
