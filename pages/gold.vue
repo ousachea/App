@@ -20,9 +20,19 @@
       <div class="price-header">
         <h2>{{ t.currentPrice }}</h2>
         <button @click="fetchGoldPrice" :disabled="loading" class="refresh-btn">
-          <span v-if="!loading">{{ t.refreshNow }}</span>
-          <span v-else>{{ t.loading }}</span>
+          <span v-if="!loading">🔄 {{ t.refreshNow }}</span>
+          <span v-else class="loading-spinner">⏳ {{ t.loading }}</span>
         </button>
+      </div>
+
+      <!-- Loading Progress Bar -->
+      <div v-if="loading" class="loading-bar">
+        <div class="loading-progress"></div>
+      </div>
+
+      <!-- Success Message -->
+      <div v-if="showSuccessMessage" class="success-message">
+        ✅ {{ t.pricesUpdated }}
       </div>
 
       <!-- Metal Toggle -->
@@ -397,6 +407,7 @@ export default {
       lastUpdated: '',
       loading: false,
       error: null,
+      showSuccessMessage: false,
       isOnline: typeof navigator !== 'undefined' && navigator.onLine !== undefined ? navigator.onLine : true,
       priceInputMethod: 'troyOz',
       customPrice: null,
@@ -438,6 +449,7 @@ export default {
           refreshNow: 'Refresh Now',
           setPrice: 'Set Price',
           loading: 'Loading...',
+          pricesUpdated: 'Prices updated successfully!',
           perTroyOz: 'per Troy Oz',
           lastUpdated: 'Last updated',
           priceByUnit: 'Price by Unit',
@@ -497,6 +509,7 @@ export default {
           refreshNow: 'តម្លៃឥឡូវនេះ',
           setPrice: 'កំណត់តម្លៃ',
           loading: 'កំពុងផ្ទុក...',
+          pricesUpdated: 'បានធ្វើបច្ចុប្បន្នភាពតម្លៃដោយជោគជ័យ!',
           perTroyOz: 'ក្នុងមួយត្រយ អោន',
           lastUpdated: 'បានធ្វើបច្ចុប្បន្នភាពចុងក្រោយ',
           priceByUnit: 'តម្លៃតាមឯកតា',
@@ -827,15 +840,18 @@ export default {
 
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 15000)
+        const timeoutId = setTimeout(() => controller.abort(), 20000) // Increased to 20s for mobile
 
         let headers = {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
 
-        // Use custom API key OR default API key OR free API
+        let apiMethod = 'default' // Track which method we're using
+
+        // Priority 1: Use custom API key if provided
         if (this.customApiUrl && this.customApiUrl.trim() !== '') {
-          // Custom Gold API with user's key
+          apiMethod = 'custom'
           const input = this.customApiUrl.trim()
           let apiKey = input
           
@@ -847,45 +863,77 @@ export default {
           }
           
           headers['x-access-token'] = apiKey
+          console.log('Using CUSTOM API key')
           
           // Fetch both gold and silver from Gold API
           await Promise.all([
             this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
             this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
           ])
-        } else if (this.defaultApiKey) {
-          // Use default API key for first-time users
+        } 
+        // Priority 2: Use default demo API key
+        else if (this.defaultApiKey) {
+          apiMethod = 'demo'
           headers['x-access-token'] = this.defaultApiKey
           
-          console.log('Using default API key for new users')
+          console.log('Using DEFAULT demo API key')
           
           // Fetch both gold and silver from Gold API
-          await Promise.all([
-            this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
-            this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
-          ])
-        } else {
-          // Try free alternative APIs (no auth required)
+          try {
+            await Promise.all([
+              this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
+              this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
+            ])
+          } catch (err) {
+            console.log('Demo API failed, trying free alternative...')
+            // If demo API fails, fall back to free API
+            apiMethod = 'free'
+            throw err
+          }
+        }
+
+        clearTimeout(timeoutId)
+
+        // Check if we got at least one price
+        if (!this.goldPrice && !this.silverPrice) {
+          throw new Error('No prices received from API')
+        }
+
+        console.log(`✅ Success using ${apiMethod} API - Gold: $${this.goldPrice}, Silver: $${this.silverPrice}`)
+        
+        // Show success message briefly
+        this.showSuccessMessage = true
+        setTimeout(() => {
+          this.showSuccessMessage = false
+        }, 3000)
+
+      } catch (err) {
+        console.error('Primary API failed:', err)
+        
+        // Try free alternative API as final fallback
+        try {
+          console.log('Trying FREE alternative API (metals.live)...')
+          const controller2 = new AbortController()
+          const timeoutId2 = setTimeout(() => controller2.abort(), 15000)
+
           const apiUrl = 'https://api.metals.live/v1/spot'
-
-          console.log('Fetching from:', apiUrl)
-
+          
           const response = await fetch(apiUrl, {
-            signal: controller.signal,
-            headers: headers
+            signal: controller2.signal,
+            headers: {
+              'Accept': 'application/json'
+            }
           })
 
-          clearTimeout(timeoutId)
+          clearTimeout(timeoutId2)
 
           if (!response.ok) {
-            console.log('Primary API failed, trying fallback...')
-            return await this.fetchFromFallbackAPI(controller)
+            throw new Error(`HTTP ${response.status}`)
           }
 
           const data = await response.json()
-          console.log('API Response:', data)
+          console.log('Free API Response:', data)
 
-          // metals.live returns array of metals
           if (Array.isArray(data)) {
             const gold = data.find(m => m.metal === 'gold')
             const silver = data.find(m => m.metal === 'silver')
@@ -898,43 +946,48 @@ export default {
             }
             
             if (this.goldPrice || this.silverPrice) {
-              this.lastUpdated = new Date().toLocaleString()
+              this.lastUpdated = new Date().toLocaleString() + ' (free API)'
               this.saveToLocalStorage()
               this.error = null
-            } else {
-              throw new Error('Unable to parse prices from API response')
+              console.log('✅ Success using FREE API')
+              return
+            }
+          }
+          
+          throw new Error('No valid data from free API')
+        } catch (freeApiError) {
+          console.error('Free API also failed:', freeApiError)
+          
+          // Final fallback: use cached data
+          this.error = 'Unable to fetch live prices. '
+          
+          if (err.name === 'AbortError') {
+            this.error += 'Connection timeout - check your internet. '
+          } else if (err.message.includes('403')) {
+            this.error += 'API key invalid or expired. '
+          } else if (err.message.includes('Failed to fetch')) {
+            this.error += 'Network error - please check connection. '
+          } else {
+            this.error += err.message + '. '
+          }
+
+          // Try to load from localStorage
+          const saved = this.safeGetLocalStorage('goldTrackerData')
+          if (saved) {
+            try {
+              const data = JSON.parse(saved)
+              if (data.goldPrice || data.silverPrice) {
+                this.goldPrice = data.goldPrice
+                this.silverPrice = data.silverPrice
+                this.lastUpdated = data.lastUpdated + ' (cached)'
+                this.error += 'Showing last cached prices.'
+                console.log('📦 Using cached data')
+              }
+            } catch (e) {
+              console.error('Error loading cache:', e)
             }
           } else {
-            throw new Error('Unexpected API response format')
-          }
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          this.error = 'Request timeout. Please try again.'
-        } else {
-          this.error = `Failed to fetch: ${err.message}`
-          console.error('API Error:', err)
-        }
-
-        // Try to load from localStorage as fallback
-        const saved = this.safeGetLocalStorage('goldTrackerData')
-        if (saved) {
-          try {
-            const data = JSON.parse(saved)
-            if (data.goldPrice) {
-              this.goldPrice = data.goldPrice
-            }
-            if (data.silverPrice) {
-              this.silverPrice = data.silverPrice
-            }
-            if (this.goldPrice || this.silverPrice) {
-              this.lastUpdated = data.lastUpdated + ' (cached)'
-              if (!this.error.includes('cached')) {
-                this.error += ' - Using cached data'
-              }
-            }
-          } catch (e) {
-            console.error('Error loading cache:', e)
+            this.error += 'No cached data available. Try again when online.'
           }
         }
       } finally {
@@ -945,33 +998,43 @@ export default {
     async fetchMetalPrice(url, headers, metalType) {
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000)
+        const timeoutId = setTimeout(() => controller.abort(), 12000)
         
         console.log(`Fetching ${metalType} from:`, url)
         
         const response = await fetch(url, {
           signal: controller.signal,
-          headers: headers
+          headers: headers,
+          mode: 'cors',
+          cache: 'no-cache'
         })
         
         clearTimeout(timeoutId)
         
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`${metalType} API Response:`, data)
-          
-          if (data && data.price) {
-            if (metalType === 'gold') {
-              this.goldPrice = data.price
-            } else if (metalType === 'silver') {
-              this.silverPrice = data.price
-            }
-            this.lastUpdated = new Date().toLocaleString()
-            this.saveToLocalStorage()
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`${metalType} API error ${response.status}:`, errorText)
+          throw new Error(`HTTP ${response.status}`)
+        }
+        
+        const data = await response.json()
+        console.log(`${metalType} API Response:`, data)
+        
+        if (data && data.price) {
+          if (metalType === 'gold') {
+            this.goldPrice = data.price
+          } else if (metalType === 'silver') {
+            this.silverPrice = data.price
           }
+          this.lastUpdated = new Date().toLocaleString()
+          this.saveToLocalStorage()
+          console.log(`✅ ${metalType} price updated: $${data.price}`)
+        } else {
+          console.warn(`${metalType} API returned no price data`)
         }
       } catch (err) {
-        console.error(`Error fetching ${metalType}:`, err)
+        console.error(`Error fetching ${metalType}:`, err.message)
+        throw err
       }
     },
 
@@ -1521,6 +1584,47 @@ button {
   cursor: not-allowed;
 }
 
+.loading-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-bar {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.loading-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+  border-radius: 2px;
+}
+
+@keyframes loading {
+  0% { 
+    width: 0%;
+    background-position: 0% 0%;
+  }
+  50% { 
+    width: 70%;
+    background-position: 100% 0%;
+  }
+  100% { 
+    width: 100%;
+    background-position: 0% 0%;
+  }
+}
+
 .price-display {
   text-align: center;
 }
@@ -1576,6 +1680,29 @@ button {
   font-weight: 600;
   color: #0369a1;
   margin-bottom: 16px;
+}
+
+.success-message {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  border-left: 4px solid #10b981;
+  font-weight: 600;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .price-cards {
@@ -1654,12 +1781,20 @@ button {
 }
 
 .error-message {
-  background: #fee2e2;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #991b1b;
-  padding: 12px;
-  border-radius: 6px;
+  padding: 16px;
+  border-radius: 8px;
   margin-top: 12px;
   font-size: 14px;
+  border-left: 4px solid #dc2626;
+  line-height: 1.6;
+}
+
+.error-message::before {
+  content: '⚠️ ';
+  font-size: 16px;
+  margin-right: 6px;
 }
 
 /* Price Method Toggle */
