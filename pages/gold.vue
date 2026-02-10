@@ -105,35 +105,24 @@
           </a>
         </div>
         
-        <!-- Default API Key Info Box -->
-        <div v-if="!customApiUrl" class="default-api-info">
-          <div class="info-header">
-            <span>📋 {{ t.freeAPIAvailable }}</span>
-          </div>
-          <div class="api-copy-box">
-            <input 
-              ref="defaultApiInput"
-              type="text" 
-              readonly 
-              :value="defaultApiKey" 
-              class="api-copy-input"
-              @click="selectApiKey"
-            >
-            <button @click="copyDefaultApi" class="copy-api-btn">
-              {{ apiCopied ? '✓ ' + t.copied : '📋 ' + t.copy }}
-            </button>
-          </div>
-          <div class="api-instructions">
-            {{ t.apiInstructions }}
-          </div>
-        </div>
-
         <div class="api-input-row">
-          <input v-model="customApiUrl" type="text" :placeholder="t.enterAPIUrl" class="api-input">
-          <button @click="saveCustomApi" class="save-api-btn">
+          <input 
+            v-model="customApiUrl" 
+            type="text" 
+            :placeholder="t.enterAPIUrl" 
+            class="api-input"
+          >
+          <button @click="pasteFromClipboard" class="paste-api-btn" :title="t.pasteFromClipboard">
+            📋 {{ t.paste }}
+          </button>
+          <button v-if="customApiUrl" @click="clearApiUrl" class="clear-api-btn" :title="t.clearAPI">
+            ✕
+          </button>
+          <button @click="saveCustomApi" class="save-api-btn" :disabled="!customApiUrl">
             {{ t.saveAPI }}
           </button>
         </div>
+        
         <small v-if="customApiUrl" class="api-note">{{ t.usingCustomAPI }}</small>
         <small v-else class="api-note-default">{{ t.usingFreeAPI }}</small>
       </div>
@@ -413,7 +402,7 @@ export default {
       customPrice: null,
       customApiUrl: '',
       activeMetal: 'gold', // 'gold' or 'silver' - reactive property
-      defaultApiKey: 'goldapi-3yrz5zhtl5zcyqg4-io', // Working demo key
+      defaultApiKey: '', // Remove expired demo key - use free API instead
       apiCopied: false,
 
       // Converter state
@@ -491,13 +480,17 @@ export default {
           customAPIUrl: 'Custom API Key (Optional)',
           enterAPIUrl: 'Paste your API key here (optional)',
           saveAPI: 'Save API',
+          paste: 'Paste',
+          pasteFromClipboard: 'Paste from clipboard',
+          clearAPI: 'Clear API key',
           getAPIKey: '🔑 Get Your Own Free Key',
           usingCustomAPI: 'Using custom Gold API key',
-          usingFreeAPI: 'Using free community API (limited rates)',
-          freeAPIAvailable: 'Free Demo API Key Available',
+          usingFreeAPI: 'Using free API (no key needed)',
+          freeAPIAvailable: 'Want More Requests? Get Free API Key',
           copy: 'Copy',
           copied: 'Copied!',
           apiInstructions: 'Copy this key and paste above, then click Save API. This gives you 100 free requests.',
+          apiInstructionsNew: 'Currently using free API (works without key). For 100+ requests/month, get your own free API key from goldapi.io above.',
           offlineWarning: '⚠️ You are offline. Data may be outdated.',
           fetchPriceFirst: 'Please fetch prices first',
           gold: 'Gold',
@@ -551,13 +544,17 @@ export default {
           customAPIUrl: 'គន្លឹះ API ផ្ទាល់ខ្លួន (ស្រេចចិត្ត)',
           enterAPIUrl: 'បិទភ្ជាប់គន្លឹះ API របស់អ្នកនៅទីនេះ (ស្រេចចិត្ត)',
           saveAPI: 'រក្សាទុក API',
+          paste: 'បិទភ្ជាប់',
+          pasteFromClipboard: 'បិទភ្ជាប់ពីឃ្លីបបត',
+          clearAPI: 'លុបគន្លឹះ API',
           getAPIKey: '🔑 ទទួលបានគន្លឹះឥតគិតថ្លៃរបស់អ្នក',
           usingCustomAPI: 'កំពុងប្រើគន្លឹះ Gold API ផ្ទាល់ខ្លួន',
-          usingFreeAPI: 'កំពុងប្រើ API សហគមន៍ឥតគិតថ្លៃ (អត្រាកំណត់)',
-          freeAPIAvailable: 'មានគន្លឹះ API ដេមូឥតគិតថ្លៃ',
+          usingFreeAPI: 'កំពុងប្រើ API ឥតគិតថ្លៃ (មិនត្រូវការគន្លឹះ)',
+          freeAPIAvailable: 'ចង់បានសំណើច្រើនទៀត? ទទួលគន្លឹះ API ឥតគិតថ្លៃ',
           copy: 'ចម្លង',
           copied: 'បានចម្លង!',
           apiInstructions: 'ចម្លងគន្លឹះនេះ និងបិទភ្ជាប់ខាងលើ បន្ទាប់មកចុចរក្សាទុក API។ វាផ្តល់ឱ្យអ្នកនូវសំណើ 100 ដងឥតគិតថ្លៃ។',
+          apiInstructionsNew: 'បច្ចុប្បន្នកំពុងប្រើ API ឥតគិតថ្លៃ (ដំណើរការដោយគ្មានគន្លឹះ)។ សម្រាប់សំណើ 100+ ក្នុងមួយខែ ទទួលបានគន្លឹះ API ឥតគិតថ្លៃរបស់អ្នកពី goldapi.io ខាងលើ។',
           offlineWarning: '⚠️ អ្នកស្ថិតក្រៅបណ្តាញ។ ទិន្នន័យអាចចាស់។',
           fetchPriceFirst: 'សូមទាញយកតម្លៃជាមុនសិន',
           gold: 'មាស',
@@ -664,27 +661,49 @@ export default {
 
     async copyDefaultApi() {
       try {
-        await navigator.clipboard.writeText(this.defaultApiKey)
+        const textToCopy = 'Get your free API key at: https://www.goldapi.io/'
+        await navigator.clipboard.writeText(textToCopy)
         this.apiCopied = true
         setTimeout(() => {
           this.apiCopied = false
         }, 2000)
       } catch (err) {
         // Fallback for older browsers
-        if (this.$refs.defaultApiInput) {
-          this.$refs.defaultApiInput.select()
-          document.execCommand('copy')
-          this.apiCopied = true
-          setTimeout(() => {
-            this.apiCopied = false
-          }, 2000)
-        }
+        const textToCopy = 'Get your free API key at: https://www.goldapi.io/'
+        const tempInput = document.createElement('textarea')
+        tempInput.value = textToCopy
+        document.body.appendChild(tempInput)
+        tempInput.select()
+        document.execCommand('copy')
+        document.body.removeChild(tempInput)
+        this.apiCopied = true
+        setTimeout(() => {
+          this.apiCopied = false
+        }, 2000)
       }
     },
 
-    useDefaultApi() {
-      this.customApiUrl = this.defaultApiKey
-      this.saveCustomApi()
+    async pasteFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText()
+        if (text && text.trim()) {
+          this.customApiUrl = text.trim()
+          console.log('Pasted from clipboard:', text)
+        } else {
+          alert(this.currentLang === 'en' ? 'Clipboard is empty' : 'ឃ្លីបបតទទេ')
+        }
+      } catch (err) {
+        console.error('Failed to read clipboard:', err)
+        alert(this.currentLang === 'en' 
+          ? 'Unable to access clipboard. Please paste manually (Ctrl+V or Cmd+V)' 
+          : 'មិនអាចចូលប្រើឃ្លីបបត។ សូមបិទភ្ជាប់ដោយដៃ (Ctrl+V ឬ Cmd+V)')
+      }
+    },
+
+    clearApiUrl() {
+      this.customApiUrl = ''
+      this.saveToLocalStorage()
+      console.log('API key cleared')
     },
 
     setActiveMetal(metal) {
@@ -758,12 +777,11 @@ export default {
 
     saveCustomApi() {
       if (!this.customApiUrl || this.customApiUrl.trim() === '') {
-        alert(this.currentLang === 'en' ? 'Please enter a valid API key' : 'សូមបញ្ចូលគន្លឹះ API ត្រឹមត្រូវ')
+        alert(this.currentLang === 'en' ? 'Please enter an API key first' : 'សូមបញ្ចូលគន្លឹះ API ជាមុនសិន')
         return
       }
 
       this.saveToLocalStorage()
-      alert(this.currentLang === 'en' ? 'API key saved! Click "Refresh Now" to fetch data with your key.' : 'រក្សាទុកគន្លឹះ API ហើយ! ចុច "តម្លៃឥឡូវនេះ" ដើម្បីទាញយកទិន្នន័យជាមួយគន្លឹះរបស់អ្នក។')
       
       // Automatically fetch prices with new key
       this.fetchGoldPrice()
@@ -840,14 +858,15 @@ export default {
 
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 20000) // Increased to 20s for mobile
+        const timeoutId = setTimeout(() => controller.abort(), 20000)
 
         let headers = {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }
 
-        let apiMethod = 'default' // Track which method we're using
+        let apiMethod = 'free' // Default to free API
+        let success = false
 
         // Priority 1: Use custom API key if provided
         if (this.customApiUrl && this.customApiUrl.trim() !== '') {
@@ -865,67 +884,36 @@ export default {
           headers['x-access-token'] = apiKey
           console.log('Using CUSTOM API key')
           
-          // Fetch both gold and silver from Gold API
-          await Promise.all([
-            this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
-            this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
-          ])
-        } 
-        // Priority 2: Use default demo API key
-        else if (this.defaultApiKey) {
-          apiMethod = 'demo'
-          headers['x-access-token'] = this.defaultApiKey
-          
-          console.log('Using DEFAULT demo API key')
-          
-          // Fetch both gold and silver from Gold API
           try {
+            // Fetch both gold and silver from Gold API
             await Promise.all([
               this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
               this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
             ])
+            success = true
           } catch (err) {
-            console.log('Demo API failed, trying free alternative...')
-            // If demo API fails, fall back to free API
-            apiMethod = 'free'
-            throw err
+            console.log('Custom API failed:', err.message)
+            // Fall through to free API
           }
         }
-
-        clearTimeout(timeoutId)
-
-        // Check if we got at least one price
-        if (!this.goldPrice && !this.silverPrice) {
-          throw new Error('No prices received from API')
-        }
-
-        console.log(`✅ Success using ${apiMethod} API - Gold: $${this.goldPrice}, Silver: $${this.silverPrice}`)
         
-        // Show success message briefly
-        this.showSuccessMessage = true
-        setTimeout(() => {
-          this.showSuccessMessage = false
-        }, 3000)
-
-      } catch (err) {
-        console.error('Primary API failed:', err)
-        
-        // Try free alternative API as final fallback
-        try {
-          console.log('Trying FREE alternative API (metals.live)...')
-          const controller2 = new AbortController()
-          const timeoutId2 = setTimeout(() => controller2.abort(), 15000)
-
+        // Priority 2: Try Free API (metals.live) - NO AUTH NEEDED
+        if (!success) {
+          apiMethod = 'free'
+          console.log('Using FREE API (metals.live)...')
+          
           const apiUrl = 'https://api.metals.live/v1/spot'
           
           const response = await fetch(apiUrl, {
-            signal: controller2.signal,
+            signal: controller.signal,
             headers: {
               'Accept': 'application/json'
-            }
+            },
+            mode: 'cors',
+            cache: 'no-cache'
           })
 
-          clearTimeout(timeoutId2)
+          clearTimeout(timeoutId)
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`)
@@ -946,49 +934,63 @@ export default {
             }
             
             if (this.goldPrice || this.silverPrice) {
-              this.lastUpdated = new Date().toLocaleString() + ' (free API)'
+              this.lastUpdated = new Date().toLocaleString()
               this.saveToLocalStorage()
               this.error = null
+              success = true
               console.log('✅ Success using FREE API')
-              return
             }
           }
-          
-          throw new Error('No valid data from free API')
-        } catch (freeApiError) {
-          console.error('Free API also failed:', freeApiError)
-          
-          // Final fallback: use cached data
-          this.error = 'Unable to fetch live prices. '
-          
-          if (err.name === 'AbortError') {
-            this.error += 'Connection timeout - check your internet. '
-          } else if (err.message.includes('403')) {
-            this.error += 'API key invalid or expired. '
-          } else if (err.message.includes('Failed to fetch')) {
-            this.error += 'Network error - please check connection. '
-          } else {
-            this.error += err.message + '. '
-          }
+        }
 
-          // Try to load from localStorage
-          const saved = this.safeGetLocalStorage('goldTrackerData')
-          if (saved) {
-            try {
-              const data = JSON.parse(saved)
-              if (data.goldPrice || data.silverPrice) {
-                this.goldPrice = data.goldPrice
-                this.silverPrice = data.silverPrice
-                this.lastUpdated = data.lastUpdated + ' (cached)'
-                this.error += 'Showing last cached prices.'
-                console.log('📦 Using cached data')
-              }
-            } catch (e) {
-              console.error('Error loading cache:', e)
+        // Check if we got at least one price
+        if (!this.goldPrice && !this.silverPrice) {
+          throw new Error('No prices received from any API')
+        }
+
+        if (success) {
+          console.log(`✅ Success using ${apiMethod} API - Gold: $${this.goldPrice}, Silver: $${this.silverPrice}`)
+          
+          // Show success message briefly
+          this.showSuccessMessage = true
+          setTimeout(() => {
+            this.showSuccessMessage = false
+          }, 3000)
+        }
+
+      } catch (err) {
+        console.error('All APIs failed:', err)
+        
+        // Build helpful error message
+        this.error = 'Unable to fetch live prices. '
+        
+        if (err.name === 'AbortError') {
+          this.error += 'Connection timeout - check your internet. '
+        } else if (err.message.includes('403')) {
+          this.error += 'API access denied. Get a free key from goldapi.io. '
+        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          this.error += 'Network error - please check your connection. '
+        } else {
+          this.error += err.message + '. '
+        }
+
+        // Try to load from localStorage
+        const saved = this.safeGetLocalStorage('goldTrackerData')
+        if (saved) {
+          try {
+            const data = JSON.parse(saved)
+            if (data.goldPrice || data.silverPrice) {
+              this.goldPrice = data.goldPrice
+              this.silverPrice = data.silverPrice
+              this.lastUpdated = data.lastUpdated + ' (cached)'
+              this.error += 'Showing last cached prices.'
+              console.log('📦 Using cached data')
             }
-          } else {
-            this.error += 'No cached data available. Try again when online.'
+          } catch (e) {
+            console.error('Error loading cache:', e)
           }
+        } else {
+          this.error += 'No cached data available. Try again when online.'
         }
       } finally {
         this.loading = false
@@ -1366,96 +1368,6 @@ button {
   border-top: 2px solid #e2e8f0;
 }
 
-.default-api-info {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border: 2px solid #3b82f6;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.info-header {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1e40af;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.api-copy-box {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.api-copy-input {
-  flex: 1;
-  padding: 10px;
-  border: 2px solid #3b82f6;
-  border-radius: 6px;
-  font-size: 13px;
-  font-family: 'Courier New', monospace;
-  color: #1e40af;
-  background: white;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.api-copy-input:focus {
-  outline: none;
-  border-color: #2563eb;
-  background: #eff6ff;
-}
-
-.copy-api-btn {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  min-width: 90px;
-}
-
-.copy-api-btn:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
-}
-
-.copy-api-btn:active {
-  transform: translateY(0);
-}
-
-.api-instructions {
-  font-size: 12px;
-  color: #1e40af;
-  line-height: 1.5;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-}
-
-.api-note-default {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #059669;
-  font-style: italic;
-}
-
-.custom-api-section {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 2px solid #e2e8f0;
-}
-
 .api-header {
   display: flex;
   justify-content: space-between;
@@ -1492,6 +1404,7 @@ button {
 .api-input-row {
   display: flex;
   gap: 8px;
+  align-items: stretch;
 }
 
 .api-input {
@@ -1509,6 +1422,55 @@ button {
   border-color: #64748b;
 }
 
+.paste-api-btn {
+  background: #06b6d4;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.paste-api-btn:hover {
+  background: #0891b2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(6, 182, 212, 0.3);
+}
+
+.paste-api-btn:active {
+  transform: translateY(0);
+}
+
+.clear-api-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-api-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.clear-api-btn:active {
+  transform: scale(0.95);
+}
+
 .save-api-btn {
   background: #8b5cf6;
   color: white;
@@ -1520,10 +1482,17 @@ button {
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  min-width: 90px;
 }
 
-.save-api-btn:hover {
+.save-api-btn:hover:not(:disabled) {
   background: #7c3aed;
+}
+
+.save-api-btn:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .api-note {
@@ -1532,6 +1501,15 @@ button {
   font-size: 12px;
   color: #8b5cf6;
   font-style: italic;
+}
+
+.api-note-default {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #059669;
+  font-style: italic;
+  font-weight: 500;
 }
 
 .price-section,
