@@ -27,17 +27,30 @@
 
       <!-- Metal Toggle -->
       <div class="metal-toggle">
-        <button @click="activeMetal = 'gold'" :class="['metal-btn', { active: activeMetal === 'gold' }]">
+        <button 
+          @click="activeMetal = 'gold'" 
+          @touchstart.passive="() => {}"
+          :class="['metal-btn', { active: activeMetal === 'gold' }]"
+        >
           🥇 {{ t.gold }}
         </button>
-        <button @click="activeMetal = 'silver'" :class="['metal-btn', { active: activeMetal === 'silver' }]">
+        <button 
+          @click="activeMetal = 'silver'" 
+          @touchstart.passive="() => {}"
+          :class="['metal-btn', { active: activeMetal === 'silver' }]"
+        >
           🥈 {{ t.silver }}
         </button>
       </div>
 
       <div v-if="goldPrice || silverPrice" class="price-cards">
         <!-- Gold Price Card -->
-        <div v-if="goldPrice" :class="['price-card', { active: activeMetal === 'gold' }]" @click="activeMetal = 'gold'">
+        <div 
+          v-if="goldPrice" 
+          :class="['price-card', { active: activeMetal === 'gold' }]" 
+          @click="activeMetal = 'gold'"
+          @touchstart.passive="() => {}"
+        >
           <div class="card-label">🥇 {{ t.gold }}</div>
           <div class="price-main">
             <span class="price-value">${{ goldPrice.toFixed(2) }}</span>
@@ -46,7 +59,12 @@
         </div>
 
         <!-- Silver Price Card -->
-        <div v-if="silverPrice" :class="['price-card', { active: activeMetal === 'silver' }]" @click="activeMetal = 'silver'">
+        <div 
+          v-if="silverPrice" 
+          :class="['price-card', { active: activeMetal === 'silver' }]" 
+          @click="activeMetal = 'silver'"
+          @touchstart.passive="() => {}"
+        >
           <div class="card-label">🥈 {{ t.silver }}</div>
           <div class="price-main">
             <span class="price-value">${{ silverPrice.toFixed(2) }}</span>
@@ -251,11 +269,11 @@
           <div class="form-group">
             <label>{{ t.unit }}</label>
             <select v-model="newPurchase.unit">
-              <option value="gram">{{ t.gram }}</option>
-              <option value="li">{{ t.li }}</option>
-              <option value="hun">{{ t.hun }}</option>
               <option value="chi">{{ t.chi }}</option>
               <option value="damlung">{{ t.damlung }}</option>
+              <option value="gram">{{ t.gram }}</option>
+              <option value="hun">{{ t.hun }}</option>
+              <option value="li">{{ t.li }}</option>
               <option value="troyOz">{{ t.troyOunce }}</option>
             </select>
           </div>
@@ -317,11 +335,11 @@
               </select>
               <input v-model.number="editForm.weight" type="text" inputmode="decimal" :placeholder="t.weight">
               <select v-model="editForm.unit">
-                <option value="gram">{{ t.gram }}</option>
-                <option value="li">{{ t.li }}</option>
-                <option value="hun">{{ t.hun }}</option>
                 <option value="chi">{{ t.chi }}</option>
                 <option value="damlung">{{ t.damlung }}</option>
+                <option value="gram">{{ t.gram }}</option>
+                <option value="hun">{{ t.hun }}</option>
+                <option value="li">{{ t.li }}</option>
                 <option value="troyOz">{{ t.troyOunce }}</option>
               </select>
             </div>
@@ -394,7 +412,7 @@ export default {
       editForm: {},
       newPurchase: {
         weight: '',
-        unit: 'gram',
+        unit: 'chi',
         metal: 'gold',
         price: '',
         date: new Date().toISOString().split('T')[0]
@@ -977,7 +995,7 @@ export default {
 
       this.newPurchase = {
         weight: '',
-        unit: 'gram',
+        unit: 'chi',
         metal: 'gold',
         price: '',
         date: new Date().toISOString().split('T')[0]
@@ -1164,6 +1182,12 @@ export default {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .gold-tracker {
@@ -1172,6 +1196,9 @@ export default {
   background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .header {
@@ -1456,20 +1483,26 @@ export default {
 
 .metal-btn {
   flex: 1;
-  padding: 12px;
+  padding: 14px 12px;
   background: #f1f5f9;
   color: #334155;
   border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.metal-btn:hover {
+.metal-btn:active {
   background: #e2e8f0;
-  transform: translateY(-2px);
+  transform: scale(0.98);
 }
 
 .metal-btn.active {
@@ -1477,6 +1510,10 @@ export default {
   color: white;
   border-color: #475569;
   box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+.metal-btn.active:active {
+  transform: scale(0.98);
 }
 
 .price-cards {
@@ -1492,18 +1529,27 @@ export default {
   border-radius: 8px;
   border: 2px solid #e2e8f0;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.price-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+.price-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .price-card.active {
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
   border-color: #3b82f6;
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.price-card.active:active {
+  transform: scale(0.98);
 }
 
 .card-label {
@@ -2114,6 +2160,26 @@ export default {
 
 /* Mobile Optimization */
 @media (max-width: 768px) {
+
+  .metal-toggle {
+    gap: 10px;
+  }
+
+  .metal-btn {
+    padding: 16px 12px;
+    font-size: 16px;
+    min-height: 52px;
+  }
+
+  .price-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .price-card {
+    padding: 16px;
+    min-height: 90px;
+  }
 
   .price-section,
   .price-method-section,
