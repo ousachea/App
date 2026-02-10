@@ -21,7 +21,7 @@
       <button @click="showIOSWarning = false" class="close-warning">×</button>
     </div>
 
-    <!-- Current Gold Price -->
+    <!-- Current Gold & Silver Prices -->
     <div class="price-section">
       <div class="price-header">
         <h2>{{ t.currentPrice }}</h2>
@@ -31,14 +31,38 @@
         </button>
       </div>
 
-      <div v-if="goldPrice" class="price-display">
-        <div class="price-main">
-          <span class="price-value">${{ goldPrice ? goldPrice.toFixed(2) : '0.00' }}</span>
-          <span class="price-unit">{{ t.perTroyOz }}</span>
+      <!-- Metal Toggle -->
+      <div class="metal-toggle">
+        <button @click="activeMetal = 'gold'" :class="['metal-btn', { active: activeMetal === 'gold' }]">
+          🥇 {{ t.gold }}
+        </button>
+        <button @click="activeMetal = 'silver'" :class="['metal-btn', { active: activeMetal === 'silver' }]">
+          🥈 {{ t.silver }}
+        </button>
+      </div>
+
+      <div v-if="goldPrice || silverPrice" class="price-cards">
+        <!-- Gold Price Card -->
+        <div v-if="goldPrice" :class="['price-card', { active: activeMetal === 'gold' }]" @click="activeMetal = 'gold'">
+          <div class="card-label">🥇 {{ t.gold }}</div>
+          <div class="price-main">
+            <span class="price-value">${{ goldPrice.toFixed(2) }}</span>
+            <span class="price-unit">{{ t.perTroyOz }}</span>
+          </div>
         </div>
-        <div class="price-meta">
-          <span class="last-updated">{{ t.lastUpdated }}: {{ lastUpdated }}</span>
+
+        <!-- Silver Price Card -->
+        <div v-if="silverPrice" :class="['price-card', { active: activeMetal === 'silver' }]" @click="activeMetal = 'silver'">
+          <div class="card-label">🥈 {{ t.silver }}</div>
+          <div class="price-main">
+            <span class="price-value">${{ silverPrice.toFixed(2) }}</span>
+            <span class="price-unit">{{ t.perTroyOz }}</span>
+          </div>
         </div>
+      </div>
+
+      <div v-if="lastUpdated" class="price-meta">
+        <span class="last-updated">{{ t.lastUpdated }}: {{ lastUpdated }}</span>
       </div>
 
       <div v-if="error" class="error-message">
@@ -93,18 +117,19 @@
       </div>
 
       <!-- Price Conversion Preview -->
-      <div v-if="goldPrice" class="price-preview">
+      <div v-if="currentMetalPrice" class="price-preview">
+        <div class="preview-header">{{ activeMetal === 'gold' ? '🥇 ' + t.gold : '🥈 ' + t.silver }} {{ t.priceByUnit }}</div>
         <div class="preview-item">
           <span class="preview-label">{{ t.troyOunce }}:</span>
-          <span class="preview-value">${{ goldPrice ? goldPrice.toFixed(2) : '0.00' }}</span>
+          <span class="preview-value">${{ currentMetalPrice ? currentMetalPrice.toFixed(2) : '0.00' }}</span>
         </div>
         <div class="preview-item">
           <span class="preview-label">{{ t.damlung }}:</span>
-          <span class="preview-value">${{ goldPrice ? pricePerDamlung.toFixed(2) : '0.00' }}</span>
+          <span class="preview-value">${{ currentMetalPrice ? currentPricePerDamlung.toFixed(2) : '0.00' }}</span>
         </div>
         <div class="preview-item">
           <span class="preview-label">{{ t.chi }}:</span>
-          <span class="preview-value">${{ goldPrice ? pricePerChi.toFixed(2) : '0.00' }}</span>
+          <span class="preview-value">${{ currentMetalPrice ? currentPricePerChi.toFixed(2) : '0.00' }}</span>
         </div>
       </div>
     </div>
@@ -191,9 +216,19 @@
       <div v-if="showAddForm" class="purchase-form">
         <div class="form-row">
           <div class="form-group">
+            <label>{{ t.metal }}</label>
+            <select v-model="newPurchase.metal">
+              <option value="gold">🥇 {{ t.gold }}</option>
+              <option value="silver">🥈 {{ t.silver }}</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>{{ t.weight }}</label>
             <input v-model.number="newPurchase.weight" type="text" inputmode="decimal" :placeholder="t.enterWeight">
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label>{{ t.unit }}</label>
             <select v-model="newPurchase.unit">
@@ -205,13 +240,13 @@
               <option value="troyOz">{{ t.troyOunce }}</option>
             </select>
           </div>
-        </div>
-
-        <div class="form-row">
           <div class="form-group">
             <label>{{ t.pricePaid }}</label>
             <input v-model.number="newPurchase.price" type="text" inputmode="decimal" :placeholder="t.enterPrice">
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label>{{ t.date }}</label>
             <input v-model="newPurchase.date" type="date">
@@ -228,7 +263,10 @@
         <div v-for="(purchase, index) in purchases" :key="index" class="purchase-card">
           <div v-if="editingIndex !== index">
             <div class="card-header">
-              <span class="card-weight">{{ purchase.weight }} {{ t[purchase.unit] }}</span>
+              <span class="card-weight">
+                {{ purchase.metal === 'silver' ? '🥈' : '🥇' }} 
+                {{ purchase.weight }} {{ t[purchase.unit] }}
+              </span>
               <div class="card-actions">
                 <button @click="editPurchase(index)" class="icon-btn">✏️</button>
                 <button @click="deletePurchase(index)" class="icon-btn">🗑️</button>
@@ -254,6 +292,10 @@
           <!-- Edit Mode -->
           <div v-else class="edit-form">
             <div class="form-row">
+              <select v-model="editForm.metal">
+                <option value="gold">🥇 {{ t.gold }}</option>
+                <option value="silver">🥈 {{ t.silver }}</option>
+              </select>
               <input v-model.number="editForm.weight" type="text" inputmode="decimal" :placeholder="t.weight">
               <select v-model="editForm.unit">
                 <option value="gram">{{ t.gram }}</option>
@@ -309,6 +351,7 @@ export default {
     return {
       currentLang: 'en',
       goldPrice: null,
+      silverPrice: null,
       lastUpdated: '',
       loading: false,
       error: null,
@@ -318,6 +361,7 @@ export default {
       priceInputMethod: 'troyOz',
       customPrice: null,
       customApiUrl: '',
+      activeMetal: 'gold', // 'gold' or 'silver'
 
       // Converter state
       activeConverter: 'gram',
@@ -332,6 +376,7 @@ export default {
       newPurchase: {
         weight: '',
         unit: 'gram',
+        metal: 'gold',
         price: '',
         date: new Date().toISOString().split('T')[0]
       },
@@ -346,8 +391,8 @@ export default {
       // Translations
       translations: {
         en: {
-          title: 'Gold Tracker',
-          currentPrice: 'Current Gold Price',
+          title: 'Gold & Silver Tracker',
+          currentPrice: 'Current Prices',
           refreshNow: 'Refresh Now',
           setPrice: 'Set Price',
           loading: 'Loading...',
@@ -361,6 +406,7 @@ export default {
           cancel: 'Cancel',
           weight: 'Weight',
           unit: 'Unit',
+          metal: 'Metal',
           pricePaid: 'Price Paid',
           date: 'Date',
           accountNumber: 'Account Number',
@@ -395,11 +441,13 @@ export default {
           usingCustomAPI: 'Using custom Gold API key',
           offlineWarning: '⚠️ You are offline. Data may be outdated.',
           iosWarning: 'For best experience on iOS, ensure you have a stable internet connection and allow location access if prompted.',
-          fetchPriceFirst: 'Please fetch gold price first',
+          fetchPriceFirst: 'Please fetch prices first',
+          gold: 'Gold',
+          silver: 'Silver',
         },
         km: {
-          title: 'តាមដានតម្លៃមាស',
-          currentPrice: 'តម្លៃមាសបច្ចុប្បន្ន',
+          title: 'តាមដានតម្លៃមាស និងប្រាក់',
+          currentPrice: 'តម្លៃបច្ចុប្បន្ន',
           refreshNow: 'តម្លៃឥឡូវនេះ',
           setPrice: 'កំណត់តម្លៃ',
           loading: 'កំពុងផ្ទុក...',
@@ -413,6 +461,7 @@ export default {
           cancel: 'បោះបង់',
           weight: 'ទម្ងន់',
           unit: 'ឯកតា',
+          metal: 'លោហៈ',
           pricePaid: 'តម្លៃបានបង់',
           date: 'កាលបរិច្ឆេទ',
           accountNumber: 'លេខគណនី',
@@ -447,7 +496,9 @@ export default {
           usingCustomAPI: 'កំពុងប្រើគន្លឹះ Gold API ផ្ទាល់ខ្លួន',
           offlineWarning: '⚠️ អ្នកស្ថិតក្រៅបណ្តាញ។ ទិន្នន័យអាចចាស់។',
           iosWarning: 'សម្រាប់បទពិសោធន៍ល្អបំផុតនៅលើ iOS សូមប្រាកដថាអ្នកមានការភ្ជាប់អ៊ីនធឺណិតមានស្ថេរភាព។',
-          fetchPriceFirst: 'សូមទាញយកតម្លៃមាសជាមុនសិន',
+          fetchPriceFirst: 'សូមទាញយកតម្លៃជាមុនសិន',
+          gold: 'មាស',
+          silver: 'ប្រាក់',
         }
       }
     }
@@ -477,6 +528,45 @@ export default {
 
     pricePerLi() {
       return this.pricePerGram * this.LI_TO_GRAM
+    },
+
+    // Silver prices per unit
+    silverPricePerGram() {
+      if (!this.silverPrice) return 0
+      return this.silverPrice / this.TROY_OZ_TO_GRAM
+    },
+
+    silverPricePerDamlung() {
+      return this.silverPricePerGram * this.DAMLUNG_TO_GRAM
+    },
+
+    silverPricePerChi() {
+      return this.silverPricePerGram * this.CHI_TO_GRAM
+    },
+
+    silverPricePerHun() {
+      return this.silverPricePerGram * this.HUN_TO_GRAM
+    },
+
+    silverPricePerLi() {
+      return this.silverPricePerGram * this.LI_TO_GRAM
+    },
+
+    // Current metal price based on active selection
+    currentMetalPrice() {
+      return this.activeMetal === 'gold' ? this.goldPrice : this.silverPrice
+    },
+
+    currentPricePerGram() {
+      return this.activeMetal === 'gold' ? this.pricePerGram : this.silverPricePerGram
+    },
+
+    currentPricePerDamlung() {
+      return this.activeMetal === 'gold' ? this.pricePerDamlung : this.silverPricePerDamlung
+    },
+
+    currentPricePerChi() {
+      return this.activeMetal === 'gold' ? this.pricePerChi : this.silverPricePerChi
     },
 
     totalInvested() {
@@ -651,7 +741,7 @@ export default {
 
         // Try different APIs based on custom API URL or use fallback
         if (this.customApiUrl && this.customApiUrl.trim() !== '') {
-          // Custom Gold API
+          // Custom Gold API - fetch both gold and silver
           const input = this.customApiUrl.trim()
           let apiKey = input
           
@@ -662,62 +752,57 @@ export default {
             }
           }
           
-          apiUrl = 'https://www.goldapi.io/api/XAU/USD'
           headers['x-access-token'] = apiKey
+          
+          // Fetch both gold and silver from Gold API
+          await Promise.all([
+            this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
+            this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
+          ])
         } else {
           // Try free alternative APIs (no auth required)
           // Using metals-api.com free tier
-          apiUrl = 'https://api.metals.live/v1/spot/gold'
-        }
+          apiUrl = 'https://api.metals.live/v1/spot'
 
-        console.log('Fetching from:', apiUrl)
+          console.log('Fetching from:', apiUrl)
 
-        const response = await fetch(apiUrl, {
-          signal: controller.signal,
-          headers: headers
-        })
+          const response = await fetch(apiUrl, {
+            signal: controller.signal,
+            headers: headers
+          })
 
-        clearTimeout(timeoutId)
+          clearTimeout(timeoutId)
 
-        if (!response.ok) {
-          // If primary API fails, try fallback
-          if (!this.customApiUrl) {
+          if (!response.ok) {
             console.log('Primary API failed, trying fallback...')
             return await this.fetchFromFallbackAPI(controller)
           }
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
 
-        const data = await response.json()
-        console.log('API Response:', data)
+          const data = await response.json()
+          console.log('API Response:', data)
 
-        // Handle different API response formats
-        let price = null
-        
-        // Gold API format
-        if (data.price) {
-          price = data.price
-        }
-        // Metals.live format
-        else if (data && data[0] && data[0].price) {
-          price = data[0].price
-        }
-        // Alternative format with price_gram_24k
-        else if (data.price_gram_24k) {
-          price = data.price_gram_24k * this.TROY_OZ_TO_GRAM
-        }
-        // FCS API format
-        else if (data.response && data.response[0] && data.response[0].c) {
-          price = parseFloat(data.response[0].c)
-        }
-
-        if (price && price > 0) {
-          this.goldPrice = price
-          this.lastUpdated = new Date().toLocaleString()
-          this.saveToLocalStorage()
-          this.error = null
-        } else {
-          throw new Error('Unable to parse price from API response')
+          // metals.live returns array of metals
+          if (Array.isArray(data)) {
+            const gold = data.find(m => m.metal === 'gold')
+            const silver = data.find(m => m.metal === 'silver')
+            
+            if (gold && gold.price) {
+              this.goldPrice = gold.price
+            }
+            if (silver && silver.price) {
+              this.silverPrice = silver.price
+            }
+            
+            if (this.goldPrice || this.silverPrice) {
+              this.lastUpdated = new Date().toLocaleString()
+              this.saveToLocalStorage()
+              this.error = null
+            } else {
+              throw new Error('Unable to parse prices from API response')
+            }
+          } else {
+            throw new Error('Unexpected API response format')
+          }
         }
       } catch (err) {
         if (err.name === 'AbortError') {
@@ -734,6 +819,11 @@ export default {
             const data = JSON.parse(saved)
             if (data.goldPrice) {
               this.goldPrice = data.goldPrice
+            }
+            if (data.silverPrice) {
+              this.silverPrice = data.silverPrice
+            }
+            if (this.goldPrice || this.silverPrice) {
               this.lastUpdated = data.lastUpdated + ' (cached)'
               if (!this.error.includes('cached')) {
                 this.error += ' - Using cached data'
@@ -745,6 +835,39 @@ export default {
         }
       } finally {
         this.loading = false
+      }
+    },
+
+    async fetchMetalPrice(url, headers, metalType) {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000)
+        
+        console.log(`Fetching ${metalType} from:`, url)
+        
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: headers
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log(`${metalType} API Response:`, data)
+          
+          if (data && data.price) {
+            if (metalType === 'gold') {
+              this.goldPrice = data.price
+            } else if (metalType === 'silver') {
+              this.silverPrice = data.price
+            }
+            this.lastUpdated = new Date().toLocaleString()
+            this.saveToLocalStorage()
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching ${metalType}:`, err)
       }
     },
 
@@ -794,6 +917,7 @@ export default {
       this.newPurchase = {
         weight: '',
         unit: 'gram',
+        metal: 'gold',
         price: '',
         date: new Date().toISOString().split('T')[0]
       }
@@ -832,7 +956,10 @@ export default {
     },
 
     calculateCurrentValue(purchase) {
-      if (!this.goldPrice) return 0
+      const metal = purchase.metal || 'gold' // Default to gold for old purchases
+      const currentPrice = metal === 'gold' ? this.goldPrice : this.silverPrice
+      
+      if (!currentPrice) return 0
 
       let grams = 0
       switch (purchase.unit) {
@@ -844,7 +971,8 @@ export default {
         case 'troyOz': grams = purchase.weight * this.TROY_OZ_TO_GRAM; break
       }
 
-      return this.pricePerGram * grams
+      const pricePerGram = currentPrice / this.TROY_OZ_TO_GRAM
+      return pricePerGram * grams
     },
 
     calculateGainLoss(purchase) {
@@ -936,11 +1064,13 @@ export default {
       const data = {
         currentLang: this.currentLang,
         goldPrice: this.goldPrice,
+        silverPrice: this.silverPrice,
         lastUpdated: this.lastUpdated,
         purchases: this.purchases,
         priceInputMethod: this.priceInputMethod,
         customPrice: this.customPrice,
-        customApiUrl: this.customApiUrl
+        customApiUrl: this.customApiUrl,
+        activeMetal: this.activeMetal
       }
       this.safeSetLocalStorage('goldTrackerData', JSON.stringify(data))
     },
@@ -952,11 +1082,13 @@ export default {
           const data = JSON.parse(saved)
           this.currentLang = data.currentLang || 'en'
           this.goldPrice = data.goldPrice
+          this.silverPrice = data.silverPrice
           this.lastUpdated = data.lastUpdated
           this.purchases = data.purchases || []
           this.priceInputMethod = data.priceInputMethod || 'troyOz'
           this.customPrice = data.customPrice || null
           this.customApiUrl = data.customApiUrl || ''
+          this.activeMetal = data.activeMetal || 'gold'
         } catch (e) {
           console.error('Error loading from localStorage:', e)
         }
@@ -1181,6 +1313,79 @@ export default {
   text-align: center;
 }
 
+.metal-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.metal-btn {
+  flex: 1;
+  padding: 12px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.metal-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+
+.metal-btn.active {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: white;
+  border-color: #475569;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+.price-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.price-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.price-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.price-card.active {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.price-card.active .card-label {
+  color: #1e40af;
+}
+
+.price-display {
+  text-align: center;
+}
+
 .price-main {
   display: flex;
   flex-direction: column;
@@ -1300,6 +1505,15 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.preview-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .preview-item {
