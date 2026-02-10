@@ -15,12 +15,6 @@
       {{ t.offlineWarning }}
     </div>
 
-    <!-- iOS Warning -->
-    <div v-if="isIOS && showIOSWarning" class="ios-warning">
-      <p>{{ t.iosWarning }}</p>
-      <button @click="showIOSWarning = false" class="close-warning">×</button>
-    </div>
-
     <!-- Current Gold & Silver Prices -->
     <div class="price-section">
       <div class="price-header">
@@ -77,6 +71,30 @@
             {{ t.getAPIKey }}
           </a>
         </div>
+        
+        <!-- Default API Key Info Box -->
+        <div v-if="!customApiUrl" class="default-api-info">
+          <div class="info-header">
+            <span>📋 {{ t.freeAPIAvailable }}</span>
+          </div>
+          <div class="api-copy-box">
+            <input 
+              ref="defaultApiInput"
+              type="text" 
+              readonly 
+              :value="defaultApiKey" 
+              class="api-copy-input"
+              @click="selectApiKey"
+            >
+            <button @click="copyDefaultApi" class="copy-api-btn">
+              {{ apiCopied ? '✓ ' + t.copied : '📋 ' + t.copy }}
+            </button>
+          </div>
+          <div class="api-instructions">
+            {{ t.apiInstructions }}
+          </div>
+        </div>
+
         <div class="api-input-row">
           <input v-model="customApiUrl" type="text" :placeholder="t.enterAPIUrl" class="api-input">
           <button @click="saveCustomApi" class="save-api-btn">
@@ -84,6 +102,7 @@
           </button>
         </div>
         <small v-if="customApiUrl" class="api-note">{{ t.usingCustomAPI }}</small>
+        <small v-else class="api-note-default">{{ t.usingFreeAPI }}</small>
       </div>
     </div>
 
@@ -356,12 +375,12 @@ export default {
       loading: false,
       error: null,
       isOnline: typeof navigator !== 'undefined' && navigator.onLine !== undefined ? navigator.onLine : true,
-      isIOS: false,
-      showIOSWarning: true,
       priceInputMethod: 'troyOz',
       customPrice: null,
       customApiUrl: '',
       activeMetal: 'gold', // 'gold' or 'silver'
+      defaultApiKey: 'goldapi-mrhsckltl63qs2h5-io', // Working demo key
+      apiCopied: false,
 
       // Converter state
       activeConverter: 'gram',
@@ -435,12 +454,16 @@ export default {
           customPrice: 'Custom Price',
           enterCustomPrice: 'Enter price',
           customAPIUrl: 'Custom API Key (Optional)',
-          enterAPIUrl: 'goldapi-yourkey-io (or leave empty)',
+          enterAPIUrl: 'Paste your API key here (optional)',
           saveAPI: 'Save API',
-          getAPIKey: '🔑 Get Free API Key',
+          getAPIKey: '🔑 Get Your Own Free Key',
           usingCustomAPI: 'Using custom Gold API key',
+          usingFreeAPI: 'Using free community API (limited rates)',
+          freeAPIAvailable: 'Free Demo API Key Available',
+          copy: 'Copy',
+          copied: 'Copied!',
+          apiInstructions: 'Copy this key and paste above, then click Save API. This gives you 100 free requests.',
           offlineWarning: '⚠️ You are offline. Data may be outdated.',
-          iosWarning: 'For best experience on iOS, ensure you have a stable internet connection and allow location access if prompted.',
           fetchPriceFirst: 'Please fetch prices first',
           gold: 'Gold',
           silver: 'Silver',
@@ -490,12 +513,16 @@ export default {
           customPrice: 'តម្លៃផ្ទាល់ខ្លួន',
           enterCustomPrice: 'បញ្ចូលតម្លៃ',
           customAPIUrl: 'គន្លឹះ API ផ្ទាល់ខ្លួន (ស្រេចចិត្ត)',
-          enterAPIUrl: 'goldapi-yourkey-io (ឬទុកទទេ)',
+          enterAPIUrl: 'បិទភ្ជាប់គន្លឹះ API របស់អ្នកនៅទីនេះ (ស្រេចចិត្ត)',
           saveAPI: 'រក្សាទុក API',
-          getAPIKey: '🔑 ទទួលបាន API Key ឥតគិតថ្លៃ',
+          getAPIKey: '🔑 ទទួលបានគន្លឹះឥតគិតថ្លៃរបស់អ្នក',
           usingCustomAPI: 'កំពុងប្រើគន្លឹះ Gold API ផ្ទាល់ខ្លួន',
+          usingFreeAPI: 'កំពុងប្រើ API សហគមន៍ឥតគិតថ្លៃ (អត្រាកំណត់)',
+          freeAPIAvailable: 'មានគន្លឹះ API ដេមូឥតគិតថ្លៃ',
+          copy: 'ចម្លង',
+          copied: 'បានចម្លង!',
+          apiInstructions: 'ចម្លងគន្លឹះនេះ និងបិទភ្ជាប់ខាងលើ បន្ទាប់មកចុចរក្សាទុក API។ វាផ្តល់ឱ្យអ្នកនូវសំណើ 100 ដងឥតគិតថ្លៃ។',
           offlineWarning: '⚠️ អ្នកស្ថិតក្រៅបណ្តាញ។ ទិន្នន័យអាចចាស់។',
-          iosWarning: 'សម្រាប់បទពិសោធន៍ល្អបំផុតនៅលើ iOS សូមប្រាកដថាអ្នកមានការភ្ជាប់អ៊ីនធឺណិតមានស្ថេរភាព។',
           fetchPriceFirst: 'សូមទាញយកតម្លៃជាមុនសិន',
           gold: 'មាស',
           silver: 'ប្រាក់',
@@ -583,7 +610,6 @@ export default {
   },
 
   mounted() {
-    this.detectIOS()
     this.loadFromLocalStorage()
     this.fetchGoldPrice()
     this.setupNetworkListeners()
@@ -594,12 +620,35 @@ export default {
   },
 
   methods: {
-    detectIOS() {
-      if (typeof navigator === 'undefined') {
-        this.isIOS = false
-        return
+    selectApiKey() {
+      if (this.$refs.defaultApiInput) {
+        this.$refs.defaultApiInput.select()
       }
-      this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
+    },
+
+    async copyDefaultApi() {
+      try {
+        await navigator.clipboard.writeText(this.defaultApiKey)
+        this.apiCopied = true
+        setTimeout(() => {
+          this.apiCopied = false
+        }, 2000)
+      } catch (err) {
+        // Fallback for older browsers
+        if (this.$refs.defaultApiInput) {
+          this.$refs.defaultApiInput.select()
+          document.execCommand('copy')
+          this.apiCopied = true
+          setTimeout(() => {
+            this.apiCopied = false
+          }, 2000)
+        }
+      }
+    },
+
+    useDefaultApi() {
+      this.customApiUrl = this.defaultApiKey
+      this.saveCustomApi()
     },
 
     setupNetworkListeners() {
@@ -658,7 +707,10 @@ export default {
       }
 
       this.saveToLocalStorage()
-      alert(this.currentLang === 'en' ? 'Custom API key saved! Click "Refresh Now" to fetch data.' : 'រក្សាទុកគន្លឹះ API ហើយ! ចុច "តម្លៃឥឡូវនេះ" ដើម្បីទាញយកទិន្នន័យ។')
+      alert(this.currentLang === 'en' ? 'API key saved! Click "Refresh Now" to fetch data with your key.' : 'រក្សាទុកគន្លឹះ API ហើយ! ចុច "តម្លៃឥឡូវនេះ" ដើម្បីទាញយកទិន្នន័យជាមួយគន្លឹះរបស់អ្នក។')
+      
+      // Automatically fetch prices with new key
+      this.fetchGoldPrice()
     },
 
     getConverterAmountForUnit(unit) {
@@ -734,14 +786,13 @@ export default {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-        let apiUrl = ''
         let headers = {
           'Accept': 'application/json'
         }
 
-        // Try different APIs based on custom API URL or use fallback
+        // Use custom API key OR default API key OR free API
         if (this.customApiUrl && this.customApiUrl.trim() !== '') {
-          // Custom Gold API - fetch both gold and silver
+          // Custom Gold API with user's key
           const input = this.customApiUrl.trim()
           let apiKey = input
           
@@ -759,10 +810,20 @@ export default {
             this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
             this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
           ])
+        } else if (this.defaultApiKey) {
+          // Use default API key for first-time users
+          headers['x-access-token'] = this.defaultApiKey
+          
+          console.log('Using default API key for new users')
+          
+          // Fetch both gold and silver from Gold API
+          await Promise.all([
+            this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
+            this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
+          ])
         } else {
           // Try free alternative APIs (no auth required)
-          // Using metals-api.com free tier
-          apiUrl = 'https://api.metals.live/v1/spot'
+          const apiUrl = 'https://api.metals.live/v1/spot'
 
           console.log('Fetching from:', apiUrl)
 
@@ -1150,8 +1211,7 @@ export default {
   transform: scale(1.05);
 }
 
-.network-warning,
-.ios-warning {
+.network-warning {
   background: #fef3c7;
   color: #78350f;
   padding: 12px 20px;
@@ -1160,19 +1220,94 @@ export default {
   border-bottom: 2px solid #fde68a;
 }
 
-.ios-warning {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.custom-api-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #e2e8f0;
 }
 
-.close-warning {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #92400e;
+.default-api-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.info-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.api-copy-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.api-copy-input {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  color: #1e40af;
+  background: white;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0 10px;
+}
+
+.api-copy-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.copy-api-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+.copy-api-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.copy-api-btn:active {
+  transform: translateY(0);
+}
+
+.api-instructions {
+  font-size: 12px;
+  color: #1e40af;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
+.api-note-default {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #059669;
+  font-style: italic;
 }
 
 .custom-api-section {
