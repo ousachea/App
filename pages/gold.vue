@@ -388,11 +388,11 @@ export default {
           setPriceBy: 'Set Price By',
           customPrice: 'Custom Price',
           enterCustomPrice: 'Enter price',
-          customAPIUrl: 'Custom API URL',
-          enterAPIUrl: 'goldapi-xxxxxxxxxx-io',
+          customAPIUrl: 'Custom API Key (Optional)',
+          enterAPIUrl: 'goldapi-yourkey-io (or leave empty)',
           saveAPI: 'Save API',
-          getAPIKey: '🔑 Get API Key',
-          usingCustomAPI: 'Using custom API endpoint',
+          getAPIKey: '🔑 Get Free API Key',
+          usingCustomAPI: 'Using custom Gold API key',
           offlineWarning: '⚠️ You are offline. Data may be outdated.',
           iosWarning: 'For best experience on iOS, ensure you have a stable internet connection and allow location access if prompted.',
           fetchPriceFirst: 'Please fetch gold price first',
@@ -440,11 +440,11 @@ export default {
           setPriceBy: 'កំណត់តម្លៃតាម',
           customPrice: 'តម្លៃផ្ទាល់ខ្លួន',
           enterCustomPrice: 'បញ្ចូលតម្លៃ',
-          customAPIUrl: 'URL API ផ្ទាល់ខ្លួន',
-          enterAPIUrl: 'goldapi-xxxxxxxxxx-io',
+          customAPIUrl: 'គន្លឹះ API ផ្ទាល់ខ្លួន (ស្រេចចិត្ត)',
+          enterAPIUrl: 'goldapi-yourkey-io (ឬទុកទទេ)',
           saveAPI: 'រក្សាទុក API',
-          getAPIKey: '🔑 ទទួលបាន API Key',
-          usingCustomAPI: 'កំពុងប្រើ API ផ្ទាល់ខ្លួន',
+          getAPIKey: '🔑 ទទួលបាន API Key ឥតគិតថ្លៃ',
+          usingCustomAPI: 'កំពុងប្រើគន្លឹះ Gold API ផ្ទាល់ខ្លួន',
           offlineWarning: '⚠️ អ្នកស្ថិតក្រៅបណ្តាញ។ ទិន្នន័យអាចចាស់។',
           iosWarning: 'សម្រាប់បទពិសោធន៍ល្អបំផុតនៅលើ iOS សូមប្រាកដថាអ្នកមានការភ្ជាប់អ៊ីនធឺណិតមានស្ថេរភាព។',
           fetchPriceFirst: 'សូមទាញយកតម្លៃមាសជាមុនសិន',
@@ -563,12 +563,12 @@ export default {
 
     saveCustomApi() {
       if (!this.customApiUrl || this.customApiUrl.trim() === '') {
-        alert(this.currentLang === 'en' ? 'Please enter a valid API URL' : 'សូមបញ្ចូល URL API ត្រឹមត្រូវ')
+        alert(this.currentLang === 'en' ? 'Please enter a valid API key' : 'សូមបញ្ចូលគន្លឹះ API ត្រឹមត្រូវ')
         return
       }
 
       this.saveToLocalStorage()
-      alert(this.currentLang === 'en' ? 'Custom API saved! Click "Refresh Now" to fetch data.' : 'រក្សាទុក API ហើយ! ចុច "តម្លៃឥឡូវនេះ" ដើម្បីទាញយកទិន្នន័យ។')
+      alert(this.currentLang === 'en' ? 'Custom API key saved! Click "Refresh Now" to fetch data.' : 'រក្សាទុកគន្លឹះ API ហើយ! ចុច "តម្លៃឥឡូវនេះ" ដើម្បីទាញយកទិន្នន័យ។')
     },
 
     getConverterAmountForUnit(unit) {
@@ -642,56 +642,141 @@ export default {
 
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000)
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-        // Construct API URL from the saved key format
-        let apiUrl = 'https://api.gold-api.com/price/XAU'
-        if (this.customApiUrl && this.customApiUrl.trim() !== '') {
-          // Convert format: goldapi-3yrz5zhtl5zcyqg4-io -> https://goldapi-3yrz5zhtl5zcyqg4.io/price/XAU
-          const apiKey = this.customApiUrl.trim()
-          apiUrl = `https://${apiKey.replace(/-io$/, '.io')}/price/XAU`
+        let apiUrl = ''
+        let headers = {
+          'Accept': 'application/json'
         }
 
+        // Try different APIs based on custom API URL or use fallback
+        if (this.customApiUrl && this.customApiUrl.trim() !== '') {
+          // Custom Gold API
+          const input = this.customApiUrl.trim()
+          let apiKey = input
+          
+          if (input.startsWith('http')) {
+            const match = input.match(/goldapi-([a-z0-9]+)\.io/)
+            if (match) {
+              apiKey = `goldapi-${match[1]}-io`
+            }
+          }
+          
+          apiUrl = 'https://www.goldapi.io/api/XAU/USD'
+          headers['x-access-token'] = apiKey
+        } else {
+          // Try free alternative APIs (no auth required)
+          // Using metals-api.com free tier
+          apiUrl = 'https://api.metals.live/v1/spot/gold'
+        }
+
+        console.log('Fetching from:', apiUrl)
+
         const response = await fetch(apiUrl, {
+          signal: controller.signal,
+          headers: headers
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          // If primary API fails, try fallback
+          if (!this.customApiUrl) {
+            console.log('Primary API failed, trying fallback...')
+            return await this.fetchFromFallbackAPI(controller)
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const data = await response.json()
+        console.log('API Response:', data)
+
+        // Handle different API response formats
+        let price = null
+        
+        // Gold API format
+        if (data.price) {
+          price = data.price
+        }
+        // Metals.live format
+        else if (data && data[0] && data[0].price) {
+          price = data[0].price
+        }
+        // Alternative format with price_gram_24k
+        else if (data.price_gram_24k) {
+          price = data.price_gram_24k * this.TROY_OZ_TO_GRAM
+        }
+        // FCS API format
+        else if (data.response && data.response[0] && data.response[0].c) {
+          price = parseFloat(data.response[0].c)
+        }
+
+        if (price && price > 0) {
+          this.goldPrice = price
+          this.lastUpdated = new Date().toLocaleString()
+          this.saveToLocalStorage()
+          this.error = null
+        } else {
+          throw new Error('Unable to parse price from API response')
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          this.error = 'Request timeout. Please try again.'
+        } else {
+          this.error = `Failed to fetch: ${err.message}`
+          console.error('API Error:', err)
+        }
+
+        // Try to load from localStorage as fallback
+        const saved = this.safeGetLocalStorage('goldTrackerData')
+        if (saved) {
+          try {
+            const data = JSON.parse(saved)
+            if (data.goldPrice) {
+              this.goldPrice = data.goldPrice
+              this.lastUpdated = data.lastUpdated + ' (cached)'
+              if (!this.error.includes('cached')) {
+                this.error += ' - Using cached data'
+              }
+            }
+          } catch (e) {
+            console.error('Error loading cache:', e)
+          }
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchFromFallbackAPI(controller) {
+      try {
+        // Try alternative free API - gold-api.com (different from goldapi.io)
+        const fallbackUrl = 'https://www.goldapi.io/api/XAU/USD/20250101' // Historical endpoint that's free
+        
+        console.log('Trying fallback API...')
+        
+        const response = await fetch(fallbackUrl, {
           signal: controller.signal,
           headers: {
             'Accept': 'application/json'
           }
         })
 
-        clearTimeout(timeoutId)
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const data = await response.json()
-
-        if (data && data.price) {
-          this.goldPrice = data.price
-          this.lastUpdated = new Date().toLocaleString()
-          this.saveToLocalStorage()
-        } else {
-          throw new Error('Invalid data format')
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          this.error = 'Request timeout. Please try again.'
-        } else {
-          this.error = `Failed to fetch gold price: ${err.message}`
-        }
-
-        // Try to load from localStorage
-        const saved = this.safeGetLocalStorage('goldTrackerData')
-        if (saved) {
-          const data = JSON.parse(saved)
-          if (data.goldPrice) {
-            this.goldPrice = data.goldPrice
-            this.lastUpdated = data.lastUpdated + ' (cached)'
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Fallback API Response:', data)
+          
+          if (data.price) {
+            this.goldPrice = data.price
+            this.lastUpdated = new Date().toLocaleString() + ' (free API)'
+            this.saveToLocalStorage()
+            return
           }
         }
-      } finally {
-        this.loading = false
+        
+        throw new Error('All APIs failed')
+      } catch (err) {
+        throw new Error('Unable to fetch from any API')
       }
     },
 
