@@ -413,7 +413,7 @@ export default {
       customPrice: null,
       customApiUrl: '',
       activeMetal: 'gold', // 'gold' or 'silver' - reactive property
-      defaultApiKey: 'goldapi-mrhsckltl63qs2h5-io', // Working demo key
+      defaultApiKey: 'goldapi-3yrz5zhtl5zcyqg4-io', // Working demo key
       apiCopied: false,
 
       // Converter state
