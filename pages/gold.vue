@@ -1224,6 +1224,23 @@ button {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  overflow-x: hidden;
+}
+
+/* Mobile adjustments to prevent horizontal scroll */
+@media (max-width: 768px) {
+  .gold-tracker {
+    padding: 0;
+  }
+  
+  .price-section,
+  .price-method-section,
+  .converter-section,
+  .price-by-unit,
+  .purchases-section {
+    margin: 12px;
+    padding: 20px;
+  }
 }
 
 .header {
@@ -1867,8 +1884,15 @@ button {
 /* Price by Unit */
 .unit-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+/* Show 6 columns on larger screens */
+@media (min-width: 1024px) {
+  .unit-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
 }
 
 .unit-card {
@@ -1943,6 +1967,13 @@ button {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+/* Keep 2 columns even on mobile for consistency */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .form-group {
@@ -2195,39 +2226,9 @@ button {
   background: #475569;
 }
 
-/* Mobile Optimization */
+/* Mobile Optimization - Keep desktop layout */
 @media (max-width: 768px) {
-
-  .metal-toggle {
-    gap: 10px;
-  }
-
-  .metal-btn {
-    padding: 16px 12px;
-    font-size: 16px;
-    min-height: 52px;
-  }
-
-  .price-cards {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .price-card {
-    padding: 16px;
-    min-height: 90px;
-  }
-
-  .price-section,
-  .price-method-section,
-  .converter-section,
-  .price-by-unit,
-  .purchases-section {
-    margin: 12px 0;
-    padding: 16px;
-    border-radius: 0;
-  }
-
+  /* Only minimal adjustments for readability */
   .header {
     padding: 16px;
   }
@@ -2236,37 +2237,28 @@ button {
     font-size: 20px;
   }
 
-  .price-value {
-    font-size: 36px;
-  }
-
+  /* Keep desktop layouts and grids */
   .unit-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 
   .purchases-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 
   .purchase-card {
-    padding: 12px;
+    padding: 16px;
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
+  /* Slightly smaller price value on very small screens */
+  .price-value {
+    font-size: 36px;
   }
 }
 
 @media (min-width: 769px) {
-  .unit-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .purchases-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  }
+  /* Desktop specific styles - now mobile uses same layout */
 }
 
 @media (min-width: 1024px) {
