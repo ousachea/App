@@ -28,19 +28,24 @@
       <!-- Metal Toggle -->
       <div class="metal-toggle">
         <button 
-          @click="activeMetal = 'gold'" 
-          @touchstart.passive="() => {}"
+          @click="setActiveMetal('gold')" 
+          @touchend.prevent="setActiveMetal('gold')"
           :class="['metal-btn', { active: activeMetal === 'gold' }]"
         >
           🥇 {{ t.gold }}
         </button>
         <button 
-          @click="activeMetal = 'silver'" 
-          @touchstart.passive="() => {}"
+          @click="setActiveMetal('silver')" 
+          @touchend.prevent="setActiveMetal('silver')"
           :class="['metal-btn', { active: activeMetal === 'silver' }]"
         >
           🥈 {{ t.silver }}
         </button>
+      </div>
+
+      <!-- Debug: Show current selection -->
+      <div v-if="goldPrice && silverPrice" class="active-metal-indicator">
+        {{ activeMetal === 'gold' ? '🥇 Showing Gold Prices' : '🥈 Showing Silver Prices' }}
       </div>
 
       <div v-if="goldPrice || silverPrice" class="price-cards">
@@ -48,8 +53,8 @@
         <div 
           v-if="goldPrice" 
           :class="['price-card', { active: activeMetal === 'gold' }]" 
-          @click="activeMetal = 'gold'"
-          @touchstart.passive="() => {}"
+          @click="setActiveMetal('gold')"
+          @touchend.prevent="setActiveMetal('gold')"
         >
           <div class="card-label">🥇 {{ t.gold }}</div>
           <div class="price-main">
@@ -62,8 +67,8 @@
         <div 
           v-if="silverPrice" 
           :class="['price-card', { active: activeMetal === 'silver' }]" 
-          @click="activeMetal = 'silver'"
-          @touchstart.passive="() => {}"
+          @click="setActiveMetal('silver')"
+          @touchend.prevent="setActiveMetal('silver')"
         >
           <div class="card-label">🥈 {{ t.silver }}</div>
           <div class="price-main">
@@ -396,7 +401,7 @@ export default {
       priceInputMethod: 'troyOz',
       customPrice: null,
       customApiUrl: '',
-      activeMetal: 'gold', // 'gold' or 'silver'
+      activeMetal: 'gold', // 'gold' or 'silver' - reactive property
       defaultApiKey: 'goldapi-mrhsckltl63qs2h5-io', // Working demo key
       apiCopied: false,
 
@@ -667,6 +672,26 @@ export default {
     useDefaultApi() {
       this.customApiUrl = this.defaultApiKey
       this.saveCustomApi()
+    },
+
+    setActiveMetal(metal) {
+      console.log('setActiveMetal called with:', metal)
+      console.log('Previous activeMetal:', this.activeMetal)
+      
+      if (metal !== 'gold' && metal !== 'silver') {
+        console.error('Invalid metal type:', metal)
+        return
+      }
+      
+      this.activeMetal = metal
+      console.log('New activeMetal:', this.activeMetal)
+      
+      // Force Vue to re-evaluate computed properties
+      this.$nextTick(() => {
+        console.log('After nextTick - activeMetal:', this.activeMetal)
+        console.log('currentMetalPrice:', this.currentMetalPrice)
+        this.saveToLocalStorage()
+      })
     },
 
     setupNetworkListeners() {
@@ -1514,6 +1539,18 @@ button {
 
 .metal-btn.active:active {
   transform: scale(0.98);
+}
+
+.active-metal-indicator {
+  text-align: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #0ea5e9;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0369a1;
+  margin-bottom: 16px;
 }
 
 .price-cards {
