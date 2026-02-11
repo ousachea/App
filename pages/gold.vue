@@ -2454,7 +2454,7 @@ button {
 
   /* PREVENT ALL HORIZONTAL OVERFLOW - CRITICAL FIX */
   * {
-    max-width: 100%;
+    box-sizing: border-box !important;
   }
 
   html,
@@ -2462,489 +2462,556 @@ button {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .gold-tracker {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
-    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
   }
 
-  /* CRITICAL: ALL INPUTS MUST NOT OVERFLOW */
-  input[type="text"],
-  input[type="date"],
-  input[type="number"],
+  /* ALL INPUTS & TEXTAREAS */
+  input,
   select,
   textarea {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    padding: 10px !important;
+    font-size: 16px !important;
   }
 
   /* HEADER */
   .header {
-    padding: 12px 16px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
+    padding: 12px;
+    width: 100%;
+    min-width: 0;
   }
 
   .header h1 {
-    font-size: 18px;
+    font-size: 16px;
+    margin: 0;
     flex: 1;
-  }
-
-  .lang-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-
-  /* MAIN SECTIONS */
-  .price-section,
-  .price-method-section,
-  .converter-section,
-  .price-by-unit,
-  .purchases-section,
-  .api-configuration-section {
-    margin: 8px;
-    padding: 16px;
-    border-radius: 10px;
-    width: calc(100% - 16px);
-    box-sizing: border-box;
+    min-width: 0;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .price-section h2,
-  .price-method-section h3,
-  .converter-section h2,
-  .price-by-unit h2,
-  .purchases-section h2,
-  .api-configuration-section h3 {
-    font-size: 16px;
-    margin-bottom: 12px;
-  }
-
-  /* PRICE SOURCE TOGGLE */
-  .price-source-toggle {
-    gap: 6px;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-  }
-
-  .source-btn {
-    padding: 10px 12px;
-    font-size: 12px;
-    min-height: 40px;
-  }
-
-  /* PRICE HEADER - Refresh button */
-  .price-header {
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .price-header h2 {
-    font-size: 16px;
-    flex: 1 100%;
-  }
-
-  .refresh-btn {
-    padding: 10px 14px;
-    font-size: 12px;
-    min-height: 40px;
-  }
-
-  /* PRICE CARDS - Stack vertically */
-  .price-cards {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .price-card {
-    padding: 16px;
-    min-height: 90px;
-  }
-
-  .price-value {
-    font-size: 32px;
-  }
-
-  .price-unit {
-    font-size: 12px;
-  }
-
-  /* FORM ROWS - Stack vertically on tiny screens */
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .form-group {
+  .header-actions {
+    display: flex;
     gap: 4px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .form-group label {
-    font-size: 12px;
-  }
-
-  .form-group input,
-  .form-group select {
-    padding: 10px;
-    font-size: 16px;
-    min-height: 44px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  /* API INPUT - Stack on tiny phones */
-  .api-input-row {
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .api-input {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    min-height: 44px;
-    box-sizing: border-box;
-  }
-
-  .paste-api-btn,
-  .clear-api-btn,
-  .save-api-btn,
-  .paste-btn {
-    width: 100%;
-    min-height: 44px;
-    font-size: 13px;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-
-  /* CONVERTER TABS - Scroll horizontally, prevent wrapping */
-  .converter-tabs {
-    gap: 4px;
-    margin-bottom: 16px;
-  }
-
-  .tab-btn {
-    padding: 8px 12px;
-    font-size: 12px;
     flex-shrink: 0;
+    align-items: center;
+    min-width: 0;
   }
+}
 
-  /* CONVERTER INPUT */
-  .converter-input {
-    font-size: 16px;
-    min-height: 44px;
-    padding: 10px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+.lang-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
 
-  /* UNIT GRID - 2 columns on iPhone, stacks on very small */
-  .unit-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+/* MAIN SECTIONS - FLEX LAYOUT */
+.price-section,
+.price-method-section,
+.converter-section,
+.price-by-unit,
+.purchases-section,
+.api-configuration-section {
+  display: flex;
+  flex-direction: column;
+  margin: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  width: calc(100% - 16px);
+  min-width: 0;
+  gap: 8px;
+}
 
-  .unit-card {
-    padding: 12px;
-    gap: 3px;
-  }
+.price-section h2,
+.price-method-section h3,
+.converter-section h2,
+.price-by-unit h2,
+.purchases-section h2,
+.api-configuration-section h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
 
-  .unit-name {
-    font-size: 12px;
-  }
+/* PRICE SOURCE TOGGLE */
+.price-source-toggle {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  width: 100%;
+  min-width: 0;
+}
 
-  .unit-price {
-    font-size: 16px;
-  }
+.source-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  min-height: 40px;
+}
 
-  .unit-weight {
-    font-size: 10px;
-  }
+/* PRICE HEADER - Refresh button */
+.price-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
 
-  /* PURCHASES GRID - Single column on mobile */
-  .purchases-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+.price-header h2 {
+  font-size: 16px;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
 
-  .purchase-card {
-    padding: 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+.refresh-btn {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 12px;
+  min-height: 40px;
+}
 
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
+/* PRICE CARDS - FLEX */
+.price-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
 
-  .card-weight {
-    font-size: 14px;
-    width: 100%;
-  }
+.price-card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  min-height: 80px;
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
 
-  .card-actions {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 4px;
-  }
+.price-value {
+  font-size: 32px;
+}
 
-  .card-detail {
-    font-size: 12px;
-    padding: 6px 0;
-  }
+.price-unit {
+  font-size: 12px;
+}
 
-  .icon-btn {
-    font-size: 16px;
-    padding: 6px;
-    min-width: 40px;
-    min-height: 40px;
-  }
+/* FORM ROWS & GROUPS - FLEX */
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+  min-width: 0;
+}
 
-  /* EDIT FORM - Stack inputs vertically */
-  .edit-form {
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
 
-  .edit-form input,
-  .edit-form select {
-    padding: 10px;
-    font-size: 16px;
-    min-height: 44px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+.form-group label {
+  font-size: 12px;
+  flex-shrink: 0;
+}
 
-  .edit-actions {
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 8px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+.form-group input,
+.form-group select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
 
-  .save-btn,
-  .cancel-btn {
-    min-height: 44px;
-    font-size: 14px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+/* API INPUT ROW - FLEX */
+.api-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
 
-  /* PORTFOLIO SUMMARY - Stack items */
-  .portfolio-summary {
-    padding: 16px;
-  }
+.api-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
 
-  .summary-grid {
-    gap: 10px;
-  }
+.paste-api-btn,
+.clear-api-btn,
+.save-api-btn,
+.paste-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 13px;
+}
 
-  .summary-item {
-    flex-direction: column;
-    gap: 6px;
-    padding: 10px;
-  }
+/* CONVERTER TABS - Scroll horizontally, prevent wrapping */
+.converter-tabs {
+  gap: 4px;
+  margin-bottom: 16px;
+}
 
-  .summary-label {
-    font-size: 12px;
-  }
+.tab-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
 
-  .summary-value {
-    font-size: 14px;
-  }
+/* CONVERTER INPUT */
+.converter-input {
+  font-size: 16px;
+  min-height: 44px;
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  /* BUTTONS - Full width & touch-friendly */
-  .submit-btn,
-  .add-btn,
-  .refresh-btn,
-  .export-btn,
-  .set-price-btn {
-    min-height: 44px;
-    font-size: 14px;
-    padding: 10px 16px;
-  }
+/* UNIT GRID - FLEX 2 COLUMNS */
+.unit-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
 
-  /* PRICE METHOD TOGGLE */
-  .price-method-toggle {
-    gap: 6px;
-  }
+.unit-card {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
+  padding: 10px;
+  gap: 3px;
+  display: flex;
+  flex-direction: column;
+}
 
-  .method-btn {
-    padding: 10px;
-    font-size: 12px;
-    min-height: 40px;
-  }
+.unit-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-  /* PRICE PREVIEW */
-  .price-preview {
-    padding: 12px;
-    gap: 6px;
-  }
+.unit-price {
+  font-size: 16px;
+}
 
-  .preview-header {
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
+.unit-weight {
+  font-size: 10px;
+}
 
-  .preview-item {
-    font-size: 12px;
-    padding: 4px 0;
-  }
+/* PURCHASES GRID - FLEX COLUMN */
+.purchases-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
 
-  /* PURCHASE FORM */
-  .purchase-form {
-    padding: 16px;
-  }
+.purchase-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
 
-  /* API SECTION */
-  .api-configuration-section {
-    margin: 8px;
-    padding: 16px;
-  }
+.card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  width: 100%;
+  min-width: 0;
+}
 
-  .api-section-header h3 {
-    font-size: 16px;
-    margin-bottom: 6px;
-  }
+.card-weight {
+  font-size: 14px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .api-cta-card {
-    padding: 12px;
-    margin-bottom: 16px;
-    gap: 10px;
-  }
+.card-actions {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 
-  .cta-icon {
-    font-size: 24px;
-  }
+.card-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+  width: 100%;
+  min-width: 0;
+}
 
-  .cta-content h4 {
-    font-size: 14px;
-    margin-bottom: 3px;
-  }
+.icon-btn {
+  font-size: 16px;
+  padding: 6px;
+  min-width: 40px;
+  min-height: 40px;
+  flex-shrink: 0;
+}
 
-  .cta-content p {
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
+/* EDIT FORM - Stack inputs vertically */
+.edit-form {
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  .cta-link {
-    font-size: 11px;
-    padding: 5px 10px;
-  }
+.edit-form input,
+.edit-form select {
+  padding: 10px;
+  font-size: 16px;
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  .api-input-section label {
-    font-size: 12px;
-    margin-bottom: 8px;
-  }
+.edit-actions {
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  .api-input-row {
-    flex-direction: column;
-    gap: 8px;
-  }
+.save-btn,
+.cancel-btn {
+  min-height: 44px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  .api-input {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    min-height: 44px;
-  }
+/* PORTFOLIO SUMMARY - Stack items */
+.portfolio-summary {
+  padding: 16px;
+}
 
-  .api-action-btn {
-    width: 100%;
-    padding: 10px;
-    min-height: 40px;
-    font-size: 12px;
-  }
+.summary-grid {
+  gap: 10px;
+}
 
-  .api-status {
-    padding: 10px;
-    font-size: 12px;
-    margin-bottom: 12px;
-  }
+.summary-item {
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+}
 
-  .api-save-btn {
-    padding: 12px;
-    font-size: 14px;
-    min-height: 44px;
-  }
+.summary-label {
+  font-size: 12px;
+}
 
-  .api-info-box {
-    padding: 10px 12px;
-    font-size: 11px;
-    gap: 8px;
-  }
+.summary-value {
+  font-size: 14px;
+}
 
-  .info-icon {
-    font-size: 14px;
-  }
+/* BUTTONS - Full width & touch-friendly */
+.submit-btn,
+.add-btn,
+.refresh-btn,
+.export-btn,
+.set-price-btn {
+  min-height: 44px;
+  font-size: 14px;
+  padding: 10px 16px;
+}
 
-  /* NETWORK WARNING */
-  .network-warning {
-    font-size: 12px;
-    padding: 10px 16px;
-  }
+/* PRICE METHOD TOGGLE */
+.price-method-toggle {
+  gap: 6px;
+}
 
-  /* SUCCESS & ERROR MESSAGES */
-  .success-message,
-  .error-message {
-    font-size: 12px;
-    padding: 12px;
-    margin-top: 10px;
-  }
+.method-btn {
+  padding: 10px;
+  font-size: 12px;
+  min-height: 40px;
+}
 
-  /* ACTIVE METAL INDICATOR */
-  .active-metal-indicator {
-    font-size: 12px;
-    padding: 6px 10px;
-    margin-bottom: 12px;
-  }
+/* PRICE PREVIEW */
+.price-preview {
+  padding: 12px;
+  gap: 6px;
+}
 
-  /* PRICE META */
-  .price-meta {
-    font-size: 12px;
-  }
+.preview-header {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
 
-  /* CUSTOM PRICE INPUT */
-  .custom-price-input label {
-    font-size: 13px;
-    margin-bottom: 6px;
-  }
+.preview-item {
+  font-size: 12px;
+  padding: 4px 0;
+}
 
-  .price-input-row {
-    gap: 6px;
-    width: 100%;
-    box-sizing: border-box;
-    flex-direction: column;
-  }
+/* PURCHASE FORM */
+.purchase-form {
+  padding: 16px;
+}
 
-  .price-input {
-    font-size: 16px;
-    padding: 10px;
-    min-height: 44px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+/* API SECTION */
+.api-configuration-section {
+  margin: 8px;
+  padding: 16px;
+}
+
+.api-section-header h3 {
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.api-cta-card {
+  padding: 12px;
+  margin-bottom: 16px;
+  gap: 10px;
+}
+
+.cta-icon {
+  font-size: 24px;
+}
+
+.cta-content h4 {
+  font-size: 14px;
+  margin-bottom: 3px;
+}
+
+.cta-content p {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.cta-link {
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+.api-input-section label {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.api-input-row {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  min-height: 44px;
+}
+
+.api-action-btn {
+  width: 100%;
+  padding: 10px;
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.api-status {
+  padding: 10px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.api-save-btn {
+  padding: 12px;
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.api-info-box {
+  padding: 10px 12px;
+  font-size: 11px;
+  gap: 8px;
+}
+
+.info-icon {
+  font-size: 14px;
+}
+
+/* NETWORK WARNING */
+.network-warning {
+  font-size: 12px;
+  padding: 10px 16px;
+}
+
+/* SUCCESS & ERROR MESSAGES */
+.success-message,
+.error-message {
+  font-size: 12px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+/* ACTIVE METAL INDICATOR */
+.active-metal-indicator {
+  font-size: 12px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+}
+
+/* PRICE META */
+.price-meta {
+  font-size: 12px;
+}
+
+/* CUSTOM PRICE INPUT */
+.custom-price-input label {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.price-input-row {
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+}
+
+.price-input {
+  font-size: 16px;
+  padding: 10px;
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ============================================
