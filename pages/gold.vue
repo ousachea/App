@@ -17,9 +17,19 @@
 
     <!-- Current Gold & Silver Prices -->
     <div class="price-section">
+      <!-- Price Source Toggle -->
+      <div class="price-source-toggle">
+        <button @click="priceSource = 'api'" :class="['source-btn', { active: priceSource === 'api' }]">
+          🌐 API Prices
+        </button>
+        <button @click="priceSource = 'custom'" :class="['source-btn', { active: priceSource === 'custom' }]">
+          ✏️ Custom Price
+        </button>
+      </div>
+
       <div class="price-header">
         <h2>{{ t.currentPrice }}</h2>
-        <button @click="fetchGoldPrice" :disabled="loading" class="refresh-btn">
+        <button v-if="priceSource === 'api'" @click="fetchGoldPrice" :disabled="loading" class="refresh-btn">
           <span v-if="!loading">🔄 {{ t.refreshNow }}</span>
           <span v-else class="loading-spinner">⏳ {{ t.loading }}</span>
         </button>
@@ -35,101 +45,33 @@
         ✅ {{ t.pricesUpdated }}
       </div>
 
-      <!-- Metal Toggle -->
-      <div class="metal-toggle">
-        <button 
-          @click="setActiveMetal('gold')" 
-          @touchend.prevent="setActiveMetal('gold')"
-          :class="['metal-btn', { active: activeMetal === 'gold' }]"
-        >
-          🥇 {{ t.gold }}
-        </button>
-        <button 
-          @click="setActiveMetal('silver')" 
-          @touchend.prevent="setActiveMetal('silver')"
-          :class="['metal-btn', { active: activeMetal === 'silver' }]"
-        >
-          🥈 {{ t.silver }}
-        </button>
-      </div>
-
-      <!-- Debug: Show current selection -->
-      <div v-if="goldPrice && silverPrice" class="active-metal-indicator">
-        {{ activeMetal === 'gold' ? '🥇 Showing Gold Prices' : '🥈 Showing Silver Prices' }}
-      </div>
-
-      <div v-if="goldPrice || silverPrice" class="price-cards">
+      <div v-if="goldPrice" class="price-cards">
         <!-- Gold Price Card -->
-        <div 
-          v-if="goldPrice" 
-          :class="['price-card', { active: activeMetal === 'gold' }]" 
-          @click="setActiveMetal('gold')"
-          @touchend.prevent="setActiveMetal('gold')"
-        >
+        <div class="price-card active">
           <div class="card-label">🥇 {{ t.gold }}</div>
           <div class="price-main">
             <span class="price-value">${{ goldPrice.toFixed(2) }}</span>
-            <span class="price-unit">{{ t.perTroyOz }}</span>
-          </div>
-        </div>
-
-        <!-- Silver Price Card -->
-        <div 
-          v-if="silverPrice" 
-          :class="['price-card', { active: activeMetal === 'silver' }]" 
-          @click="setActiveMetal('silver')"
-          @touchend.prevent="setActiveMetal('silver')"
-        >
-          <div class="card-label">🥈 {{ t.silver }}</div>
-          <div class="price-main">
-            <span class="price-value">${{ silverPrice.toFixed(2) }}</span>
-            <span class="price-unit">{{ t.perTroyOz }}</span>
+            <span class="price-unit">{{ priceSource === 'api' ? t.perTroyOz : 'per ' + (priceInputMethod === 'troyOz' ?
+        t.troyOunce : priceInputMethod === 'damlung' ? t.damlung : t.chi) }}</span>
           </div>
         </div>
       </div>
 
-      <div v-if="lastUpdated" class="price-meta">
+      <div v-if="lastUpdated && priceSource === 'api'" class="price-meta">
         <span class="last-updated">{{ t.lastUpdated }}: {{ lastUpdated }}</span>
       </div>
 
       <div v-if="error" class="error-message">
-        {{ error }}
-      </div>
-
-      <!-- Custom API URL -->
-      <div class="custom-api-section">
-        <div class="api-header">
-          <label>{{ t.customAPIUrl }}</label>
-          <a href="https://www.goldapi.io/" target="_blank" rel="noopener noreferrer" class="api-link">
-            {{ t.getAPIKey }}
-          </a>
+        <span class="error-icon">⚠️</span>
+        <div class="error-content">
+          <span class="error-text">{{ error }}</span>
+          <button @click="fetchGoldPrice" class="error-retry-btn">Retry</button>
         </div>
-        
-        <div class="api-input-row">
-          <input 
-            v-model="customApiUrl" 
-            type="text" 
-            :placeholder="t.enterAPIUrl" 
-            class="api-input"
-          >
-          <button @click="pasteFromClipboard" class="paste-api-btn" :title="t.pasteFromClipboard">
-            📋 {{ t.paste }}
-          </button>
-          <button v-if="customApiUrl" @click="clearApiUrl" class="clear-api-btn" :title="t.clearAPI">
-            ✕
-          </button>
-          <button @click="saveCustomApi" class="save-api-btn" :disabled="!customApiUrl">
-            {{ t.saveAPI }}
-          </button>
-        </div>
-        
-        <small v-if="customApiUrl" class="api-note">{{ t.usingCustomAPI }}</small>
-        <small v-else class="api-note-default">{{ t.usingFreeAPI }}</small>
       </div>
     </div>
 
-    <!-- Price Input Method Toggle -->
-    <div class="price-method-section">
+    <!-- Price Input Method Toggle - Only show in Custom mode -->
+    <div v-if="priceSource === 'custom'" class="price-method-section">
       <h3>{{ t.setPriceBy }}</h3>
       <div class="price-method-toggle">
         <button @click="priceInputMethod = 'troyOz'" :class="['method-btn', { active: priceInputMethod === 'troyOz' }]">
@@ -159,7 +101,7 @@
 
       <!-- Price Conversion Preview -->
       <div v-if="currentMetalPrice" class="price-preview">
-        <div class="preview-header">{{ activeMetal === 'gold' ? '🥇 ' + t.gold : '🥈 ' + t.silver }} {{ t.priceByUnit }}</div>
+        <div class="preview-header">🥇 {{ t.gold }} {{ t.priceByUnit }}</div>
         <div class="preview-item">
           <span class="preview-label">{{ t.troyOunce }}:</span>
           <span class="preview-value">${{ currentMetalPrice ? currentMetalPrice.toFixed(2) : '0.00' }}</span>
@@ -172,6 +114,63 @@
           <span class="preview-label">{{ t.chi }}:</span>
           <span class="preview-value">${{ currentMetalPrice ? currentPricePerChi.toFixed(2) : '0.00' }}</span>
         </div>
+      </div>
+    </div>
+
+    <!-- API Configuration - Only show in API mode -->
+    <div v-if="priceSource === 'api'" class="api-configuration-section">
+      <div class="api-section-header">
+        <h3>{{ t.customAPIUrl }}</h3>
+        <p class="api-description">{{ t.usingFreeAPI }}</p>
+      </div>
+
+      <!-- Call to Action Card -->
+      <div class="api-cta-card">
+        <div class="cta-icon">🔑</div>
+        <div class="cta-content">
+          <h4>{{ t.getAPIKey }}</h4>
+          <p>Get unlimited requests with your own free API key</p>
+          <a href="https://www.goldapi.io/" target="_blank" rel="noopener noreferrer" class="cta-link">
+            Visit goldapi.io →
+          </a>
+        </div>
+      </div>
+
+      <!-- API Key Input Section -->
+      <div class="api-input-section">
+        <label>{{ t.enterAPIUrl }}</label>
+        <div class="api-input-row">
+          <input v-model="customApiUrl" type="text" :placeholder="'Paste your API key here...'" class="api-input">
+          <button @click="pasteFromClipboard" class="api-action-btn paste-btn" :title="t.pasteFromClipboard">
+            <span class="btn-icon">📋</span>
+            <span class="btn-text">Paste</span>
+          </button>
+        </div>
+
+        <!-- Status Indicator -->
+        <div v-if="customApiUrl" class="api-status success">
+          <span class="status-icon">✓</span>
+          <span class="status-text">API key ready</span>
+          <button @click="clearApiUrl" class="status-clear">Clear</button>
+        </div>
+        <div v-else class="api-status default">
+          <span class="status-icon">○</span>
+          <span class="status-text">Using free API (no key needed)</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="api-action-buttons">
+        <button @click="saveCustomApi" :disabled="!customApiUrl" class="api-save-btn">
+          <span v-if="!customApiUrl" class="btn-disabled">No API key to save</span>
+          <span v-else>✓ Save API Key</span>
+        </button>
+      </div>
+
+      <!-- Info Box -->
+      <div class="api-info-box">
+        <span class="info-icon">ℹ️</span>
+        <p>Your API key is saved locally on your device. Free tier gives you 100+ requests per month.</p>
       </div>
     </div>
 
@@ -211,32 +210,32 @@
         <div class="unit-card">
           <span class="unit-name">{{ t.li }}</span>
           <span class="unit-price">${{ getPriceForConverterAmount('li') }}</span>
-          <span class="unit-weight">{{ getConverterAmountForUnit('li') }} (0.0375g each)</span>
+          <span class="unit-weight">{{ getConverterAmountForUnit('li') }} (0.0375g)</span>
         </div>
         <div class="unit-card">
           <span class="unit-name">{{ t.hun }}</span>
           <span class="unit-price">${{ getPriceForConverterAmount('hun') }}</span>
-          <span class="unit-weight">{{ getConverterAmountForUnit('hun') }} (0.375g each)</span>
+          <span class="unit-weight">{{ getConverterAmountForUnit('hun') }} (0.375g)</span>
         </div>
         <div class="unit-card">
           <span class="unit-name">{{ t.chi }}</span>
           <span class="unit-price">${{ getPriceForConverterAmount('chi') }}</span>
-          <span class="unit-weight">{{ getConverterAmountForUnit('chi') }} (3.75g each)</span>
+          <span class="unit-weight">{{ getConverterAmountForUnit('chi') }} (3.75g)</span>
         </div>
         <div class="unit-card">
           <span class="unit-name">{{ t.gram }}</span>
           <span class="unit-price">${{ getPriceForConverterAmount('gram') }}</span>
-          <span class="unit-weight">{{ getConverterAmountForUnit('gram') }} (1g each)</span>
+          <span class="unit-weight">{{ getConverterAmountForUnit('gram') }} (1g)</span>
         </div>
         <div class="unit-card">
           <span class="unit-name">{{ t.damlung }}</span>
           <span class="unit-price">${{ getPriceForConverterAmount('damlung') }}</span>
-          <span class="unit-weight">{{ getConverterAmountForUnit('damlung') }} (37.5g each)</span>
+          <span class="unit-weight">{{ getConverterAmountForUnit('damlung') }} (37.5g)</span>
         </div>
         <div class="unit-card">
           <span class="unit-name">{{ t.troyOunce }}</span>
           <span class="unit-price">${{ getPriceForConverterAmount('troyOz') }}</span>
-          <span class="unit-weight">{{ getConverterAmountForUnit('troyOz') }} (31.1035g each)</span>
+          <span class="unit-weight">{{ getConverterAmountForUnit('troyOz') }} (31.1g)</span>
         </div>
       </div>
       <div v-else class="no-price-message">
@@ -256,13 +255,6 @@
       <!-- Add Purchase Form -->
       <div v-if="showAddForm" class="purchase-form">
         <div class="form-row">
-          <div class="form-group">
-            <label>{{ t.metal }}</label>
-            <select v-model="newPurchase.metal">
-              <option value="gold">🥇 {{ t.gold }}</option>
-              <option value="silver">🥈 {{ t.silver }}</option>
-            </select>
-          </div>
           <div class="form-group">
             <label>{{ t.weight }}</label>
             <input v-model.number="newPurchase.weight" type="text" inputmode="decimal" :placeholder="t.enterWeight">
@@ -305,8 +297,7 @@
           <div v-if="editingIndex !== index">
             <div class="card-header">
               <span class="card-weight">
-                {{ purchase.metal === 'silver' ? '🥈' : '🥇' }} 
-                {{ purchase.weight }} {{ t[purchase.unit] }}
+                🥇 {{ purchase.weight }} {{ t[purchase.unit] }}
               </span>
               <div class="card-actions">
                 <button @click="editPurchase(index)" class="icon-btn">✏️</button>
@@ -333,23 +324,33 @@
           <!-- Edit Mode -->
           <div v-else class="edit-form">
             <div class="form-row">
-              <select v-model="editForm.metal">
-                <option value="gold">🥇 {{ t.gold }}</option>
-                <option value="silver">🥈 {{ t.silver }}</option>
-              </select>
-              <input v-model.number="editForm.weight" type="text" inputmode="decimal" :placeholder="t.weight">
-              <select v-model="editForm.unit">
-                <option value="chi">{{ t.chi }}</option>
-                <option value="damlung">{{ t.damlung }}</option>
-                <option value="gram">{{ t.gram }}</option>
-                <option value="hun">{{ t.hun }}</option>
-                <option value="li">{{ t.li }}</option>
-                <option value="troyOz">{{ t.troyOunce }}</option>
-              </select>
+              <div class="form-group">
+                <label>{{ t.weight }}</label>
+                <input v-model.number="editForm.weight" type="text" inputmode="decimal">
+              </div>
             </div>
             <div class="form-row">
-              <input v-model.number="editForm.price" type="text" inputmode="decimal" :placeholder="t.pricePaid">
-              <input v-model="editForm.date" type="date">
+              <div class="form-group">
+                <label>{{ t.unit }}</label>
+                <select v-model="editForm.unit">
+                  <option value="chi">{{ t.chi }}</option>
+                  <option value="damlung">{{ t.damlung }}</option>
+                  <option value="gram">{{ t.gram }}</option>
+                  <option value="hun">{{ t.hun }}</option>
+                  <option value="li">{{ t.li }}</option>
+                  <option value="troyOz">{{ t.troyOunce }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>{{ t.pricePaid }}</label>
+                <input v-model.number="editForm.price" type="text" inputmode="decimal">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>{{ t.date }}</label>
+                <input v-model="editForm.date" type="date">
+              </div>
             </div>
             <div class="edit-actions">
               <button @click="saveEdit" class="save-btn">{{ t.save }}</button>
@@ -392,7 +393,6 @@ export default {
     return {
       currentLang: 'en',
       goldPrice: null,
-      silverPrice: null,
       lastUpdated: '',
       loading: false,
       error: null,
@@ -401,8 +401,8 @@ export default {
       priceInputMethod: 'troyOz',
       customPrice: null,
       customApiUrl: '',
-      activeMetal: 'gold', // 'gold' or 'silver' - reactive property
-      defaultApiKey: '', // Remove expired demo key - use free API instead
+      priceSource: 'api',  // 'api' or 'custom'
+      defaultApiKey: '',
       apiCopied: false,
 
       // Converter state
@@ -418,7 +418,7 @@ export default {
       newPurchase: {
         weight: '',
         unit: 'chi',
-        metal: 'gold',
+        metal: 'gold',  // Always gold
         price: '',
         date: new Date().toISOString().split('T')[0]
       },
@@ -430,7 +430,7 @@ export default {
       HUN_TO_GRAM: 0.375,
       LI_TO_GRAM: 0.0375,
 
-      // Translations
+      // Translations (same as original)
       translations: {
         en: {
           title: 'Gold & Silver Tracker',
@@ -590,43 +590,20 @@ export default {
       return this.pricePerGram * this.LI_TO_GRAM
     },
 
-    // Silver prices per unit
-    silverPricePerGram() {
-      if (!this.silverPrice) return 0
-      return this.silverPrice / this.TROY_OZ_TO_GRAM
-    },
-
-    silverPricePerDamlung() {
-      return this.silverPricePerGram * this.DAMLUNG_TO_GRAM
-    },
-
-    silverPricePerChi() {
-      return this.silverPricePerGram * this.CHI_TO_GRAM
-    },
-
-    silverPricePerHun() {
-      return this.silverPricePerGram * this.HUN_TO_GRAM
-    },
-
-    silverPricePerLi() {
-      return this.silverPricePerGram * this.LI_TO_GRAM
-    },
-
-    // Current metal price based on active selection
     currentMetalPrice() {
-      return this.activeMetal === 'gold' ? this.goldPrice : this.silverPrice
+      return this.goldPrice
     },
 
     currentPricePerGram() {
-      return this.activeMetal === 'gold' ? this.pricePerGram : this.silverPricePerGram
+      return this.pricePerGram
     },
 
     currentPricePerDamlung() {
-      return this.activeMetal === 'gold' ? this.pricePerDamlung : this.silverPricePerDamlung
+      return this.pricePerDamlung
     },
 
     currentPricePerChi() {
-      return this.activeMetal === 'gold' ? this.pricePerChi : this.silverPricePerChi
+      return this.pricePerChi
     },
 
     totalInvested() {
@@ -668,7 +645,6 @@ export default {
           this.apiCopied = false
         }, 2000)
       } catch (err) {
-        // Fallback for older browsers
         const textToCopy = 'Get your free API key at: https://www.goldapi.io/'
         const tempInput = document.createElement('textarea')
         tempInput.value = textToCopy
@@ -694,8 +670,8 @@ export default {
         }
       } catch (err) {
         console.error('Failed to read clipboard:', err)
-        alert(this.currentLang === 'en' 
-          ? 'Unable to access clipboard. Please paste manually (Ctrl+V or Cmd+V)' 
+        alert(this.currentLang === 'en'
+          ? 'Unable to access clipboard. Please paste manually (Ctrl+V or Cmd+V)'
           : 'មិនអាចចូលប្រើឃ្លីបបត។ សូមបិទភ្ជាប់ដោយដៃ (Ctrl+V ឬ Cmd+V)')
       }
     },
@@ -707,23 +683,8 @@ export default {
     },
 
     setActiveMetal(metal) {
-      console.log('setActiveMetal called with:', metal)
-      console.log('Previous activeMetal:', this.activeMetal)
-      
-      if (metal !== 'gold' && metal !== 'silver') {
-        console.error('Invalid metal type:', metal)
-        return
-      }
-      
-      this.activeMetal = metal
-      console.log('New activeMetal:', this.activeMetal)
-      
-      // Force Vue to re-evaluate computed properties
-      this.$nextTick(() => {
-        console.log('After nextTick - activeMetal:', this.activeMetal)
-        console.log('currentMetalPrice:', this.currentMetalPrice)
-        this.saveToLocalStorage()
-      })
+      // No longer needed - only gold exists
+      console.log('Metal toggle removed - only gold available')
     },
 
     setupNetworkListeners() {
@@ -758,15 +719,12 @@ export default {
         return
       }
 
-      // Convert custom price to Troy Oz price based on selected method
       if (this.priceInputMethod === 'troyOz') {
         this.goldPrice = this.customPrice
       } else if (this.priceInputMethod === 'damlung') {
-        // Convert Damlung price to Troy Oz
         const pricePerGram = this.customPrice / this.DAMLUNG_TO_GRAM
         this.goldPrice = pricePerGram * this.TROY_OZ_TO_GRAM
       } else if (this.priceInputMethod === 'chi') {
-        // Convert Chi price to Troy Oz
         const pricePerGram = this.customPrice / this.CHI_TO_GRAM
         this.goldPrice = pricePerGram * this.TROY_OZ_TO_GRAM
       }
@@ -782,17 +740,13 @@ export default {
       }
 
       this.saveToLocalStorage()
-      
-      // Automatically fetch prices with new key
       this.fetchGoldPrice()
     },
 
     getConverterAmountForUnit(unit) {
-      // If converter is set to this unit, return the input value
       if (this.activeConverter === unit) {
         return this.converterInput || 1
       }
-      // Otherwise convert from active converter to this unit
       return this.convertUnit(this.converterInput || 1, this.activeConverter, unit)
     },
 
@@ -814,20 +768,7 @@ export default {
       return (pricePerUnit * amount).toFixed(2)
     },
 
-    getConverterOptions(unit) {
-      const options = {
-        li: [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100],
-        hun: [0.1, 0.5, 1, 2, 5, 10, 20, 50],
-        chi: [0.1, 0.5, 1, 2, 5, 10, 20],
-        gram: [1, 5, 10, 20, 50, 100, 200, 500],
-        damlung: [0.5, 1, 2, 5, 10, 20, 50],
-        troyOz: [0.5, 1, 2, 5, 10, 20, 50]
-      }
-      return options[unit] || [1]
-    },
-
     convertUnit(value, fromUnit, toUnit) {
-      // Convert to grams first
       let grams = 0
       switch (fromUnit) {
         case 'li': grams = value * this.LI_TO_GRAM; break
@@ -838,7 +779,6 @@ export default {
         case 'troyOz': grams = value * this.TROY_OZ_TO_GRAM; break
       }
 
-      // Convert from grams to target unit
       let result = 0
       switch (toUnit) {
         case 'li': result = grams / this.LI_TO_GRAM; break
@@ -858,217 +798,148 @@ export default {
 
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 20000)
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
 
         let headers = {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Accept': 'application/json'
         }
 
-        let apiMethod = 'free' // Default to free API
         let success = false
 
-        // Priority 1: Use custom API key if provided
-        if (this.customApiUrl && this.customApiUrl.trim() !== '') {
-          apiMethod = 'custom'
-          const input = this.customApiUrl.trim()
-          let apiKey = input
-          
-          if (input.startsWith('http')) {
-            const match = input.match(/goldapi-([a-z0-9]+)\.io/)
-            if (match) {
-              apiKey = `goldapi-${match[1]}-io`
-            }
-          }
-          
-          headers['x-access-token'] = apiKey
-          console.log('Using CUSTOM API key')
-          
-          try {
-            // Fetch both gold and silver from Gold API
-            await Promise.all([
-              this.fetchMetalPrice('https://www.goldapi.io/api/XAU/USD', headers, 'gold'),
-              this.fetchMetalPrice('https://www.goldapi.io/api/XAG/USD', headers, 'silver')
-            ])
-            success = true
-          } catch (err) {
-            console.log('Custom API failed:', err.message)
-            // Fall through to free API
-          }
-        }
-        
-        // Priority 2: Try Free API (metals.live) - NO AUTH NEEDED
+        // Try free API first (metals.live)
         if (!success) {
-          apiMethod = 'free'
-          console.log('Using FREE API (metals.live)...')
-          
-          const apiUrl = 'https://api.metals.live/v1/spot'
-          
-          const response = await fetch(apiUrl, {
-            signal: controller.signal,
-            headers: {
-              'Accept': 'application/json'
-            },
-            mode: 'cors',
-            cache: 'no-cache'
-          })
+          console.log('Trying metals.live API...')
 
-          clearTimeout(timeoutId)
+          try {
+            const response = await fetch('https://api.metals.live/v1/spot', {
+              signal: controller.signal,
+              headers: headers,
+              mode: 'cors'
+            })
 
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`)
-          }
+            if (response.ok) {
+              const data = await response.json()
+              console.log('metals.live response:', data)
 
-          const data = await response.json()
-          console.log('Free API Response:', data)
+              if (data && typeof data === 'object') {
+                // Response might be: {gold: {...}, silver: {...}} or [{metal: 'gold', ...}]
+                let goldPrice = null
 
-          if (Array.isArray(data)) {
-            const gold = data.find(m => m.metal === 'gold')
-            const silver = data.find(m => m.metal === 'silver')
-            
-            if (gold && gold.price) {
-              this.goldPrice = gold.price
+                if (Array.isArray(data)) {
+                  // Array format
+                  const goldData = data.find(m => m.metal === 'gold')
+                  goldPrice = goldData?.price
+                } else if (data.gold) {
+                  // Object format: {gold: {price: ...}, silver: {...}}
+                  goldPrice = data.gold.price
+                }
+
+                if (goldPrice) {
+                  this.goldPrice = goldPrice
+                  this.lastUpdated = new Date().toLocaleString()
+                  this.saveToLocalStorage()
+                  success = true
+                  console.log('✅ Got gold price from metals.live:', goldPrice)
+                }
+              }
             }
-            if (silver && silver.price) {
-              this.silverPrice = silver.price
-            }
-            
-            if (this.goldPrice || this.silverPrice) {
-              this.lastUpdated = new Date().toLocaleString()
-              this.saveToLocalStorage()
-              this.error = null
-              success = true
-              console.log('✅ Success using FREE API')
-            }
+          } catch (err) {
+            console.warn('metals.live failed:', err.message)
           }
         }
 
-        // Check if we got at least one price
-        if (!this.goldPrice && !this.silverPrice) {
-          throw new Error('No prices received from any API')
+        // Fallback to alternative API if first fails
+        if (!success) {
+          console.log('Trying alternative API (goldapi)...')
+
+          try {
+            let apiUrl = 'https://www.goldapi.io/api/XAU/USD'
+            let customHeaders = { ...headers }
+
+            if (this.customApiUrl && this.customApiUrl.trim()) {
+              const input = this.customApiUrl.trim()
+              const match = input.match(/goldapi-([a-z0-9]+)\.io/) || input.match(/([a-z0-9]+)/)
+              if (match) {
+                customHeaders['x-access-token'] = input.includes('goldapi') ? input : match[1]
+              }
+            }
+
+            const response = await fetch(apiUrl, {
+              signal: controller.signal,
+              headers: customHeaders,
+              mode: 'cors'
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              console.log('goldapi response:', data)
+
+              if (data.price) {
+                this.goldPrice = data.price
+                this.lastUpdated = new Date().toLocaleString()
+                this.saveToLocalStorage()
+                success = true
+                console.log('✅ Got gold price from goldapi:', data.price)
+              }
+            }
+          } catch (err) {
+            console.warn('goldapi failed:', err.message)
+          }
         }
+
+        clearTimeout(timeoutId)
 
         if (success) {
-          console.log(`✅ Success using ${apiMethod} API - Gold: $${this.goldPrice}, Silver: $${this.silverPrice}`)
-          
-          // Show success message briefly
           this.showSuccessMessage = true
           setTimeout(() => {
             this.showSuccessMessage = false
           }, 3000)
+        } else {
+          // No API worked, try to use cached data
+          const saved = this.safeGetLocalStorage('goldTrackerData')
+          if (saved) {
+            try {
+              const data = JSON.parse(saved)
+              if (data.goldPrice) {
+                this.goldPrice = data.goldPrice
+                this.lastUpdated = data.lastUpdated + ' (cached)'
+                this.error = null
+                console.log('📦 Using cached gold price:', data.goldPrice)
+                this.loading = false
+                return
+              }
+            } catch (e) {
+              console.error('Error loading cache:', e)
+            }
+          }
+
+          this.error = 'Unable to fetch live prices. Please try again or use custom price mode.'
         }
 
       } catch (err) {
-        console.error('All APIs failed:', err)
-        
-        // Build helpful error message
-        this.error = 'Unable to fetch live prices. '
-        
-        if (err.name === 'AbortError') {
-          this.error += 'Connection timeout - check your internet. '
-        } else if (err.message.includes('403')) {
-          this.error += 'API access denied. Get a free key from goldapi.io. '
-        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          this.error += 'Network error - please check your connection. '
-        } else {
-          this.error += err.message + '. '
-        }
+        console.error('fetchGoldPrice error:', err)
 
-        // Try to load from localStorage
+        // Try to load from cache
         const saved = this.safeGetLocalStorage('goldTrackerData')
         if (saved) {
           try {
             const data = JSON.parse(saved)
-            if (data.goldPrice || data.silverPrice) {
+            if (data.goldPrice) {
               this.goldPrice = data.goldPrice
-              this.silverPrice = data.silverPrice
               this.lastUpdated = data.lastUpdated + ' (cached)'
-              this.error += 'Showing last cached prices.'
-              console.log('📦 Using cached data')
+              this.error = null
+              console.log('📦 Using cached gold price:', data.goldPrice)
+              this.loading = false
+              return
             }
           } catch (e) {
             console.error('Error loading cache:', e)
           }
-        } else {
-          this.error += 'No cached data available. Try again when online.'
         }
+
+        this.error = 'Connection error. Please check your internet and try again.'
       } finally {
         this.loading = false
-      }
-    },
-
-    async fetchMetalPrice(url, headers, metalType) {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 12000)
-        
-        console.log(`Fetching ${metalType} from:`, url)
-        
-        const response = await fetch(url, {
-          signal: controller.signal,
-          headers: headers,
-          mode: 'cors',
-          cache: 'no-cache'
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error(`${metalType} API error ${response.status}:`, errorText)
-          throw new Error(`HTTP ${response.status}`)
-        }
-        
-        const data = await response.json()
-        console.log(`${metalType} API Response:`, data)
-        
-        if (data && data.price) {
-          if (metalType === 'gold') {
-            this.goldPrice = data.price
-          } else if (metalType === 'silver') {
-            this.silverPrice = data.price
-          }
-          this.lastUpdated = new Date().toLocaleString()
-          this.saveToLocalStorage()
-          console.log(`✅ ${metalType} price updated: $${data.price}`)
-        } else {
-          console.warn(`${metalType} API returned no price data`)
-        }
-      } catch (err) {
-        console.error(`Error fetching ${metalType}:`, err.message)
-        throw err
-      }
-    },
-
-    async fetchFromFallbackAPI(controller) {
-      try {
-        // Try alternative free API - gold-api.com (different from goldapi.io)
-        const fallbackUrl = 'https://www.goldapi.io/api/XAU/USD/20250101' // Historical endpoint that's free
-        
-        console.log('Trying fallback API...')
-        
-        const response = await fetch(fallbackUrl, {
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json'
-          }
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          console.log('Fallback API Response:', data)
-          
-          if (data.price) {
-            this.goldPrice = data.price
-            this.lastUpdated = new Date().toLocaleString() + ' (free API)'
-            this.saveToLocalStorage()
-            return
-          }
-        }
-        
-        throw new Error('All APIs failed')
-      } catch (err) {
-        throw new Error('Unable to fetch from any API')
       }
     },
 
@@ -1125,10 +996,7 @@ export default {
     },
 
     calculateCurrentValue(purchase) {
-      const metal = purchase.metal || 'gold' // Default to gold for old purchases
-      const currentPrice = metal === 'gold' ? this.goldPrice : this.silverPrice
-      
-      if (!currentPrice) return 0
+      if (!this.goldPrice) return 0
 
       let grams = 0
       switch (purchase.unit) {
@@ -1140,7 +1008,7 @@ export default {
         case 'troyOz': grams = purchase.weight * this.TROY_OZ_TO_GRAM; break
       }
 
-      const pricePerGram = currentPrice / this.TROY_OZ_TO_GRAM
+      const pricePerGram = this.goldPrice / this.TROY_OZ_TO_GRAM
       return pricePerGram * grams
     },
 
@@ -1233,13 +1101,12 @@ export default {
       const data = {
         currentLang: this.currentLang,
         goldPrice: this.goldPrice,
-        silverPrice: this.silverPrice,
         lastUpdated: this.lastUpdated,
         purchases: this.purchases,
         priceInputMethod: this.priceInputMethod,
         customPrice: this.customPrice,
         customApiUrl: this.customApiUrl,
-        activeMetal: this.activeMetal
+        priceSource: this.priceSource
       }
       this.safeSetLocalStorage('goldTrackerData', JSON.stringify(data))
     },
@@ -1251,13 +1118,12 @@ export default {
           const data = JSON.parse(saved)
           this.currentLang = data.currentLang || 'en'
           this.goldPrice = data.goldPrice
-          this.silverPrice = data.silverPrice
           this.lastUpdated = data.lastUpdated
           this.purchases = data.purchases || []
           this.priceInputMethod = data.priceInputMethod || 'troyOz'
           this.customPrice = data.customPrice || null
           this.customApiUrl = data.customApiUrl || ''
-          this.activeMetal = data.activeMetal || 'gold'
+          this.priceSource = data.priceSource || 'api'
         } catch (e) {
           console.error('Error loading from localStorage:', e)
         }
@@ -1275,7 +1141,6 @@ export default {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Prevent iOS zoom on input focus */
 input,
 select,
 textarea {
@@ -1298,22 +1163,6 @@ button {
   -webkit-user-select: none;
   user-select: none;
   overflow-x: hidden;
-}
-
-/* Mobile adjustments to prevent horizontal scroll */
-@media (max-width: 768px) {
-  .gold-tracker {
-    padding: 0;
-  }
-  
-  .price-section,
-  .price-method-section,
-  .converter-section,
-  .price-by-unit,
-  .purchases-section {
-    margin: 12px;
-    padding: 20px;
-  }
 }
 
 .header {
@@ -1524,6 +1373,312 @@ button {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Price Source Toggle */
+.price-source-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 16px;
+}
+
+.source-btn {
+  flex: 1;
+  padding: 12px 16px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.source-btn:hover {
+  background: #e2e8f0;
+}
+
+.source-btn.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.source-btn:active {
+  transform: scale(0.98);
+}
+
+.api-configuration-section {
+  background: white;
+  margin: 20px;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.api-section-header {
+  margin-bottom: 24px;
+}
+
+.api-section-header h3 {
+  color: #334155;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.api-description {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+/* CTA Card */
+.api-cta-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #0ea5e9;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.cta-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.cta-content {
+  flex: 1;
+}
+
+.cta-content h4 {
+  color: #0369a1;
+  font-size: 15px;
+  margin: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.cta-content p {
+  color: #0c4a6e;
+  font-size: 13px;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.cta-link {
+  display: inline-block;
+  color: #0369a1;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: white;
+  border-radius: 4px;
+  transition: all 0.2s;
+  border: 1px solid #0ea5e9;
+}
+
+.cta-link:hover {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
+/* API Input Section */
+.api-input-section {
+  margin-bottom: 20px;
+}
+
+.api-input-section label {
+  display: block;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.api-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.api-input {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 17px;
+  color: #334155;
+  background: white;
+  transition: all 0.2s;
+}
+
+.api-input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.api-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.api-action-btn:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+.api-action-btn:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.btn-text {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .btn-text {
+    display: inline;
+  }
+}
+
+/* Status Indicator */
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.api-status.success {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  justify-content: space-between;
+}
+
+.api-status.default {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+.status-clear {
+  background: none;
+  border: none;
+  color: #059669;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.status-clear:hover {
+  color: #047857;
+}
+
+/* Action Buttons */
+.api-action-buttons {
+  margin-bottom: 16px;
+}
+
+.api-save-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.api-save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.api-save-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.api-save-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-disabled {
+  color: #6b7280;
+}
+
+/* Info Box */
+.api-info-box {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 12px 14px;
+  border-radius: 4px;
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.info-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.api-info-box p {
+  margin: 0;
+}
+
 .price-section h2,
 .price-method-section h3,
 .converter-section h2,
@@ -1545,12 +1700,19 @@ button {
   background: #64748b;
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -1568,8 +1730,13 @@ button {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-bar {
@@ -1589,76 +1756,23 @@ button {
 }
 
 @keyframes loading {
-  0% { 
+  0% {
     width: 0%;
     background-position: 0% 0%;
   }
-  50% { 
+
+  50% {
     width: 70%;
     background-position: 100% 0%;
   }
-  100% { 
+
+  100% {
     width: 100%;
     background-position: 0% 0%;
   }
 }
 
-.price-display {
-  text-align: center;
-}
 
-.metal-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.metal-btn {
-  flex: 1;
-  padding: 14px 12px;
-  background: #f1f5f9;
-  color: #334155;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.metal-btn:active {
-  background: #e2e8f0;
-  transform: scale(0.98);
-}
-
-.metal-btn.active {
-  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-  color: white;
-  border-color: #475569;
-  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
-}
-
-.metal-btn.active:active {
-  transform: scale(0.98);
-}
-
-.active-metal-indicator {
-  text-align: center;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 2px solid #0ea5e9;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #0369a1;
-  margin-bottom: 16px;
-}
 
 .success-message {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
@@ -1677,6 +1791,7 @@ button {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1730,10 +1845,6 @@ button {
   color: #1e40af;
 }
 
-.price-display {
-  text-align: center;
-}
-
 .price-main {
   display: flex;
   flex-direction: column;
@@ -1761,21 +1872,56 @@ button {
 .error-message {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #991b1b;
-  padding: 16px;
+  padding: 12px 14px;
   border-radius: 8px;
   margin-top: 12px;
-  font-size: 14px;
+  font-size: 13px;
   border-left: 4px solid #dc2626;
-  line-height: 1.6;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.error-message::before {
-  content: '⚠️ ';
+.error-icon {
   font-size: 16px;
-  margin-right: 6px;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
-/* Price Method Toggle */
+.error-text {
+  flex: 1;
+}
+
+.error-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.error-retry-btn {
+  align-self: flex-start;
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error-retry-btn:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.error-retry-btn:active {
+  transform: translateY(0);
+}
+
 .price-method-toggle {
   display: flex;
   gap: 8px;
@@ -1888,7 +2034,6 @@ button {
   font-weight: 700;
 }
 
-/* Combined Converter */
 .converter-tabs {
   display: flex;
   gap: 6px;
@@ -1953,23 +2098,6 @@ button {
   border-color: #64748b;
 }
 
-.converter-select {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 17px;
-  color: #334155;
-  background: white;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.converter-select:focus {
-  outline: none;
-  border-color: #64748b;
-}
-
 .conversion-results {
   background: #f8fafc;
   padding: 16px;
@@ -2002,14 +2130,12 @@ button {
   font-size: 14px;
 }
 
-/* Price by Unit */
 .unit-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
-/* Show 6 columns on larger screens */
 @media (min-width: 1024px) {
   .unit-grid {
     grid-template-columns: repeat(6, 1fr);
@@ -2052,7 +2178,6 @@ button {
   color: #94a3b8;
 }
 
-/* Purchases */
 .purchases-header {
   display: flex;
   justify-content: space-between;
@@ -2088,13 +2213,6 @@ button {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 12px;
-}
-
-/* Keep 2 columns even on mobile for consistency */
-@media (max-width: 768px) {
-  .form-row {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 .form-group {
@@ -2212,28 +2330,6 @@ button {
   color: #dc2626;
 }
 
-.card-reference {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #e2e8f0;
-  font-size: 12px;
-}
-
-.ref-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.ref-label {
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-.ref-value {
-  color: #64748b;
-}
-
 .card-date {
   margin-top: 8px;
   font-size: 11px;
@@ -2347,61 +2443,465 @@ button {
   background: #475569;
 }
 
-/* Mobile Optimization - Keep desktop layout */
-@media (max-width: 768px) {
-  /* Only minimal adjustments for readability */
+/* ============================================
+   MOBILE OPTIMIZATION (375-430px iPhone)
+   ============================================ */
+
+@media (max-width: 430px) {
+
+  /* HEADER */
   .header {
-    padding: 16px;
+    padding: 12px 16px;
+    gap: 8px;
   }
 
   .header h1 {
-    font-size: 20px;
+    font-size: 18px;
+    flex: 1;
   }
 
-  /* Keep desktop layouts and grids */
+  .lang-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* MAIN SECTIONS */
+  .price-section,
+  .price-method-section,
+  .converter-section,
+  .price-by-unit,
+  .purchases-section,
+  .api-configuration-section {
+    margin: 8px;
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .price-section h2,
+  .price-method-section h3,
+  .converter-section h2,
+  .price-by-unit h2,
+  .purchases-section h2,
+  .api-configuration-section h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  /* PRICE SOURCE TOGGLE */
+  .price-source-toggle {
+    gap: 6px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .source-btn {
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  /* PRICE HEADER - Refresh button */
+  .price-header {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .price-header h2 {
+    font-size: 16px;
+    flex: 1 100%;
+  }
+
+  .refresh-btn {
+    padding: 10px 14px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  /* PRICE CARDS - Stack vertically */
+  .price-cards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .price-card {
+    padding: 16px;
+    min-height: 90px;
+  }
+
+  .price-value {
+    font-size: 32px;
+  }
+
+  .price-unit {
+    font-size: 12px;
+  }
+
+  /* FORM ROWS - Stack vertically on tiny screens */
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .form-group {
+    gap: 4px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 10px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  /* API INPUT - Stack on tiny phones */
+  .api-input-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .api-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .paste-api-btn,
+  .clear-api-btn,
+  .save-api-btn {
+    width: 100%;
+    min-height: 44px;
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  /* CONVERTER TABS - Scroll horizontally, prevent wrapping */
+  .converter-tabs {
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* CONVERTER INPUT */
+  .converter-input {
+    font-size: 16px;
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  /* UNIT GRID - 2 columns on iPhone, stacks on very small */
+  .unit-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .unit-card {
+    padding: 12px;
+    gap: 3px;
+  }
+
+  .unit-name {
+    font-size: 12px;
+  }
+
+  .unit-price {
+    font-size: 16px;
+  }
+
+  .unit-weight {
+    font-size: 10px;
+  }
+
+  /* PURCHASES GRID - Single column on mobile */
+  .purchases-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .purchase-card {
+    padding: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .card-weight {
+    font-size: 14px;
+    width: 100%;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .card-detail {
+    font-size: 12px;
+    padding: 6px 0;
+  }
+
+  .icon-btn {
+    font-size: 16px;
+    padding: 6px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* EDIT FORM - Stack inputs vertically */
+  .edit-form {
+    gap: 8px;
+  }
+
+  .edit-form input,
+  .edit-form select {
+    padding: 10px;
+    font-size: 16px;
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .edit-actions {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  /* PORTFOLIO SUMMARY - Stack items */
+  .portfolio-summary {
+    padding: 16px;
+  }
+
+  .summary-grid {
+    gap: 10px;
+  }
+
+  .summary-item {
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .summary-label {
+    font-size: 12px;
+  }
+
+  .summary-value {
+    font-size: 14px;
+  }
+
+  /* BUTTONS - Full width & touch-friendly */
+  .submit-btn,
+  .add-btn,
+  .refresh-btn,
+  .export-btn,
+  .set-price-btn {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+
+  /* PRICE METHOD TOGGLE */
+  .price-method-toggle {
+    gap: 6px;
+  }
+
+  .method-btn {
+    padding: 10px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  /* PRICE PREVIEW */
+  .price-preview {
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .preview-header {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .preview-item {
+    font-size: 12px;
+    padding: 4px 0;
+  }
+
+  /* PURCHASE FORM */
+  .purchase-form {
+    padding: 16px;
+  }
+
+  /* API SECTION */
+  .api-configuration-section {
+    margin: 8px;
+    padding: 16px;
+  }
+
+  .api-section-header h3 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .api-cta-card {
+    padding: 12px;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+
+  .cta-icon {
+    font-size: 24px;
+  }
+
+  .cta-content h4 {
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
+
+  .cta-content p {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .cta-link {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .api-input-section label {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .api-input-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .api-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .api-action-btn {
+    width: 100%;
+    padding: 10px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .api-status {
+    padding: 10px;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .api-save-btn {
+    padding: 12px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .api-info-box {
+    padding: 10px 12px;
+    font-size: 11px;
+    gap: 8px;
+  }
+
+  .info-icon {
+    font-size: 14px;
+  }
+
+  /* NETWORK WARNING */
+  .network-warning {
+    font-size: 12px;
+    padding: 10px 16px;
+  }
+
+  /* SUCCESS & ERROR MESSAGES */
+  .success-message,
+  .error-message {
+    font-size: 12px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+
+  /* ACTIVE METAL INDICATOR */
+  .active-metal-indicator {
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+  }
+
+  /* PRICE META */
+  .price-meta {
+    font-size: 12px;
+  }
+
+  /* CUSTOM PRICE INPUT */
+  .custom-price-input label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .price-input-row {
+    gap: 6px;
+  }
+
+  .price-input {
+    font-size: 16px;
+    padding: 10px;
+    min-height: 44px;
+  }
+}
+
+/* ============================================
+   SMALL TABLET (430-768px)
+   ============================================ */
+
+@media (min-width: 431px) and (max-width: 768px) {
+  .price-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .unit-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
 
   .purchases-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
-
-  .purchase-card {
-    padding: 16px;
-  }
-
-  /* Slightly smaller price value on very small screens */
-  .price-value {
-    font-size: 36px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
 }
 
 @media (min-width: 769px) {
-  /* Desktop specific styles - now mobile uses same layout */
-}
-
-@media (min-width: 1024px) {
-  .gold-tracker {
-    padding: 20px;
-  }
-
-  .price-section,
-  .price-method-section,
-  .converter-section,
-  .price-by-unit,
-  .purchases-section {
-    max-width: 1200px;
-    margin: 20px auto;
-  }
-
-  .unit-grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
-
-  .purchases-grid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  }
+  /* Desktop specific styles */
 }
 </style>
