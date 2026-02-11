@@ -1163,6 +1163,9 @@ button {
   -webkit-user-select: none;
   user-select: none;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 .header {
@@ -2449,6 +2452,38 @@ button {
 
 @media (max-width: 430px) {
 
+  /* PREVENT ALL HORIZONTAL OVERFLOW - CRITICAL FIX */
+  * {
+    max-width: 100%;
+  }
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
+  .gold-tracker {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  /* CRITICAL: ALL INPUTS MUST NOT OVERFLOW */
+  input[type="text"],
+  input[type="date"],
+  input[type="number"],
+  select,
+  textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   /* HEADER */
   .header {
     padding: 12px 16px;
@@ -2475,6 +2510,9 @@ button {
     margin: 8px;
     padding: 16px;
     border-radius: 10px;
+    width: calc(100% - 16px);
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .price-section h2,
@@ -2541,10 +2579,14 @@ button {
     grid-template-columns: 1fr;
     gap: 10px;
     margin-bottom: 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .form-group {
     gap: 4px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .form-group label {
@@ -2556,12 +2598,16 @@ button {
     padding: 10px;
     font-size: 16px;
     min-height: 44px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* API INPUT - Stack on tiny phones */
   .api-input-row {
     flex-direction: column;
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .api-input {
@@ -2569,15 +2615,18 @@ button {
     padding: 10px;
     font-size: 16px;
     min-height: 44px;
+    box-sizing: border-box;
   }
 
   .paste-api-btn,
   .clear-api-btn,
-  .save-api-btn {
+  .save-api-btn,
+  .paste-btn {
     width: 100%;
     min-height: 44px;
     font-size: 13px;
     padding: 10px;
+    box-sizing: border-box;
   }
 
   /* CONVERTER TABS - Scroll horizontally, prevent wrapping */
@@ -2597,12 +2646,16 @@ button {
     font-size: 16px;
     min-height: 44px;
     padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* UNIT GRID - 2 columns on iPhone, stacks on very small */
   .unit-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .unit-card {
@@ -2626,10 +2679,14 @@ button {
   .purchases-grid {
     grid-template-columns: 1fr;
     gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .purchase-card {
     padding: 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .card-header {
@@ -2665,6 +2722,8 @@ button {
   /* EDIT FORM - Stack inputs vertically */
   .edit-form {
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .edit-form input,
@@ -2673,18 +2732,23 @@ button {
     font-size: 16px;
     min-height: 44px;
     width: 100%;
+    box-sizing: border-box;
   }
 
   .edit-actions {
     flex-direction: column;
     gap: 8px;
     margin-top: 8px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .save-btn,
   .cancel-btn {
     min-height: 44px;
     font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* PORTFOLIO SUMMARY - Stack items */
@@ -2869,12 +2933,17 @@ button {
 
   .price-input-row {
     gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-direction: column;
   }
 
   .price-input {
     font-size: 16px;
     padding: 10px;
     min-height: 44px;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
