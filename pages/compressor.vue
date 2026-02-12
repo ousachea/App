@@ -1,42 +1,31 @@
-<template class="compressor-body">
-  
+<!-- pages/compressor.vue -->
+<!-- 100MP+ Self-Contained Compressor for Nuxt 2 -->
+
+<template>
   <div class="compressor-container">
     <div class="header">
       <div class="header-content">
         <div class="header-text">
-          <h1>✨ Smart Compress</h1>
-          <p>Reduce image file sizes instantly</p>
+          <h1>✨ Smart Compress 100MP+</h1>
+          <p>Optimized for ultra-high resolution images</p>
         </div>
-        <button 
-          v-if="files.length > 0" 
-          class="clear-session-btn"
-          @click="clearSession"
-          title="Clear all files and reset session"
-        >
+        <button v-if="files.length > 0" class="clear-session-btn" @click="clearSession">
           <span>🗑️</span>
           <span>Clear All</span>
         </button>
       </div>
     </div>
-  
-    <!-- Main Content Grid -->
+
     <div class="main-content">
-      <!-- Left Panel -->
+      <!-- LEFT PANEL -->
       <div class="left-panel">
-        <!-- Upload Section -->
         <div class="upload-section">
-          <div 
-            class="drop-zone"
-            :class="{ dragover: isDragOver }"
-            @click="$refs.fileInput.click()"
-            @dragover.prevent="isDragOver = true"
-            @dragleave="isDragOver = false"
-            @drop.prevent="handleDrop"
-          >
+          <div class="drop-zone" :class="{ dragover: isDragOver }" @click="$refs.fileInput.click()"
+            @dragover.prevent="isDragOver = true" @dragleave="isDragOver = false" @drop.prevent="handleDrop">
             <div class="drop-icon">📸</div>
-            <div class="drop-text">Drop your images here</div>
-            <div class="drop-subtext">JPG, PNG, WebP • Up to 10MB</div>
-            
+            <div class="drop-text">Drop images here</div>
+            <div class="drop-subtext">JPG, PNG • Up to 100MP each</div>
+
             <div class="upload-actions">
               <button class="btn btn-primary" @click="$refs.fileInput.click()">
                 <span>📁</span>
@@ -44,782 +33,684 @@
               </button>
             </div>
           </div>
-          <input 
-            ref="fileInput"
-            type="file" 
-            class="file-input" 
-            accept="image/*"
-            multiple
-            @change="handleFileSelect"
-          >
+          <input ref="fileInput" type="file" class="file-input" accept="image/*" multiple @change="handleFileSelect">
         </div>
-  
-        <!-- Settings Panel -->
+
         <div class="settings-panel">
           <div class="settings-title">Compression Settings</div>
+
           <div class="setting-item">
-            <div class="setting-label">
-              <span>Quality</span>
-              <span class="tooltip" data-tooltip="Higher = better quality, larger size">ℹ️</span>
-            </div>
+            <div class="setting-label">Mode</div>
             <div class="setting-control">
-              <input 
-                type="range" 
-                class="quality-slider"
-                min="10"
-                max="100"
-                v-model="quality"
-              >
+              <label class="radio-label">
+                <input v-model="compressionMode" type="radio" value="adaptive">
+                <span>Adaptive (Smart)</span>
+              </label>
+              <label class="radio-label">
+                <input v-model="compressionMode" type="radio" value="manual">
+                <span>Manual</span>
+              </label>
+            </div>
+          </div>
+
+          <div v-if="compressionMode === 'manual'" class="setting-item">
+            <div class="setting-label">Quality</div>
+            <div class="setting-control">
+              <input v-model.number="quality" type="range" class="quality-slider" min="10" max="100">
               <div class="quality-value">{{ quality }}%</div>
             </div>
           </div>
-          
-          <!-- Keep Dimensions Info -->
+
+          <div v-if="compressionMode === 'adaptive'" class="adaptive-info">
+            <p>🤖 Auto quality based on image resolution</p>
+          </div>
+
           <div class="dimensions-info">
-            <div class="info-item">
-              <span class="info-icon">📏</span>
-              <span class="info-text">Original dimensions preserved</span>
-            </div>
-            <div class="info-item">
-              <span class="info-icon">🎯</span>
-              <span class="info-text">Quality-only compression</span>
-            </div>
+            <div class="info-item">📏 Original dimensions preserved</div>
+            <div class="info-item">💾 Optimized for 100MP+</div>
           </div>
         </div>
       </div>
-  
-      <!-- Right Panel -->
+
+      <!-- RIGHT PANEL -->
       <div class="right-panel">
-        <!-- Empty State -->
-        <div v-if="sortedFiles.length === 0" class="empty-state">
+        <div v-if="files.length === 0" class="empty-state">
           <div class="empty-state-icon">📸</div>
-          <div class="empty-state-title">No images uploaded yet</div>
+          <div class="empty-state-title">Ready for 100MP images</div>
           <div class="empty-state-description">
-            Drop your images on the left or click "Browse Files" to get started
+            This compressor handles ultra-high resolution images efficiently
           </div>
           <div class="empty-state-features">
-            <div class="feature-item">
-              <span class="feature-icon">⚡</span>
-              <span>Fast compression</span>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">📦</span>
-              <span>Batch download</span>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">🔒</span>
-              <span>100% private</span>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">📏</span>
-              <span>Same dimensions</span>
-            </div>
+            <div class="feature-item">⚡ Streaming compression</div>
+            <div class="feature-item">🧠 Smart memory management</div>
+            <div class="feature-item">🎯 Adaptive quality</div>
+            <div class="feature-item">⏱️ Progress tracking</div>
           </div>
         </div>
-  
-        <!-- File List -->
-        <div v-if="sortedFiles.length > 0" class="file-list show">
+
+        <div v-if="files.length > 0" class="file-list show">
           <div class="file-list-header">
             <div class="file-list-title">Selected Images</div>
-            <div class="file-count">{{ sortedFiles.length }} file{{ sortedFiles.length !== 1 ? 's' : '' }}</div>
+            <div class="file-count">{{ files.length }} file{{ files.length !== 1 ? 's' : '' }}</div>
           </div>
           <div class="file-items-container">
-            <div 
-              v-for="(file, index) in sortedFiles" 
-              :key="index"
-              class="file-item"
-              :class="file.status"
-            >
-              <div class="file-preview" @click="openPreviewModal(file)">
-                <img 
-                  v-if="file.previewUrl" 
-                  :src="file.previewUrl" 
-                  :alt="file.name"
-                  class="preview-image"
-                />
+            <div v-for="(file, index) in files" :key="index" class="file-item" :class="file.status">
+              <div class="file-preview">
+                <img v-if="file.previewUrl" :src="file.previewUrl" :alt="file.name" class="preview-image" />
                 <span v-else>🖼️</span>
               </div>
+
               <div class="file-info">
                 <div class="file-name" :title="file.name">{{ truncateFileName(file.name) }}</div>
                 <div class="file-meta">
-                  <span>{{ formatSize(file.size) }}</span>
-                  <span v-if="file.compressedSize">→ {{ formatSize(file.compressedSize) }}</span>
-                  <div v-if="file.dimensions" class="file-dimensions">
-                    {{ file.dimensions.width }}×{{ file.dimensions.height }}
-                    <span class="dimensions-preserved">✓ Preserved</span>
+                  <div class="file-size">
+                    {{ formatSize(file.size) }}
+                    <span v-if="file.compressedSize">
+                      → {{ formatSize(file.compressedSize) }}
+                    </span>
+                  </div>
+
+                  <div v-if="file.metadata" class="file-metadata">
+                    <span class="megapixels">{{ file.metadata.megapixels.toFixed(1) }}MP</span>
+                    <span class="dimensions">{{ file.metadata.width }}×{{ file.metadata.height }}</span>
+                  </div>
+
+                  <div v-if="file.status === 'processing'" class="processing-info">
+                    <span class="status-dot"></span>
+                    Processing...
                   </div>
                 </div>
               </div>
+
               <div class="file-actions">
-                <button 
-                  v-if="file.status === 'compressed'"
-                  class="btn btn-secondary" 
-                  @click="downloadFile(file)"
-                  title="Download compressed image"
-                >
-                  <span>⬇</span>
+                <button v-if="file.status === 'compressed'" class="btn btn-secondary" @click="downloadFile(file)"
+                  title="Download">
+                  ⬇
                 </button>
-                <button 
-                  v-else
-                  class="btn btn-secondary" 
-                  @click="removeFile(sortedFiles.findIndex(f => f === file))"
-                  title="Remove file"
-                >
-                  <span>🗑️</span>
+                <button v-else class="btn btn-secondary" @click="removeFile(index)" title="Remove">
+                  🗑️
                 </button>
               </div>
+
               <div class="file-status" :class="file.status">
                 {{ getStatusText(file.status) }}
               </div>
             </div>
           </div>
         </div>
-  
-        <!-- Download Options -->
+
         <div v-if="compressedCount > 0" class="download-options show">
           <div class="download-header">
-            <div class="download-title">🎉 Ready!</div>
-            <div class="download-summary">{{ compressedCount }} files compressed</div>
+            <div class="download-title">🎉 Complete!</div>
+            <div class="download-summary">{{ compressedCount }} images ready</div>
+            <div class="space-saved">Saved {{ formatSize(totalSaved) }}</div>
           </div>
           <div class="download-actions-grid">
             <div class="download-option" @click="downloadAsZip">
               <div class="download-option-icon">📦</div>
-              <div class="download-option-title">Download ZIP</div>
-              <div class="download-option-desc">All files in one archive</div>
+              <div class="download-option-title">ZIP Archive</div>
             </div>
             <div class="download-option" @click="downloadAll">
               <div class="download-option-icon">⬇</div>
               <div class="download-option-title">Download All</div>
-              <div class="download-option-desc">Individual files</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  
-    <!-- Action Bar -->
+
     <div class="action-bar">
-      <button 
-        class="main-action" 
-        :disabled="files.length === 0 || isProcessing"
-        @click="compressAll"
-      >
+      <button class="main-action" :disabled="files.length === 0 || isProcessing" @click="compressAll">
         <span class="action-icon" :class="{ 'processing': isProcessing }">⚡</span>
-        <span>{{ isProcessing ? 'Compressing...' : 'Compress Images' }}</span>
+        <span>{{ isProcessing ? `Compressing (${Math.round(progress)}%)` : 'Compress Images' }}</span>
       </button>
     </div>
-  
-    <!-- Global Progress -->
+
     <div class="global-progress">
       <div class="global-progress-fill" :style="{ width: progress + '%' }"></div>
     </div>
-  
-    <!-- Stats Footer -->
+
     <div class="stats-footer">
       <div class="stat-item">
-        <div class="stat-label">Files Processed</div>
+        <div class="stat-label">Files</div>
         <div class="stat-number">{{ totalProcessed }}</div>
       </div>
       <div class="stat-item">
-        <div class="stat-label">Space Saved</div>
+        <div class="stat-label">Saved</div>
         <div class="stat-number">{{ formatSize(totalSaved) }}</div>
       </div>
       <div class="stat-item">
-        <div class="stat-label">Avg Reduction</div>
+        <div class="stat-label">Reduction</div>
         <div class="stat-number">{{ avgReduction }}%</div>
       </div>
     </div>
-  
-    <!-- Preview Modal -->
-    <div v-if="previewModal.show" class="preview-modal" @click="closePreviewModal">
-      <div class="preview-modal-content" @click.stop>
-        <div class="preview-modal-header">
-          <h3>{{ previewModal.file?.name }}</h3>
-          <button class="preview-modal-close" @click="closePreviewModal">×</button>
-        </div>
-        <div class="preview-modal-body">
-          <div class="preview-comparison" v-if="previewModal.file">
-            <!-- Original Image -->
-            <div class="preview-column">
-              <div class="preview-column-header">
-                <h4>Original</h4>
-                <div class="preview-info">
-                  <span>{{ formatSize(previewModal.file.size) }}</span>
-                  <span v-if="previewModal.file.dimensions">
-                    {{ previewModal.file.dimensions.width }}×{{ previewModal.file.dimensions.height }}
-                  </span>
-                </div>
-              </div>
-              <div class="preview-image-container">
-                <img 
-                  v-if="previewModal.file.previewUrl" 
-                  :src="previewModal.file.previewUrl" 
-                  :alt="previewModal.file.name"
-                  class="preview-modal-image"
-                />
-              </div>
-            </div>
-  
-            <!-- Compressed Image (if available) -->
-            <div v-if="previewModal.file.compressedUrl" class="preview-column">
-              <div class="preview-column-header">
-                <h4>Compressed</h4>
-                <div class="preview-info">
-                  <span>{{ formatSize(previewModal.file.compressedSize) }}</span>
-                  <span class="compression-ratio">
-                    -{{ Math.round(((previewModal.file.size - previewModal.file.compressedSize) / previewModal.file.size) * 100) }}%
-                  </span>
-                  <span class="dimensions-note">Same dimensions</span>
-                </div>
-              </div>
-              <div class="preview-image-container">
-                <img 
-                  :src="previewModal.file.compressedUrl" 
-                  :alt="previewModal.file.name + ' (compressed)'"
-                  class="preview-modal-image"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="preview-modal-footer">
-          <button 
-            v-if="previewModal.file?.status === 'compressed'" 
-            class="btn btn-primary"
-            @click="downloadFile(previewModal.file)"
-          >
-            <span>⬇</span>
-            <span>Download</span>
-          </button>
-          <button 
-            v-else-if="previewModal.file?.status === 'ready'"
-            class="btn btn-primary"
-            @click="compressSingle(previewModal.file)"
-          >
-            <span>⚡</span>
-            <span>Compress This Image</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  
-    <!-- Error Messages -->
+
     <div v-if="error" class="error-message show">
       <div class="error-title">{{ error.title }}</div>
       <div class="error-desc">{{ error.message }}</div>
-      <div class="error-actions">
-        <button class="btn btn-secondary" @click="error = null">Dismiss</button>
-      </div>
+      <button class="btn btn-secondary" @click="error = null">Dismiss</button>
     </div>
   </div>
-  </template>
-  
-  <script setup>
-  
-  import { ref, computed, onUnmounted } from 'vue'
-  
-  // State variables
-  const currentType = ref('image')
-  const files = ref([])
-  const isDragOver = ref(false)
-  const isProcessing = ref(false)
-  const quality = ref(80)
-  const progress = ref(0)
-  const error = ref(null)
-  
-  // Preview modal state
-  const previewModal = ref({
-  show: false,
-  file: null
-  })
-  
-  // Stats
-  const totalProcessed = ref(0)
-  const totalSaved = ref(0)
-  
-  // Computed properties
-  const isMobile = computed(() => {
-  if (process.client) {
-    return window.innerWidth <= 768
-  }
-  return false
-  })
-  
-  const compressedCount = computed(() => 
-  files.value.filter(f => f.status === 'compressed').length
-  )
-  
-  const sortedFiles = computed(() => {
-  return files.value
-  })
-  
-  const avgReduction = computed(() => {
-  const compressed = files.value.filter(f => f.status === 'compressed')
-  if (compressed.length === 0) return 0
-  
-  const totalOriginal = compressed.reduce((sum, f) => sum + f.size, 0)
-  const totalCompressed = compressed.reduce((sum, f) => sum + (f.compressedSize || f.size), 0)
-  
-  if (totalOriginal === 0) return 0
-  return Math.round(((totalOriginal - totalCompressed) / totalOriginal) * 100)
-  })
-  
-  // Utility functions
-  const truncateFileName = (fileName, maxLength = 25) => {
-  const mobileMaxLength = process.client && window.innerWidth <= 768 ? 20 : maxLength
-  
-  if (fileName.length <= mobileMaxLength) return fileName
-  
-  const extension = fileName.split('.').pop()
-  const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'))
-  const truncatedName = nameWithoutExt.substring(0, mobileMaxLength - extension.length - 4) + '...'
-  
-  return truncatedName + '.' + extension
-  }
-  
-  const formatSize = (bytes) => {
-  if (!bytes) return '0 B'
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  return Math.round(bytes / Math.pow(1024, i) * 10) / 10 + ' ' + sizes[i]
-  }
-  
-  const getStatusText = (status) => {
-  const statusMap = {
-    ready: 'Ready',
-    processing: 'Processing...',
-    compressed: 'Compressed',
-    error: 'Failed'
-  }
-  return statusMap[status] || 'Ready'
-  }
-  
-  // Image preview generation
-  const generatePreview = (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        // Create canvas for thumbnail
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        
-        // Calculate thumbnail size (max 200px) but keep aspect ratio
-        const maxSize = 200
-        let { width, height } = img
-        
-        if (width > maxSize || height > maxSize) {
-          if (width > height) {
-            height = (height * maxSize) / width
-            width = maxSize
-          } else {
-            width = (width * maxSize) / height
-            height = maxSize
-          }
+</template>
+
+<script>
+export default {
+  name: 'CompressorPage',
+  data() {
+    return {
+      files: [],
+      isDragOver: false,
+      isProcessing: false,
+      quality: 80,
+      progress: 0,
+      error: null,
+      totalProcessed: 0,
+      totalSaved: 0,
+      compressionMode: 'adaptive',
+      maxConcurrent: 2,
+      activeCompressions: 0,
+      compressionQueue: [],
+    }
+  },
+
+  computed: {
+    compressedCount() {
+      return this.files.filter(f => f.status === 'compressed').length
+    },
+
+    avgReduction() {
+      const compressed = this.files.filter(f => f.status === 'compressed')
+      if (compressed.length === 0) return 0
+      const totalOriginal = compressed.reduce((sum, f) => sum + f.size, 0)
+      const totalCompressed = compressed.reduce((sum, f) => sum + (f.compressedSize || f.size), 0)
+      return totalOriginal > 0 ? Math.round(((totalOriginal - totalCompressed) / totalOriginal) * 100) : 0
+    },
+  },
+
+  methods: {
+    // FILE HANDLING
+    handleDrop(e) {
+      this.isDragOver = false
+      const droppedFiles = Array.from(e.dataTransfer.files)
+      this.addFiles(droppedFiles)
+    },
+
+    handleFileSelect(e) {
+      const selectedFiles = Array.from(e.target.files)
+      this.addFiles(selectedFiles)
+      e.target.value = ''
+    },
+
+    async addFiles(newFiles) {
+      const imageFiles = newFiles.filter(file => {
+        if (!file.type.startsWith('image/')) {
+          this.showError('Invalid', `${file.name} is not an image`)
+          return false
         }
-        
-        canvas.width = width
-        canvas.height = height
-        ctx.drawImage(img, 0, 0, width, height)
-        
-        resolve({
-          url: canvas.toDataURL('image/jpeg', 0.8),
-          dimensions: { width: img.naturalWidth, height: img.naturalHeight }
-        })
+        if (file.size > 500 * 1024 * 1024) {
+          this.showError('Too large', `${file.name} exceeds 500MB`)
+          return false
+        }
+        return true
+      })
+
+      for (const file of imageFiles) {
+        try {
+          const metadata = await this.getImageMetadata(file)
+          const thumbnail = await this.generateThumbnail(file)
+
+          const fileObj = {
+            name: file.name,
+            size: file.size,
+            file: file,
+            status: 'pending',
+            compressedSize: null,
+            compressedBlob: null,
+            previewUrl: thumbnail,
+            metadata: metadata,
+          }
+
+          this.files.unshift(fileObj)
+        } catch (error) {
+          console.error('Error adding file:', error)
+        }
       }
-      img.onerror = () => resolve({ url: null, dimensions: null })
-      img.src = e.target.result
-    }
-    reader.onerror = () => resolve({ url: null, dimensions: null })
-    reader.readAsDataURL(file)
-  })
-  }
-  
-  // File handling
-  const handleDrop = (e) => {
-  isDragOver.value = false
-  const droppedFiles = Array.from(e.dataTransfer.files)
-  addFiles(droppedFiles)
-  }
-  
-  const handleFileSelect = (e) => {
-  const selectedFiles = Array.from(e.target.files)
-  addFiles(selectedFiles)
-  e.target.value = ''
-  }
-  
-  const addFiles = async (newFiles) => {
-  const imageFiles = newFiles.filter(file => {
-    if (!file.type.startsWith('image/')) {
-      showError('Invalid file type', `${file.name} is not an image file`)
-      return false
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      showError('File too large', `${file.name} is larger than 10MB`)
-      return false
-    }
-    return true
-  })
-  
-  for (const file of imageFiles) {
-    const preview = await generatePreview(file)
-    
-    const newFileObject = {
-      name: file.name,
-      size: file.size,
-      file: file,
-      status: 'ready',
-      compressedSize: null,
-      compressedBlob: null,
-      compressedUrl: null,
-      previewUrl: preview.url,
-      dimensions: preview.dimensions,
-      uploadTime: Date.now()
-    }
-  
-    files.value.unshift(newFileObject)
-  }
-  }
-  
-  const removeFile = (index) => {
-  const file = files.value[index]
-  
-  // Clean up URLs to prevent memory leaks
-  if (file.previewUrl && file.previewUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(file.previewUrl)
-  }
-  if (file.compressedUrl && file.compressedUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(file.compressedUrl)
-  }
-  
-  files.value.splice(index, 1)
-  }
-  
-  // Preview modal functions
-  const openPreviewModal = (file) => {
-  previewModal.value = {
-    show: true,
-    file: file
-  }
-  }
-  
-  const closePreviewModal = () => {
-  previewModal.value = {
-    show: false,
-    file: null
-  }
-  }
-  
-  // Updated compression function - KEEPS ORIGINAL DIMENSIONS
-  const compressImage = (file, quality) => {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    const img = new Image()
-  
-    img.onload = () => {
-      // *** CHANGED: Keep original dimensions instead of resizing ***
-      const { width, height } = img
-      
-      // Set canvas to original image dimensions
-      canvas.width = width
-      canvas.height = height
-      
-      // Set high quality rendering
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
-      
-      // Draw image at original size
-      ctx.drawImage(img, 0, 0, width, height)
-  
-      // Compress using quality setting only
-      canvas.toBlob((blob) => {
-        resolve(blob || file)
-      }, 'image/jpeg', quality / 100)
-    }
-  
-    img.onerror = () => resolve(file)
-  
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      img.src = e.target.result
-    }
-    reader.onerror = () => resolve(file)
-    reader.readAsDataURL(file.file)
-  })
-  }
-  
-  const compressSingle = async (fileObj) => {
-  if (!fileObj || fileObj.status === 'compressed') return
-  
-  try {
-    fileObj.status = 'processing'
-    
-    const compressedBlob = await compressImage(fileObj, quality.value)
-    
-    if (compressedBlob && compressedBlob.size > 0) {
-      fileObj.compressedBlob = compressedBlob
-      fileObj.compressedSize = compressedBlob.size
-      fileObj.compressedUrl = URL.createObjectURL(compressedBlob)
-      fileObj.status = 'compressed'
-      
-      totalProcessed.value++
-      totalSaved.value += (fileObj.size - compressedBlob.size)
-    } else {
-      fileObj.status = 'error'
-    }
-  } catch (error) {
-    console.error('Compression error:', error)
-    fileObj.status = 'error'
-  }
-  }
-  
-  const compressAll = async () => {
-  if (files.value.length === 0) return
-  
-  isProcessing.value = true
-  progress.value = 0
-  
-  for (let i = 0; i < files.value.length; i++) {
-    const file = files.value[i]
-    
-    if (file.status === 'compressed') {
-      progress.value = ((i + 1) / files.value.length) * 100
-      continue
-    }
-  
-    await compressSingle(file)
-    progress.value = ((i + 1) / files.value.length) * 100
-  }
-  
-  isProcessing.value = false
-  }
-  
-  // Download functions
-  const downloadFile = (file) => {
-  if (!file.compressedBlob) return
-  
-  const url = URL.createObjectURL(file.compressedBlob)
-  const a = document.createElement('a')
-  a.href = url
-  // Add "Ousa's-compressor" suffix to filename (removed duplicate "compressed")
-  const originalName = file.name.replace(/\.[^/.]+$/, '')
-  const extension = file.name.split('.').pop()
-  a.download = `${originalName}_Ousa's-compressor.${extension}`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-  }
-  
-  const downloadAll = () => {
-  const compressedFiles = files.value.filter(f => f.status === 'compressed')
-  
-  if (compressedFiles.length === 0) {
-    showError('No files to download', 'Please compress some files first')
-    return
-  }
-  
-  compressedFiles.forEach((file, index) => {
-    setTimeout(() => {
-      downloadFile(file)
-    }, index * 500)
-  })
-  }
-  
-  const downloadAsZip = async () => {
-  const compressedFiles = files.value.filter(f => f.status === 'compressed')
-  
-  if (compressedFiles.length === 0) {
-    showError('No files to download', 'Please compress some files first')
-    return
-  }
-  
-  try {
-    const JSZip = await import('jszip')
-    const zip = new JSZip.default()
-    
-    compressedFiles.forEach(file => {
-      if (file.compressedBlob) {
-        // Add "Ousa's-compressor" suffix to each file in ZIP (removed duplicate "compressed")
-        const originalName = file.name.replace(/\.[^/.]+$/, '')
-        const extension = file.name.split('.').pop()
-        const fileName = `${originalName}_Ousa's-compressor.${extension}`
-        zip.file(fileName, file.compressedBlob)
+    },
+
+    removeFile(index) {
+      const file = this.files[index]
+      if (file.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(file.previewUrl)
+      }
+      this.files.splice(index, 1)
+    },
+
+    // 100MP+ IMAGE HANDLING
+    async getImageMetadata(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const img = new Image()
+          img.onload = () => {
+            const megapixels = (img.naturalWidth * img.naturalHeight) / 1_000_000
+            resolve({
+              width: img.naturalWidth,
+              height: img.naturalHeight,
+              megapixels: megapixels,
+              estimatedMemory: (img.naturalWidth * img.naturalHeight * 4) / (1024 * 1024),
+            })
+            img.src = ''
+          }
+          img.onerror = () => reject(new Error('Failed to load image'))
+          img.src = event.target.result
+        }
+        reader.onerror = () => reject(new Error('FileReader failed'))
+        reader.readAsDataURL(file)
+      })
+    },
+
+    async generateThumbnail(file, maxSize = 150) {
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const img = new Image()
+          img.onload = () => {
+            try {
+              let { width, height } = img
+              const scale = Math.min(maxSize / width, maxSize / height)
+              width = Math.round(width * scale)
+              height = Math.round(height * scale)
+
+              const canvas = document.createElement('canvas')
+              canvas.width = width
+              canvas.height = height
+              const ctx = canvas.getContext('2d')
+              ctx.drawImage(img, 0, 0, width, height)
+
+              const thumbnail = canvas.toDataURL('image/webp', 0.6)
+              canvas.width = canvas.height = 0
+              img.src = ''
+              resolve(thumbnail)
+            } catch (error) {
+              resolve(null)
+            }
+          }
+          img.onerror = () => resolve(null)
+          img.src = event.target.result
+        }
+        reader.onerror = () => resolve(null)
+        reader.readAsDataURL(file)
+      })
+    },
+
+    // COMPRESSION
+    getAdaptiveQuality(megapixels) {
+      if (megapixels > 100) return 65
+      if (megapixels > 50) return 70
+      if (megapixels > 30) return 75
+      if (megapixels > 20) return 80
+      return 85
+    },
+
+    async compressAll() {
+      if (this.files.length === 0) return
+      this.isProcessing = true
+      this.progress = 0
+
+      const uncompressed = this.files.filter(f => f.status === 'pending')
+      this.compressionQueue = [...uncompressed]
+
+      while (this.compressionQueue.length > 0 || this.activeCompressions > 0) {
+        while (this.activeCompressions < this.maxConcurrent && this.compressionQueue.length > 0) {
+          const fileObj = this.compressionQueue.shift()
+          this.activeCompressions++
+          this.compressSingle(fileObj).finally(() => {
+            this.activeCompressions--
+            this.updateProgress()
+          })
+        }
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      this.isProcessing = false
+    },
+
+    async compressSingle(fileObj) {
+      if (!fileObj.file || fileObj.status !== 'pending') return
+      fileObj.status = 'processing'
+
+      try {
+        const qualityToUse = this.compressionMode === 'adaptive'
+          ? this.getAdaptiveQuality(fileObj.metadata.megapixels)
+          : this.quality
+
+        // For large images (30MP+), use tiled compression
+        let compressedBlob
+        if (fileObj.metadata.megapixels > 30) {
+          compressedBlob = await this.compressImageTiled(fileObj, qualityToUse)
+        } else {
+          compressedBlob = await this.compressImageStandard(fileObj, qualityToUse)
+        }
+
+        if (compressedBlob && compressedBlob.size > 0) {
+          fileObj.compressedBlob = compressedBlob
+          fileObj.compressedSize = compressedBlob.size
+          fileObj.status = 'compressed'
+          this.totalProcessed++
+          this.totalSaved += Math.max(0, fileObj.size - compressedBlob.size)
+        } else {
+          fileObj.status = 'error'
+        }
+      } catch (error) {
+        console.error('Compression error:', error)
+        fileObj.status = 'error'
+      }
+    },
+
+    // TILED COMPRESSION for 100MP+
+    async compressImageTiled(fileObj, quality) {
+      return new Promise((resolve, reject) => {
+        const TILE_SIZE = 1024
+        const reader = new FileReader()
+
+        reader.onload = (event) => {
+          const img = new Image()
+          img.onload = () => {
+            try {
+              const { width, height } = img
+              const outputCanvas = document.createElement('canvas')
+              outputCanvas.width = width
+              outputCanvas.height = height
+              const outputCtx = outputCanvas.getContext('2d')
+
+              const tilesX = Math.ceil(width / TILE_SIZE)
+              const tilesY = Math.ceil(height / TILE_SIZE)
+
+              let completed = 0
+              const processNextTile = () => {
+                if (completed >= tilesX * tilesY) {
+                  // All tiles done
+                  outputCanvas.toBlob(
+                    (blob) => {
+                      outputCanvas.width = outputCanvas.height = 0
+                      img.src = ''
+                      resolve(blob)
+                    },
+                    'image/jpeg',
+                    quality / 100
+                  )
+                  return
+                }
+
+                const tileY = Math.floor(completed / tilesX)
+                const tileX = completed % tilesX
+
+                const x = tileX * TILE_SIZE
+                const y = tileY * TILE_SIZE
+                const w = Math.min(TILE_SIZE, width - x)
+                const h = Math.min(TILE_SIZE, height - y)
+
+                const tileCanvas = document.createElement('canvas')
+                tileCanvas.width = w
+                tileCanvas.height = h
+                const tileCtx = tileCanvas.getContext('2d')
+
+                tileCtx.drawImage(img, x, y, w, h, 0, 0, w, h)
+                const imageData = tileCtx.getImageData(0, 0, w, h)
+                outputCtx.putImageData(imageData, x, y)
+
+                tileCanvas.width = tileCanvas.height = 0
+                completed++
+
+                // Yield to browser
+                setTimeout(processNextTile, 0)
+              }
+
+              processNextTile()
+            } catch (error) {
+              reject(error)
+            }
+          }
+          img.onerror = () => reject(new Error('Image load failed'))
+          img.src = event.target.result
+        }
+        reader.onerror = () => reject(new Error('FileReader failed'))
+        reader.readAsDataURL(fileObj.file)
+      })
+    },
+
+    // Standard compression for smaller images
+    async compressImageStandard(fileObj, quality) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const img = new Image()
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = img.naturalWidth
+              canvas.height = img.naturalHeight
+              const ctx = canvas.getContext('2d')
+              ctx.drawImage(img, 0, 0)
+
+              canvas.toBlob(
+                (blob) => {
+                  canvas.width = canvas.height = 0
+                  img.src = ''
+                  resolve(blob)
+                },
+                'image/jpeg',
+                quality / 100
+              )
+            } catch (error) {
+              reject(error)
+            }
+          }
+          img.onerror = () => reject(new Error('Image load failed'))
+          img.src = event.target.result
+        }
+        reader.onerror = () => reject(new Error('FileReader failed'))
+        reader.readAsDataURL(fileObj.file)
+      })
+    },
+
+    updateProgress() {
+      const total = this.files.filter(f => f.status === 'pending').length + this.totalProcessed
+      const processed = this.totalProcessed + (this.maxConcurrent - this.activeCompressions)
+      this.progress = (processed / this.files.length) * 100
+    },
+
+    // DOWNLOAD
+    downloadFile(file) {
+      if (!file.compressedBlob) return
+      const url = URL.createObjectURL(file.compressedBlob)
+      const a = document.createElement('a')
+      a.href = url
+      const originalName = file.name.replace(/\.[^/.]+$/, '')
+      const extension = file.name.split('.').pop()
+      a.download = `${originalName}_compressed.${extension}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+
+    downloadAll() {
+      const compressedFiles = this.files.filter(f => f.status === 'compressed')
+      if (compressedFiles.length === 0) {
+        this.showError('No files', 'Compress files first')
+        return
+      }
+      compressedFiles.forEach((file, index) => {
+        setTimeout(() => this.downloadFile(file), index * 500)
+      })
+    },
+
+    async downloadAsZip() {
+      const compressedFiles = this.files.filter(f => f.status === 'compressed')
+      if (compressedFiles.length === 0) {
+        this.showError('No files', 'Compress files first')
+        return
+      }
+
+      try {
+        const JSZip = await import('jszip')
+        const zip = new JSZip.default()
+
+        compressedFiles.forEach(file => {
+          if (file.compressedBlob) {
+            const originalName = file.name.replace(/\.[^/.]+$/, '')
+            const extension = file.name.split('.').pop()
+            zip.file(`${originalName}_compressed.${extension}`, file.compressedBlob)
+          }
+        })
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const url = URL.createObjectURL(zipBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `compressed_${new Date().toISOString().split('T')[0]}.zip`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        this.showError('Download failed', 'Could not create ZIP')
+      }
+    },
+
+    clearSession() {
+      this.files.forEach(file => {
+        if (file.previewUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(file.previewUrl)
+        }
+      })
+      this.files = []
+      this.progress = 0
+      this.totalProcessed = 0
+      this.totalSaved = 0
+    },
+
+    // UTILITIES
+    getStatusText(status) {
+      const map = {
+        pending: 'Ready',
+        processing: 'Processing...',
+        compressed: 'Complete',
+        error: 'Failed',
+      }
+      return map[status] || 'Ready'
+    },
+
+    truncateFileName(fileName, maxLength = 25) {
+      if (fileName.length <= maxLength) return fileName
+      const ext = fileName.split('.').pop()
+      const name = fileName.substring(0, fileName.lastIndexOf('.'))
+      return name.substring(0, maxLength - ext.length - 4) + '...' + ext
+    },
+
+    formatSize(bytes) {
+      if (!bytes) return '0 B'
+      const sizes = ['B', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(1024))
+      return Math.round((bytes / Math.pow(1024, i)) * 10) / 10 + ' ' + sizes[i]
+    },
+
+    showError(title, message) {
+      this.error = { title, message }
+      setTimeout(() => { this.error = null }, 5000)
+    },
+  },
+
+  beforeDestroy() {
+    this.files.forEach(file => {
+      if (file.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(file.previewUrl)
       }
     })
-    
-    const zipBlob = await zip.generateAsync({ type: 'blob' })
-    
-    const url = URL.createObjectURL(zipBlob)
-    const a = document.createElement('a')
-    a.href = url
-    // Add "Ousa's-compressor" suffix to ZIP filename
-    a.download = `compressed_images_${new Date().toISOString().split('T')[0]}_Ousa's-compressor.zip`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
-  } catch (error) {
-    console.error('Download error:', error)
-    showError('Download failed', 'Could not create ZIP file. Try downloading files individually.')
-  }
-  }
-  
-  // Clear session function
-  const clearSession = () => {
-  // Clean up all blob URLs to prevent memory leaks
-  files.value.forEach(file => {
-    if (file.previewUrl && file.previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(file.previewUrl)
-    }
-    if (file.compressedUrl && file.compressedUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(file.compressedUrl)
-    }
-  })
-  
-  // Reset all state
-  files.value = []
-  isProcessing.value = false
-  progress.value = 0
-  error.value = null
-  totalProcessed.value = 0
-  totalSaved.value = 0
-  
-  // Close preview modal if open
-  previewModal.value = {
-    show: false,
-    file: null
-  }
-  
-  // Clear file input
-  const fileInput = document.querySelector('input[type="file"]')
-  if (fileInput) {
-    fileInput.value = ''
-  }
-  }
-  
-  // Error handling
-  const showError = (title, message) => {
-  error.value = { title, message }
-  setTimeout(() => {
-    error.value = null
-  }, 5000)
-  }
-  
-  // Cleanup on unmount
-  onUnmounted(() => {
-  files.value.forEach(file => {
-    if (file.previewUrl && file.previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(file.previewUrl)
-    }
-    if (file.compressedUrl && file.compressedUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(file.compressedUrl)
-    }
-  })
-  })
-  </script>
-  
-  <style scoped>
-  .compressor-container {
+  },
+}
+</script>
+
+<style scoped>
+.compressor-container {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #f8f9fa;
   color: #1a1a1a;
-  line-height: 1.5;
   height: 100vh;
   overflow: hidden;
   width: 100%;
-  margin: 0 auto;
-  padding: 1rem;
   display: flex;
   flex-direction: column;
-  }
-  
-  .header {
+  padding: 1rem;
+}
+
+.header {
   text-align: center;
   margin-bottom: 1rem;
   flex-shrink: 0;
-  }
-  
-  .header-content {
+}
+
+.header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 100%;
-  }
-  
-  .header-text {
-  flex: 1;
-  text-align: center;
-  }
-  
-  .header h1 {
+}
+
+.header h1 {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1a1a1a;
   margin-bottom: 0.25rem;
-  }
-  
-  .header p {
+}
+
+.header p {
   color: #666;
   font-size: 0.9rem;
-  }
-  
-  .clear-session-btn {
+}
+
+.clear-session-btn {
   padding: 0.5rem 1rem;
   background: #ff3b30;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  white-space: nowrap;
-  }
-  
-  .clear-session-btn:hover {
+  transition: all 0.2s;
+}
+
+.clear-session-btn:hover {
   background: #d70015;
-  transform: translateY(-1px);
-  }
-  
-  .clear-session-btn:active {
-  transform: translateY(0);
-  }
-  
-  .main-content {
+}
+
+.main-content {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   min-height: 0;
   overflow: hidden;
-  }
-  
-  .left-panel, .right-panel {
+}
+
+.left-panel,
+.right-panel {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   min-height: 0;
-  }
-  
-  .upload-section {
+}
+
+.upload-section {
   background: white;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
-  overflow: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  }
-  
-  .drop-zone {
+  overflow: hidden;
+}
+
+.drop-zone {
   padding: 2rem 1rem;
   text-align: center;
   border: 2px dashed #e0e0e0;
@@ -833,66 +724,44 @@
   flex-direction: column;
   justify-content: center;
   min-height: 200px;
-  position: relative;
-  overflow: hidden;
-  }
-  
-  .drop-zone:hover, .drop-zone.dragover {
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
   border-color: #007aff;
   background: #f0f8ff;
   transform: translateY(-2px);
-  }
-  
-  .drop-zone::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(0, 122, 255, 0.1),
-    transparent
-  );
-  transition: left 0.5s ease;
-  }
-  
-  .drop-zone:hover::before {
-  left: 100%;
-  }
-  
-  .drop-icon {
+}
+
+.drop-icon {
   font-size: 2rem;
   margin-bottom: 0.75rem;
   opacity: 0.6;
-  }
-  
-  .drop-text {
+}
+
+.drop-text {
   font-size: 1rem;
-  color: #1a1a1a;
-  margin-bottom: 0.25rem;
   font-weight: 600;
-  }
-  
-  .drop-subtext {
+  margin-bottom: 0.25rem;
+}
+
+.drop-subtext {
   font-size: 0.75rem;
   color: #666;
   margin-bottom: 1rem;
-  }
-  
-  .upload-actions {
+}
+
+.upload-actions {
   display: flex;
   gap: 0.75rem;
   justify-content: center;
-  }
-  
-  .file-input {
+}
+
+.file-input {
   display: none;
-  }
-  
-  .btn {
+}
+
+.btn {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
@@ -903,155 +772,131 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  }
-  
-  .btn-primary {
+}
+
+.btn-primary {
   background: #007aff;
   color: white;
-  }
-  
-  .btn-primary:hover {
+}
+
+.btn-primary:hover {
   background: #0056b3;
-  }
-  
-  .btn-secondary {
+}
+
+.btn-secondary {
   background: #f5f5f5;
   color: #1a1a1a;
   border: 1px solid #e0e0e0;
-  }
-  
-  .btn-secondary:hover {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.65rem;
+  min-width: auto;
+}
+
+.btn-secondary:hover {
   background: #ebebeb;
-  }
-  
-  .btn:disabled {
+}
+
+.btn:disabled {
   background: #ccc;
   cursor: not-allowed;
-  transform: none;
-  }
-  
-  .settings-panel {
+}
+
+.settings-panel {
   background: white;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
   padding: 1rem;
   flex-shrink: 0;
-  }
-  
-  .settings-title {
+}
+
+.settings-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1a1a1a;
   margin-bottom: 0.75rem;
-  }
-  
-  .setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
+}
+
+.setting-item {
   margin-bottom: 1rem;
-  }
-  
-  .setting-label {
+}
+
+.setting-label {
   font-size: 0.8rem;
   font-weight: 500;
-  color: #1a1a1a;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  }
-  
-  .setting-control {
+  margin-bottom: 0.5rem;
+}
+
+.setting-control {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  }
-  
-  .quality-slider {
-  width: 100px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.quality-slider {
+  flex: 1;
   height: 4px;
   border-radius: 2px;
   background: #e0e0e0;
   outline: none;
   -webkit-appearance: none;
-  }
-  
-  .quality-slider::-webkit-slider-thumb {
+}
+
+.quality-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: #007aff;
   cursor: pointer;
-  }
-  
-  .quality-value {
+}
+
+.quality-value {
   font-size: 0.75rem;
   color: #666;
   min-width: 45px;
-  text-align: right;
   font-weight: 500;
-  }
-  
-  /* NEW: Dimensions preservation info */
-  .dimensions-info {
+}
+
+.adaptive-info {
+  background: #f0f8ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  color: #0066cc;
+}
+
+.adaptive-info p {
+  margin: 0;
+}
+
+.dimensions-info {
   margin-top: 1rem;
   padding: 0.75rem;
   background: #f0f8ff;
   border-radius: 8px;
   border: 1px solid #b3d9ff;
-  }
-  
-  .info-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+}
+
+.info-item {
   font-size: 0.75rem;
   color: #0066cc;
-  }
-  
-  .info-item:last-child {
+  margin-bottom: 0.25rem;
+}
+
+.info-item:last-child {
   margin-bottom: 0;
-  }
-  
-  .info-icon {
-  font-size: 0.9rem;
-  }
-  
-  .info-text {
-  font-weight: 500;
-  }
-  
-  .tooltip {
-  position: relative;
-  cursor: help;
-  }
-  
-  .tooltip::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-  z-index: 100;
-  }
-  
-  .tooltip:hover::after {
-  opacity: 1;
-  }
-  
-  .file-list {
+}
+
+.file-list {
   background: white;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
@@ -1059,43 +904,41 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  }
-  
-  .file-list.show {
+}
+
+.file-list.show {
   display: flex;
   flex-direction: column;
-  }
-  
-  .file-list-header {
+}
+
+.file-list-header {
   padding: 1rem;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
-  }
-  
-  .file-list-title {
+}
+
+.file-list-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1a1a1a;
-  }
-  
-  .file-count {
+}
+
+.file-count {
   font-size: 0.75rem;
   color: #666;
   background: #f0f0f0;
   padding: 0.25rem 0.5rem;
   border-radius: 8px;
-  }
-  
-  .file-items-container {
+}
+
+.file-items-container {
   flex: 1;
   overflow-y: auto;
-  min-height: 0;
-  }
-  
-  .file-item {
+}
+
+.file-item {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
@@ -1103,25 +946,21 @@
   gap: 0.75rem;
   transition: all 0.2s ease;
   min-height: 60px;
-  }
-  
-  .file-item:hover {
+}
+
+.file-item:hover {
   background: #fafafa;
-  }
-  
-  .file-item.processing {
+}
+
+.file-item.processing {
   background: #fff8e1;
-  }
-  
-  .file-item.compressed {
+}
+
+.file-item.compressed {
   background: #f0f9f0;
-  }
-  
-  .file-item.error {
-  background: #fff5f5;
-  }
-  
-  .file-preview {
+}
+
+.file-preview {
   width: 48px;
   height: 48px;
   border-radius: 8px;
@@ -1129,275 +968,119 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
   flex-shrink: 0;
-  cursor: pointer;
   overflow: hidden;
-  transition: all 0.3s ease;
-  position: relative;
-  }
-  
-  .file-preview:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
-  }
-  
-  .file-preview::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
-  }
-  
-  .file-preview:hover::before {
-  transform: translateX(100%);
-  }
-  
-  .preview-image {
+}
+
+.preview-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 6px;
-  }
-  
-  .file-info {
+}
+
+.file-info {
   flex: 1;
   min-width: 0;
-  }
-  
-  .file-name {
+}
+
+.file-name {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #1a1a1a;
   margin-bottom: 0.125rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: help;
-  }
-  
-  .file-meta {
+}
+
+.file-meta {
   font-size: 0.65rem;
   color: #666;
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  }
-  
-  .file-dimensions {
-  color: #888;
-  font-size: 0.6rem;
+}
+
+.file-size {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.file-metadata {
+  display: flex;
+  gap: 0.5rem;
+  color: #007aff;
+  font-weight: 500;
+}
+
+.megapixels {
+  background: #f0f8ff;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}
+
+.processing-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  }
-  
-  /* NEW: Dimensions preserved indicator */
-  .dimensions-preserved {
-  color: #28a745;
+  gap: 0.25rem;
+  color: #ff9800;
   font-weight: 600;
-  font-size: 0.55rem;
-  background: #d4edda;
-  padding: 0.125rem 0.25rem;
-  border-radius: 3px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ff9800;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
   }
-  
-  .file-actions {
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.file-actions {
   display: flex;
   gap: 0.25rem;
-  align-items: center;
-  }
-  
-  .file-actions .btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.65rem;
-  min-width: auto;
-  }
-  
-  .file-status {
+}
+
+.file-status {
   font-size: 0.65rem;
   padding: 0.25rem 0.5rem;
   border-radius: 8px;
   font-weight: 500;
   white-space: nowrap;
-  }
-  
-  .file-status.ready {
+}
+
+.file-status.pending {
   background: #f0f0f0;
   color: #666;
-  }
-  
-  .file-status.processing {
+}
+
+.file-status.processing {
   background: #fff3cd;
   color: #856404;
-  }
-  
-  .file-status.compressed {
+}
+
+.file-status.compressed {
   background: #d1eddb;
   color: #155724;
-  }
-  
-  .file-status.error {
+}
+
+.file-status.error {
   background: #f8d7da;
   color: #721c24;
-  }
-  
-  .download-options {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-  display: none;
-  flex-shrink: 0;
-  }
-  
-  .download-options.show {
-  display: block;
-  }
-  
-  .download-header {
-  padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  text-align: center;
-  }
-  
-  .download-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.25rem;
-  }
-  
-  .download-summary {
-  font-size: 0.75rem;
-  color: #666;
-  }
-  
-  .download-actions-grid {
-  padding: 1rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  }
-  
-  .download-option {
-  padding: 1rem;
-  border: 2px solid #f0f0f0;
-  border-radius: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: white;
-  }
-  
-  .download-option:hover {
-  border-color: #007aff;
-  }
-  
-  .download-option-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
-  }
-  
-  .download-option-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.125rem;
-  }
-  
-  .download-option-desc {
-  font-size: 0.65rem;
-  color: #666;
-  }
-  
-  .action-bar {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem 0;
-  flex-shrink: 0;
-  }
-  
-  .main-action {
-  flex: 1;
-  max-width: 200px;
-  padding: 0.75rem 1.5rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: #007aff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  }
-  
-  .main-action:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-  }
-  
-  .main-action:not(:disabled):hover {
-  background: #0056b3;
-  }
-  
-  .global-progress {
-  height: 3px;
-  background: #f0f0f0;
-  border-radius: 2px;
-  overflow: hidden;
-  margin: 0.5rem 0;
-  flex-shrink: 0;
-  }
-  
-  .global-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #007aff, #0056b3);
-  width: 0%;
-  transition: width 0.3s ease;
-  }
-  
-  .action-icon {
-  transition: transform 0.3s ease;
-  }
-  
-  .action-icon.processing {
-  animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-  }
-  
-  .compression-ratio {
-  color: #28a745;
-  font-weight: 600;
-  }
-  
-  /* NEW: Dimensions note in preview */
-  .dimensions-note {
-  color: #007aff;
-  font-weight: 500;
-  font-size: 0.7rem;
-  }
-  
-  /* Empty State Styles */
-  .empty-state {
+}
+
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1408,940 +1091,246 @@
   border-radius: 12px;
   border: 1px solid #e0e0e0;
   flex: 1;
-  height: 100%;
-  }
-  
-  .empty-state-icon {
+}
+
+.empty-state-icon {
   font-size: 4rem;
   margin-bottom: 1.5rem;
   opacity: 0.6;
-  animation: float 3s ease-in-out infinite;
-  }
-  
-  @keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-  }
-  
-  .empty-state-title {
+}
+
+.empty-state-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1a1a1a;
   margin-bottom: 0.75rem;
-  }
-  
-  .empty-state-description {
+}
+
+.empty-state-description {
   font-size: 1rem;
   color: #666;
   margin-bottom: 2rem;
-  line-height: 1.5;
-  max-width: 300px;
-  }
-  
-  .empty-state-features {
+}
+
+.empty-state-features {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-  }
-  
-  .feature-item {
-  display: flex;
-  align-items: center;
   gap: 0.75rem;
+  align-items: center;
+}
+
+.feature-item {
   font-size: 0.9rem;
   color: #666;
   padding: 0.5rem 1rem;
   background: #f8f9fa;
   border-radius: 20px;
-  transition: all 0.3s ease;
+}
+
+.download-options {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  display: none;
+  flex-shrink: 0;
+  padding: 1rem;
+}
+
+.download-options.show {
+  display: block;
+}
+
+.download-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.download-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.download-summary {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.space-saved {
+  font-size: 0.8rem;
+  color: #28a745;
+  font-weight: 600;
+}
+
+.download-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.download-option {
+  padding: 1rem;
+  border: 2px solid #f0f0f0;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.download-option:hover {
+  border-color: #007aff;
+}
+
+.download-option-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.download-option-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+  flex-shrink: 0;
+}
+
+.main-action {
+  flex: 1;
+  max-width: 250px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.main-action:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.main-action:not(:disabled):hover {
+  background: #0056b3;
+}
+
+.action-icon {
+  transition: transform 0.3s;
+}
+
+.action-icon.processing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-  
-  .feature-item:hover {
-  background: #e9ecef;
-  transform: translateY(-2px);
+
+  to {
+    transform: rotate(360deg);
   }
-  
-  .feature-icon {
-  font-size: 1.1rem;
-  }
-  
-  .stats-footer {
+}
+
+.global-progress {
+  height: 3px;
+  background: #f0f0f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+  flex-shrink: 0;
+}
+
+.global-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007aff, #0056b3);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.stats-footer {
   display: flex;
   justify-content: space-around;
-  align-items: center;
   background: white;
   border-radius: 12px;
   border: 1px solid #e0e0e0;
   padding: 1rem;
-  margin-top: 1rem;
   flex-shrink: 0;
-  }
-  
-  .stat-item {
+}
+
+.stat-item {
   text-align: center;
   flex: 1;
-  }
-  
-  .stat-number {
+}
+
+.stat-number {
   font-size: 1.25rem;
   font-weight: 700;
   color: #007aff;
   margin-bottom: 0.125rem;
-  }
-  
-  .stat-label {
+}
+
+.stat-label {
   font-size: 0.65rem;
   color: #666;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
   font-weight: 500;
-  }
-  
-  /* Preview Modal Styles */
-  .preview-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  }
-  
-  .preview-modal-content {
-  background: white;
-  border-radius: 12px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  }
-  
-  .preview-modal-header {
-  padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  }
-  
-  .preview-modal-header h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0;
-  max-width: 300px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  }
-  
-  .preview-modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  color: #666;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  }
-  
-  .preview-modal-close:hover {
-  background: #f0f0f0;
-  }
-  
-  .preview-modal-body {
-  flex: 1;
-  overflow: auto;
-  min-height: 0;
-  }
-  
-  .preview-comparison {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  }
-  
-  .preview-column {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  }
-  
-  .preview-column-header {
-  margin-bottom: 1rem;
-  }
-  
-  .preview-column-header h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 0.5rem 0;
-  }
-  
-  .preview-info {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.75rem;
-  color: #666;
-  flex-wrap: wrap;
-  }
-  
-  .compression-ratio {
-  color: #28a745;
-  font-weight: 600;
-  }
-  
-  .preview-image-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
-  border-radius: 8px;
-  overflow: hidden;
-  min-height: 200px;
-  }
-  
-  .preview-modal-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 4px;
-  }
-  
-  .preview-modal-footer {
-  padding: 1rem;
-  border-top: 1px solid #f0f0f0;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  }
-  
-  .error-message {
+}
+
+.error-message {
   position: fixed;
   top: 1rem;
   left: 1rem;
   right: 1rem;
-  z-index: 100;
   background: #fff5f5;
   border: 1px solid #fed7d7;
   border-radius: 8px;
   padding: 1rem;
   display: none;
-  }
-  
-  .error-message.show {
-  display: block;
-  }
-  
-  .error-title {
+  z-index: 100;
+}
+
+.error-message.show {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.error-title {
   font-size: 0.875rem;
   font-weight: 600;
   color: #c53030;
-  margin-bottom: 0.5rem;
-  }
-  
-  .error-desc {
+}
+
+.error-desc {
   font-size: 0.875rem;
   color: #721c24;
-  margin-bottom: 1rem;
-  }
-  
-  .error-actions {
-  display: flex;
-  gap: 0.5rem;
-  }
-  
-  @media (max-width: 768px) {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
   .compressor-container {
     padding: 0.5rem;
     height: auto;
     min-height: 100vh;
-    overflow: auto;
   }
-  
+
   .main-content {
     grid-template-columns: 1fr;
     gap: 1rem;
     height: auto;
-    overflow: visible;
   }
-  
-  .left-panel, .right-panel {
-    min-height: auto;
-    overflow: visible;
-  }
-  
-  /* Enhanced Mobile Header */
-  .header {
-    padding: 1rem 0.5rem;
-    position: relative;
-  }
-  
-  .header-content {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
-  }
-  
-  .header-text {
-    order: 1;
-  }
-  
-  .header h1 {
-    font-size: 1.5rem;
-  }
-  
-  .header p {
-    font-size: 0.8rem;
-  }
-  
-  .clear-session-btn {
-    order: 2;
-    font-size: 0.85rem;
-    padding: 0.75rem 1.5rem;
-    min-height: 44px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
-  }
-  
-  /* Improved Mobile Drop Zone */
-  .upload-section {
-    order: 1;
-  }
-  
-  .drop-zone {
-    padding: 2rem 1rem;
-    min-height: 180px;
-    margin: 1rem;
-    border-width: 3px;
-    border-radius: 16px;
-    touch-action: manipulation;
-  }
-  
-  .drop-zone:active {
-    transform: scale(0.98);
-  }
-  
-  .drop-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-  }
-  
-  .drop-text {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .drop-subtext {
-    font-size: 0.8rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  /* Better Mobile Buttons */
-  .upload-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 100%;
-    max-width: 280px;
-    margin: 0 auto;
-  }
-  
-  .upload-actions .btn {
-    width: 100%;
-    justify-content: center;
-    padding: 1rem;
-    font-size: 1rem;
-    min-height: 50px;
-    border-radius: 12px;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
-    touch-action: manipulation;
-  }
-  
-  .upload-actions .btn:active {
-    transform: scale(0.95);
-  }
-  
-  /* Mobile Settings Panel */
-  .settings-panel {
-    order: 3;
-    margin-top: 1rem;
-    padding: 1.5rem;
-    border-radius: 16px;
-  }
-  
-  .settings-title {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .setting-item {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .setting-label {
-    font-size: 0.9rem;
-    justify-content: center;
-  }
-  
-  .setting-control {
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 12px;
-  }
-  
-  .quality-slider {
-    flex: 1;
-    width: auto;
-    margin-right: 1rem;
-    height: 6px;
-  }
-  
-  .quality-value {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #007aff;
-    min-width: 50px;
-  }
-  
-  /* Enhanced Dimensions Info for Mobile */
-  .dimensions-info {
-    margin-top: 1rem;
-    padding: 1rem;
-    border-radius: 12px;
-  }
-  
-  .info-item {
-    font-size: 0.8rem;
-    margin-bottom: 0.75rem;
-    justify-content: center;
-    text-align: center;
-  }
-  
-  /* Mobile File List */
-  .file-list {
-    order: 2;
-    max-height: 60vh;
-    overflow-y: auto;
-    border-radius: 16px;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .file-list-header {
-    padding: 1.25rem;
-    flex-direction: column;
-    gap: 0.75rem;
-    text-align: center;
-  }
-  
-  .file-list-title {
-    font-size: 1rem;
-  }
-  
-  .file-count {
-    font-size: 0.8rem;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    align-self: center;
-  }
-  
-  .file-items-container {
-    max-height: 50vh;
-    overflow-y: auto;
-  }
-  
-  /* Enhanced Mobile File Items */
-  .file-item {
-    padding: 1rem;
-    flex-direction: column;
-    align-items: stretch;
-    min-height: auto;
-    border-radius: 12px;
-    margin-bottom: 0.5rem;
-    position: relative;
-    touch-action: manipulation;
-    background: white;
-    border: 1px solid #e0e0e0;
-  }
-  
-  .file-item:last-child {
-    margin-bottom: 0;
-  }
-  
-  .file-item:active {
-    background: #f8f9fa;
-    transform: scale(0.98);
-  }
-  
-  /* Mobile File Item Header */
-  .file-item-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-  
-  .file-preview {
-    width: 60px;
-    height: 60px;
-    font-size: 1.2rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
-  }
-  
-  .file-info {
-    flex: 1;
-    min-width: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-  }
-  
-  .file-name {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    line-height: 1.3;
-    word-break: break-word;
-  }
-  
-  .file-meta {
-    font-size: 0.75rem;
-    gap: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .file-size {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-  
-  .file-dimensions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-  }
-  
-  .dimensions-preserved {
-    font-size: 0.65rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 8px;
-    background: #d4edda;
-    color: #155724;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  
-  /* Mobile File Actions Row */
-  .file-actions-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid #f0f0f0;
-  }
-  
-  .file-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-  }
-  
-  .file-actions .btn {
-    min-height: 36px;
-    min-width: 36px;
-    padding: 0.5rem;
-    font-size: 0.8rem;
-    border-radius: 8px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .file-status {
-    position: static;
-    font-size: 0.7rem;
-    padding: 0.4rem 0.8rem;
-    border-radius: 12px;
-    box-shadow: none;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  
-  /* Mobile Download Options */
-  .download-options {
-    order: 4;
-    margin-top: 1rem;
-    border-radius: 16px;
-  }
-  
-  .download-header {
-    padding: 1.5rem;
-  }
-  
-  .download-title {
-    font-size: 1.2rem;
-  }
-  
-  .download-summary {
-    font-size: 0.85rem;
-  }
-  
-  .download-actions-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 1.5rem;
-  }
-  
-  .download-option {
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    touch-action: manipulation;
-  }
-  
-  .download-option:active {
-    transform: scale(0.95);
-  }
-  
-  .download-option-icon {
-    font-size: 2rem;
-    margin-bottom: 0.75rem;
-  }
-  
-  .download-option-title {
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .download-option-desc {
-    font-size: 0.8rem;
-  }
-  
-  /* Mobile Action Bar */
-  .action-bar {
-    padding: 1.5rem 0.5rem;
-    position: sticky;
-    bottom: 0;
-    background: linear-gradient(to top, #f8f9fa 0%, #f8f9fa 80%, transparent 100%);
-    z-index: 10;
-    backdrop-filter: blur(10px);
-  }
-  
-  .main-action {
-    max-width: none;
-    width: 100%;
-    padding: 1.25rem;
-    font-size: 1.1rem;
-    min-height: 56px;
-    border-radius: 16px;
-    font-weight: 700;
-    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
-    touch-action: manipulation;
-  }
-  
-  .main-action:active:not(:disabled) {
-    transform: scale(0.95);
-  }
-  
-  /* Mobile Progress */
-  .global-progress {
-    margin: 1rem 0;
-    height: 6px;
-    border-radius: 3px;
-  }
-  
-  .global-progress-fill {
-    border-radius: 3px;
-  }
-  
-  /* Mobile Stats Footer */
-  .stats-footer {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1.5rem;
-    margin-top: 1rem;
-    border-radius: 16px;
-  }
-  
-  .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 1rem 1.25rem;
-    background: #f8f9fa;
-    border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  }
-  
-  .stat-number {
-    font-size: 1.3rem;
-    order: 2;
-  }
-  
-  .stat-label {
-    font-size: 0.85rem;
-    order: 1;
-    text-transform: none;
-    font-weight: 600;
-  }
-  
-  /* Mobile Preview Modal */
-  .preview-modal {
-    padding: 0.5rem;
-  }
-  
-  .preview-modal-content {
-    max-width: 95vw;
-    max-height: 95vh;
-    border-radius: 16px;
-  }
-  
-  .preview-modal-header {
-    padding: 1.25rem;
-  }
-  
-  .preview-modal-header h3 {
-    max-width: 250px;
-    font-size: 1rem;
-  }
-  
-  .preview-modal-close {
-    font-size: 1.8rem;
-    padding: 0.5rem;
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  .preview-comparison {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    padding: 1.25rem;
-  }
-  
-  .preview-column-header {
-    margin-bottom: 1rem;
-  }
-  
-  .preview-column-header h4 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-  }
-  
-  .preview-info {
-    flex-direction: column;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-  }
-  
-  .preview-image-container {
-    min-height: 250px;
-  }
-  
-  .preview-modal-footer {
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.25rem;
-  }
-  
-  .preview-modal-footer .btn {
-    width: 100%;
-    justify-content: center;
-    min-height: 50px;
-    font-size: 1rem;
-    border-radius: 12px;
-  }
-  
-  /* Mobile Error Messages */
-  .error-message {
-    position: fixed;
-    top: 1rem;
-    left: 0.5rem;
-    right: 0.5rem;
-    z-index: 1000;
-    padding: 1.25rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  }
-  
-  .error-title {
-    font-size: 1rem;
-  }
-  
-  .error-desc {
-    font-size: 0.85rem;
-    margin-bottom: 1.25rem;
-    line-height: 1.5;
-  }
-  
-  .error-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .error-actions .btn {
-    width: 100%;
-    justify-content: center;
-    min-height: 44px;
-    border-radius: 10px;
-  }
-  
-  /* Mobile Empty State */
-  .empty-state {
-    padding: 2.5rem 1.5rem;
-    flex: 1;
-    height: 100%;
-    border-radius: 16px;
-  }
-  
-  .empty-state-icon {
-    font-size: 3.5rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .empty-state-title {
-    font-size: 1.4rem;
-    margin-bottom: 1rem;
-  }
-  
-  .empty-state-description {
-    font-size: 1rem;
-    margin-bottom: 2rem;
-    line-height: 1.6;
-  }
-  
-  .empty-state-features {
-    gap: 1rem;
-  }
-  
-  .feature-item {
-    font-size: 0.9rem;
-    padding: 0.75rem 1.25rem;
-    border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  }
-  
-  .feature-icon {
-    font-size: 1.2rem;
-  }
-  
-  /* Remove tooltips on mobile */
-  .tooltip::after {
-    display: none;
-  }
-  
-  /* Improved touch interactions */
-  * {
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .file-items-container {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  
-  .file-items-container::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .btn, .download-option, .file-actions .btn, .main-action {
-    min-height: 44px;
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  /* Add haptic feedback simulation */
-  .btn:active, .download-option:active, .file-item:active {
-    transition: transform 0.1s ease;
-  }
-  
-  /* Improve text readability */
-  .file-name, .file-meta, .settings-title, .download-title {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  
-  /* Better focus states for mobile */
-  .btn:focus, .file-item:focus, .download-option:focus {
-    outline: 2px solid #007aff;
-    outline-offset: 2px;
-  }
-  
-  /* Landscape orientation adjustments */
-  @media (max-width: 768px) and (orientation: landscape) {
-    .compressor-container {
-      padding: 0.5rem;
-    }
-    
-    .header {
-      padding: 0.75rem 0.5rem;
-    }
-    
-    .header-content {
-      flex-direction: row;
-      justify-content: space-between;
-    }
-    
-    .main-content {
-      gap: 1rem;
-    }
-    
-    .action-bar {
-      padding: 1rem 0.5rem;
-    }
-    
-    .stats-footer {
-      flex-direction: row;
-      gap: 0.5rem;
-    }
-    
-    .stat-item {
-      flex-direction: column;
-      text-align: center;
-      padding: 0.75rem;
-    }
-    
-    .stat-number {
-      order: 1;
-      font-size: 1.1rem;
-    }
-    
-    .stat-label {
-      order: 2;
-      font-size: 0.75rem;
-    }
-  }
-  }
-  </style>
+}
+</style>
