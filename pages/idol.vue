@@ -1,260 +1,248 @@
 <template>
-  <div class="app-container">
-
-    <!-- HEADER -->
-    <header class="header">
-      <div class="header-inner">
-        <div class="header-title">
-          <h1>Works</h1>
-          <span class="header-stats">{{ artists.length }} artists · {{ totalCount }} works</span>
-        </div>
-        <div class="header-actions">
-          <button @click="clearViewHistory" title="Clear History" class="icon-btn">🗑</button>
-          <button @click="exportData" title="Export" class="icon-btn">↓</button>
-          <button @click="triggerImport" title="Import" class="icon-btn">↑</button>
-          <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
-          <button @click="hardRefresh" title="Reset" class="icon-btn">⟳</button>
-        </div>
+  <div class="works-app">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-left">
+        <button v-if="currentView === 'works' || currentView === 'detail'" @click="goBack" class="back-btn-fixed">
+          ← Back
+        </button>
+        <button v-else @click="resetToHome" class="logo-btn">
+          <span class="logo-text">WORKS</span>
+          <span class="logo-count">{{ artists.length }}/{{ totalCount }}</span>
+        </button>
+      </div>
+      
+      <div class="top-controls">
+        <input 
+          ref="searchInput"
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search..."
+          class="search-compact"
+          @input="handleSearch"
+        />
+        
+        <select v-model="artistSortBy" class="sort-compact">
+          <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        
+        <button @click="exportData" class="header-btn" title="Export">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+        
+        <button @click="triggerImport" class="header-btn" title="Import">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+        </button>
+        
+        <button @click="clearViewHistory" class="header-btn" title="Clear History">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+          </svg>
+        </button>
+        
+        <button @click="hardRefresh" class="header-btn danger" title="Reset">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M3 12l2.26 2.26A9.75 9.75 0 0012 21a9 9 0 009-9"/>
+          </svg>
+        </button>
       </div>
     </header>
 
+    <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
+
     <!-- ARTISTS VIEW -->
-    <main v-if="currentView === 'artists'" class="main">
-      <div class="view-header">
-        <h2>Artists</h2>
-        <div class="header-right">
-          <select v-model="artistSortBy" class="sort-select" @change="handleArtistSortChange">
-            <option value="nameAsc">Name (A-Z)</option>
-            <option value="nameDesc">Name (Z-A)</option>
-            <option value="mostWorks">Most Works</option>
-            <option value="leastWorks">Least Works</option>
-          </select>
-          <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Search artists..."
-            class="search-input" @input="handleSearch" />
-        </div>
-      </div>
-
-      <div v-if="searchQuery && filteredArtists.length === 0" class="no-results">
-        <p>No artists found for "{{ searchQuery }}"</p>
-      </div>
-
-      <!-- Artists Grid with Alphabetical Grouping -->
-      <div v-for="group in groupedArtists" :key="group.letter" class="artist-group">
-        <div class="group-letter">{{ group.letter }}</div>
-        <div class="artists-grid">
-          <div v-for="(artist, index) in group.artists" :key="artist.name"
-            :class="['artist-item', { 'highlighted': viewedArtists.includes(artist.name) }]"
-            @click="selectArtist(artist.name)">
-            <div class="artist-cover">
-              <div v-if="imageLoadingStates[artist.name] === 'loading'" class="image-loading">
-                <div class="spinner"></div>
+    <main v-if="currentView === 'artists'" class="content artists-content">
+      <div v-for="letter in alphabeticalGroups" :key="letter" class="artist-group">
+        <h2 class="group-letter">{{ letter }}</h2>
+        <div class="image-grid">
+          <div 
+            v-for="artist in groupedArtists[letter]" 
+            :key="artist.name"
+            class="grid-item"
+            :class="{ seen: viewedArtists.includes(artist.name) }"
+            @click="selectArtist(artist.name)"
+          >
+            <div class="item-photo">
+              <img 
+                v-if="getProgressiveImage(artist).full"
+                :src="getProgressiveImage(artist).full" 
+                :alt="artist.name"
+                loading="lazy"
+              />
+              <div v-else class="photo-empty">
+                {{ artist.name.charAt(0) }}
               </div>
-
-              <img v-if="getProgressiveImage(artist).thumb && imageLoadingStates[artist.name] !== 'loaded'"
-                :src="getProgressiveImage(artist).thumb" :alt="artist.name" class="image-blur"
-                @load="onThumbLoad(artist.name)" />
-
-              <img v-if="getProgressiveImage(artist).full" :src="getProgressiveImage(artist).full" :alt="artist.name"
-                @load="onImageLoad(artist.name)" @error="onImageError($event, artist.name, 'artist')"
-                :class="{ hidden: imageLoadingStates[artist.name] === 'loading' }" />
-
-              <div v-if="!getProgressiveImage(artist).full && !getProgressiveImage(artist).thumb" class="placeholder">—
-              </div>
-
-              <button v-if="imageLoadingStates[artist.name] === 'error'" @click.stop="retryImage(artist.name, 'artist')"
-                class="retry-btn">
-                ⟳ Retry
-              </button>
             </div>
-            <div class="artist-meta">
-              <h2><span class="index-number">{{ index + 1 }}.</span> {{ artist.name }}</h2>
-              <p>{{ getArtistWorkCount(artist) }} works</p>
+            <div class="item-label">
+              <span class="label-name">{{ artist.name }}</span>
+              <span class="label-meta">{{ getArtistWorkCount(artist) }}</span>
             </div>
-            <button @click.stop="openArtistPhotoModal(artist.name)" class="edit-btn">📷</button>
+            <button @click.stop="openArtistPhotoModal(artist.name)" class="item-edit">✎</button>
           </div>
         </div>
+      </div>
+
+      <div v-if="filteredArtists.length === 0" class="empty">
+        <p>No results</p>
       </div>
     </main>
 
     <!-- WORKS VIEW -->
-    <main v-else-if="currentView === 'works'" class="main">
-      <div class="works-header">
-        <button @click="backToArtists" class="back-btn">← Back</button>
-        <div class="title-block">
-          <h1>{{ currentArtist.name }}</h1>
-          <div class="work-stats">
-            <span class="count">{{ getArtistWorkCount(currentArtist) }} total</span>
-            <span class="count-detail" v-if="currentArtist.mainWorks?.length">{{ currentArtist.mainWorks.length }}
-              main</span>
-            <span class="count-detail" v-if="currentArtist.compilations?.length">{{ currentArtist.compilations.length }}
-              compilations</span>
-          </div>
-
-          <!-- Artist Navigation Row -->
-          <div class="artist-nav-row" v-if="currentArtistList.length > 1">
-            <button @click="navigateArtist(-1)" :disabled="!canNavigateArtist(-1)" class="nav-btn">‹</button>
-            <span class="nav-count">Artist {{ currentArtistIndex + 1 }} / {{ currentArtistList.length }}</span>
-            <button @click="navigateArtist(1)" :disabled="!canNavigateArtist(1)" class="nav-btn">›</button>
-          </div>
-
-          <!-- Search Row -->
-          <div class="controls-row">
-            <input v-model="workSearchQuery" type="text" placeholder="Search works..." class="search-input work-search"
-              @input="handleWorkSearch" />
+    <main v-else-if="currentView === 'works'" class="content works-content">
+      <div class="content-header">
+        <div class="header-title">
+          <h1>{{ currentArtist?.name }}</h1>
+          <div class="title-tags">
+            <span v-if="currentArtist?.mainWorks?.length">{{ currentArtist.mainWorks.length }} main</span>
+            <span v-if="currentArtist?.compilations?.length">{{ currentArtist.compilations.length }} comp</span>
           </div>
         </div>
-        <button @click="openAddWorkModal" class="primary-btn">+ Add</button>
+        <button @click="openAddWorkModal" class="nav-add">+</button>
       </div>
 
-      <div v-if="workSearchQuery && filteredMainWorks.length === 0 && filteredCompilations.length === 0"
-        class="no-results">
-        <p>No works found for "{{ workSearchQuery }}"</p>
+      <div class="search-inline">
+        <input 
+          v-model="workSearchQuery"
+          type="text"
+          placeholder="Filter works..."
+          class="search-field"
+        />
       </div>
 
-      <section v-if="filteredMainWorks.length" class="works-section">
-        <h3>Main ({{ filteredMainWorks.length }})</h3>
-
-        <div class="works-grid">
-          <div v-for="(work, index) in filteredMainWorks" :key="work.code"
-            :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
-            <div class="work-cover">
-              <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
-                <div class="spinner"></div>
-              </div>
-
-              <img v-if="getProgressiveWorkImage(work).thumb && imageLoadingStates[work.code] !== 'loaded'"
-                :src="getProgressiveWorkImage(work).thumb" :alt="work.code" class="image-blur" />
-
-              <img :src="getProgressiveWorkImage(work).full" :alt="work.code" loading="lazy"
-                @load="onImageLoad(work.code)" @error="onImageError($event, work.code, 'work')"
-                :class="{ hidden: imageLoadingStates[work.code] === 'loading' }" />
-
-              <button v-if="imageLoadingStates[work.code] === 'error'" @click.stop="retryImage(work.code, 'work')"
-                class="retry-btn-small">
-                ⟳
-              </button>
-              <div class="work-badges">
-                <span v-if="isCoverWork(currentArtist.name, work.code)" class="badge cover">★</span>
-                <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
-              </div>
+      <div v-if="filteredMainWorks.length" class="works-block">
+        <h3 class="block-title">MAIN</h3>
+        <div class="image-grid tight">
+          <div 
+            v-for="work in filteredMainWorks"
+            :key="work.code"
+            class="grid-item"
+            :class="{ seen: viewedWorks.includes(work.code) }"
+            @click="openWorkView(work)"
+          >
+            <div class="item-photo">
+              <img 
+                :src="getProgressiveWorkImage(work).full"
+                :alt="work.code"
+                loading="lazy"
+              />
+              <div v-if="isCoverWork(currentArtist.name, work.code)" class="photo-star">★</div>
             </div>
-            <p><span class="index-number">{{ index + 1 }}.</span> {{ work.code }}</p>
+            <div class="item-label compact">
+              <span class="label-name">{{ work.code }}</span>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section v-if="filteredCompilations.length" class="works-section">
-        <h3>Compilations ({{ filteredCompilations.length }})</h3>
-
-        <div class="works-grid">
-          <div v-for="(work, index) in filteredCompilations" :key="work.code"
-            :class="['work-item', { 'highlighted': viewedWorks.includes(work.code) }]" @click="openWorkView(work)">
-            <div class="work-cover">
-              <div v-if="imageLoadingStates[work.code] === 'loading'" class="image-loading">
-                <div class="spinner"></div>
-              </div>
-
-              <img v-if="getProgressiveWorkImage(work).thumb && imageLoadingStates[work.code] !== 'loaded'"
-                :src="getProgressiveWorkImage(work).thumb" :alt="work.code" class="image-blur" />
-
-              <img :src="getProgressiveWorkImage(work).full" :alt="work.code" loading="lazy"
-                @load="onImageLoad(work.code)" @error="onImageError($event, work.code, 'work')"
-                :class="{ hidden: imageLoadingStates[work.code] === 'loading' }" />
-
-              <button v-if="imageLoadingStates[work.code] === 'error'" @click.stop="retryImage(work.code, 'work')"
-                class="retry-btn-small">
-                ⟳
-              </button>
-              <div class="work-badges">
-                <span v-if="isCoverWork(currentArtist.name, work.code)" class="badge cover">★</span>
-                <span v-if="hasSimilarCode(work.code)" class="badge warn">!</span>
-              </div>
+      <div v-if="filteredCompilations.length" class="works-block">
+        <h3 class="block-title">COMPILATIONS</h3>
+        <div class="image-grid tight">
+          <div 
+            v-for="work in filteredCompilations"
+            :key="work.code"
+            class="grid-item"
+            :class="{ seen: viewedWorks.includes(work.code) }"
+            @click="openWorkView(work)"
+          >
+            <div class="item-photo">
+              <img 
+                :src="getProgressiveWorkImage(work).full"
+                :alt="work.code"
+                loading="lazy"
+              />
+              <div v-if="isCoverWork(currentArtist.name, work.code)" class="photo-star">★</div>
             </div>
-            <p><span class="index-number">{{ index + 1 }}.</span> {{ work.code }}</p>
+            <div class="item-label compact">
+              <span class="label-name">{{ work.code }}</span>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
     </main>
 
     <!-- DETAIL VIEW -->
-    <main v-else-if="currentView === 'detail'" class="main detail">
-      <button @click="backToWorks" class="back-btn">← Back</button>
-
-      <div v-if="currentWorkList.length > 1" class="swipe-hint">
-        <span>← Swipe to navigate →</span>
-      </div>
-
-      <div class="detail-grid">
-        <div class="detail-left">
-          <div class="cover-large" @click="openLightbox(currentWork, 0)">
-            <div v-if="imageLoadingStates[currentWork.code] === 'loading'" class="image-loading">
-              <div class="spinner"></div>
-            </div>
-
-            <img v-if="getProgressiveWorkImage(currentWork).thumb && imageLoadingStates[currentWork.code] !== 'loaded'"
-              :src="getProgressiveWorkImage(currentWork).thumb" :alt="currentWork.code" class="image-blur" />
-
-            <img :src="getProgressiveWorkImage(currentWork).full" :alt="currentWork.code"
-              @load="onImageLoad(currentWork.code)" @error="onImageError($event, currentWork.code, 'detail')"
-              :class="{ hidden: imageLoadingStates[currentWork.code] === 'loading' }" />
-
-            <button v-if="imageLoadingStates[currentWork.code] === 'error'"
-              @click.stop="retryImage(currentWork.code, 'detail')" class="retry-btn">
-              ⟳ Retry Loading
-            </button>
-            <div class="image-overlay">
-              <span class="zoom-hint">Click to enlarge</span>
-            </div>
+    <main v-else-if="currentView === 'detail'" class="content detail-content">
+      <div class="detail-layout">
+        <div class="detail-hero">
+          <div class="hero-image" @click="openLightbox(currentWork, 0)">
+            <img 
+              :src="getProgressiveWorkImage(currentWork).full"
+              :alt="currentWork.code"
+            />
           </div>
 
-          <div class="detail-meta">
-            <h2 @click="copyToClipboard(currentWork.code)" class="code-title">
+          <div class="hero-info">
+            <h1 class="info-code" @click="copyToClipboard(currentWork.code)">
               {{ currentWork.code }}
-            </h2>
-            <div class="detail-type">
-              <span class="type-badge">{{ getWorkType(currentWork.code) }}</span>
-            </div>
-            <div class="meta-row">
-              <button @click="setCoverWork(currentArtist.name, currentWork.code)" class="set-cover-btn"
-                :class="{ active: isCoverWork(currentArtist.name, currentWork.code) }">
-                {{ isCoverWork(currentArtist.name, currentWork.code) ? '★ Cover' : 'Set Cover' }}
+            </h1>
+            
+            <div class="info-actions">
+              <button 
+                @click="setCoverWork(currentArtist.name, currentWork.code)"
+                class="action-btn"
+                :class="{ active: isCoverWork(currentArtist.name, currentWork.code) }"
+              >
+                ★ {{ isCoverWork(currentArtist.name, currentWork.code) ? 'COVER' : 'SET COVER' }}
+              </button>
+              
+              <button @click="openUploadModal(currentWork.code)" class="action-btn">
+                {{ hasCustomImage(currentWork.code) ? 'UPDATE IMG' : 'ADD IMG' }}
               </button>
             </div>
-            <div class="button-group">
-              <button @click="openExternalLink(currentWork.code, 'njav')" class="link-btn">NJAV</button>
-              <button @click="openExternalLink(currentWork.code, 'missav')" class="link-btn">MissAV</button>
-              <button @click="openExternalLink(currentWork.code, '24av')" class="link-btn">24AV</button>
-              <button @click="openExternalLink(currentWork.code, '24av-uncensored')" class="link-btn">24AV UC</button>
-              <button @click="openUploadModal(currentWork.code)" class="link-btn">{{ hasCustomImage(currentWork.code) ?
-            'Update' : 'Add Image' }}</button>
+
+            <div class="info-links">
+              <button @click="openExternalLink(currentWork.code, 'njav')" class="link-pill">NJAV</button>
+              <button @click="openExternalLink(currentWork.code, 'missav')" class="link-pill">MissAV</button>
+              <button @click="openExternalLink(currentWork.code, '24av')" class="link-pill">24AV</button>
             </div>
-            <div class="nav-row" v-if="currentWorkList.length > 1">
-              <button @click="navigateWork(-1)" :disabled="!canNavigateWork(-1)" class="nav-btn">‹</button>
-              <span class="nav-count">{{ currentWorkIndex + 1 }} / {{ currentWorkList.length }}</span>
-              <button @click="navigateWork(1)" :disabled="!canNavigateWork(1)" class="nav-btn">›</button>
+
+            <div v-if="currentWorkList.length > 1" class="info-nav">
+              <button 
+                @click="navigateWork(-1)" 
+                :disabled="!canNavigateWork(-1)"
+                class="nav-btn"
+              >
+                ←
+              </button>
+              <span class="nav-label">{{ currentWorkIndex + 1 }}/{{ currentWorkList.length }}</span>
+              <button 
+                @click="navigateWork(1)" 
+                :disabled="!canNavigateWork(1)"
+                class="nav-btn"
+              >
+                →
+              </button>
             </div>
           </div>
         </div>
 
-        <div class="detail-right">
-          <div class="gallery-header">
-            <h3>Gallery</h3>
-            <button @click="preloadAllGallery" class="preload-btn" :disabled="isPreloading">
+        <div class="detail-gallery">
+          <div class="gallery-bar">
+            <h3>GALLERY</h3>
+            <button @click="preloadAllGallery" class="gallery-load" :disabled="isPreloading">
               {{ isPreloading ? 'Loading...' : 'Load All' }}
             </button>
           </div>
-          <div class="gallery-grid">
-            <div v-for="i in 20" :key="i" class="gallery-item" @click="openLightbox(currentWork, i)">
-              <div v-if="galleryLoadingStates[`${currentWork.code}-${i}`] === 'loading'" class="image-loading-small">
-                <div class="spinner-small"></div>
-              </div>
-              <img :src="getImageUrl(currentWork.code, `jp-${i}`)" :alt="`${currentWork.code} - ${i}`" loading="lazy"
-                @load="onGalleryImageLoad(currentWork.code, i)"
-                @error="onGalleryImageError($event, currentWork.code, i)" :class="{
-            hidden: galleryLoadingStates[`${currentWork.code}-${i}`] === 'loading',
-            dimmed: galleryLoadingStates[`${currentWork.code}-${i}`] === 'error'
-          }" />
-              <span class="gallery-number">{{ i }}</span>
+          
+          <div class="gallery-thumbs">
+            <div 
+              v-for="i in 20" 
+              :key="i"
+              class="thumb-box"
+              @click="openLightbox(currentWork, i)"
+            >
+              <img 
+                :src="getImageUrl(currentWork.code, `jp-${i}`)"
+                :alt="`${currentWork.code} ${i}`"
+                loading="lazy"
+              />
+              <span class="thumb-num">{{ i }}</span>
             </div>
           </div>
         </div>
@@ -262,74 +250,105 @@
     </main>
 
     <!-- MODALS -->
-    <div v-if="showAddArtistModal" class="modal-overlay" @click.self="closeAddArtistModal">
-      <div class="modal">
-        <h3>Add Artist</h3>
-        <input v-model="newArtist.name" placeholder="Name" class="input" />
-        <input v-model="newArtist.photo" placeholder="Photo URL" class="input" />
-        <div class="modal-actions">
-          <button @click="addNewArtist" class="primary-btn">Add</button>
-          <button @click="closeAddArtistModal" class="secondary-btn">Cancel</button>
+    <transition name="fade">
+      <div v-if="showAddWorkModal" class="modal-wrap" @click.self="closeAddWorkModal">
+        <div class="modal-box">
+          <h3>Add Work</h3>
+          <select v-model="newWork.artist" class="field">
+            <option value="">Select artist...</option>
+            <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
+          </select>
+          <input v-model="newWork.code" placeholder="Work Code" class="field" />
+          <div class="radio-row">
+            <label>
+              <input v-model="newWork.type" type="radio" value="mainWorks" />
+              <span>Main</span>
+            </label>
+            <label>
+              <input v-model="newWork.type" type="radio" value="compilations" />
+              <span>Compilation</span>
+            </label>
+          </div>
+          <div class="modal-btns">
+            <button @click="addNewWork" class="btn-solid">Add</button>
+            <button @click="closeAddWorkModal" class="btn-ghost">Cancel</button>
+          </div>
         </div>
       </div>
-    </div>
+    </transition>
 
-    <div v-if="showAddWorkModal" class="modal-overlay" @click.self="closeAddWorkModal">
-      <div class="modal">
-        <h3>Add Work</h3>
-        <select v-model="newWork.artist" class="input">
-          <option value="">Select artist...</option>
-          <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
-        </select>
-        <input v-model="newWork.code" placeholder="Code (e.g., SONE-978)" class="input" />
-        <div class="radio-group">
-          <label><input v-model="newWork.type" type="radio" value="mainWorks" /> Main</label>
-          <label><input v-model="newWork.type" type="radio" value="compilations" /> Compilation</label>
-        </div>
-        <div class="modal-actions">
-          <button @click="addNewWork" class="primary-btn">Add</button>
-          <button @click="closeAddWorkModal" class="secondary-btn">Cancel</button>
+    <transition name="fade">
+      <div v-if="showUploadModal" class="modal-wrap" @click.self="closeUploadModal">
+        <div class="modal-box">
+          <h3>Custom Image</h3>
+          <p class="modal-sub">{{ uploadingWork }}</p>
+          <input 
+            v-model="customImageUrl" 
+            placeholder="Image URL"
+            class="field"
+            @keyup.enter="handleCustomImageUrl"
+          />
+          <div class="modal-btns">
+            <button @click="handleCustomImageUrl" class="btn-solid" :disabled="!customImageUrl.trim()">
+              {{ customImageUrl.trim() ? 'Add' : 'Remove' }}
+            </button>
+            <button @click="closeUploadModal" class="btn-ghost">Cancel</button>
+          </div>
         </div>
       </div>
-    </div>
+    </transition>
 
-    <div v-if="showUploadModal" class="modal-overlay" @click.self="closeUploadModal">
-      <div class="modal">
-        <h3>Custom Image</h3>
-        <p class="modal-label">{{ uploadingWork }}</p>
-        <input v-model="customImageUrl" placeholder="Image URL" class="input" @keyup.enter="handleCustomImageUrl" />
-        <div class="modal-actions">
-          <button @click="handleCustomImageUrl" class="primary-btn" :disabled="!customImageUrl.trim()">Add</button>
-          <button @click="closeUploadModal" class="secondary-btn">Cancel</button>
+    <transition name="fade">
+      <div v-if="showArtistPhotoModal" class="modal-wrap" @click.self="closeArtistPhotoModal">
+        <div class="modal-box">
+          <h3>Artist Photo</h3>
+          <p class="modal-sub">{{ editingArtistName }}</p>
+          <input 
+            v-model="artistPhotoUrl" 
+            placeholder="Photo URL (empty to remove)"
+            class="field"
+            @keyup.enter="updateArtistPhoto"
+          />
+          <div class="modal-btns">
+            <button @click="updateArtistPhoto" class="btn-solid">
+              {{ artistPhotoUrl.trim() ? 'Update' : 'Remove' }}
+            </button>
+            <button @click="closeArtistPhotoModal" class="btn-ghost">Cancel</button>
+          </div>
         </div>
       </div>
-    </div>
-
-    <div v-if="showArtistPhotoModal" class="modal-overlay" @click.self="closeArtistPhotoModal">
-      <div class="modal">
-        <h3>Artist Photo</h3>
-        <p class="modal-label">{{ editingArtistName }}</p>
-        <input v-model="artistPhotoUrl" placeholder="Photo URL" class="input" @keyup.enter="updateArtistPhoto" />
-        <div class="modal-actions">
-          <button @click="updateArtistPhoto" class="primary-btn" :disabled="!artistPhotoUrl.trim()">Update</button>
-          <button @click="closeArtistPhotoModal" class="secondary-btn">Cancel</button>
-        </div>
-      </div>
-    </div>
+    </transition>
 
     <!-- LIGHTBOX -->
-    <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
-      <button class="lb-close" @click="closeLightbox">✕</button>
-      <button v-if="lightbox.images.length > 1" class="lb-btn lb-prev" @click="prevImage">‹</button>
-      <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
-      <button v-if="lightbox.images.length > 1" class="lb-btn lb-next" @click="nextImage">›</button>
-      <div class="lb-counter">{{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}</div>
-      <div v-if="lightbox.images.length > 1" class="lb-swipe-hint">← Swipe →</div>
-    </div>
+    <transition name="fade">
+      <div v-if="lightbox.show" class="viewer" @click.self="closeLightbox">
+        <button class="viewer-x" @click="closeLightbox">×</button>
+        <button 
+          v-if="lightbox.images.length > 1"
+          class="viewer-arrow prev"
+          @click="prevImage"
+        >
+          ←
+        </button>
+        <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
+        <button 
+          v-if="lightbox.images.length > 1"
+          class="viewer-arrow next"
+          @click="nextImage"
+        >
+          →
+        </button>
+        <div class="viewer-count">
+          {{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}
+        </div>
+      </div>
+    </transition>
 
     <!-- TOAST -->
-    <transition name="fade">
-      <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.message }}</div>
+    <transition name="toast">
+      <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
+        {{ toast.message }}
+      </div>
     </transition>
   </div>
 </template>
@@ -363,14 +382,14 @@ class ImageDB {
   }
 
   async init() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!window.indexedDB) {
         resolve(false)
         return
       }
 
       const request = indexedDB.open(this.dbName, 1)
-      request.onerror = () => reject(new Error('IndexedDB failed'))
+      request.onerror = () => resolve(false)
       request.onsuccess = () => {
         this.db = request.result
         resolve(true)
@@ -406,17 +425,6 @@ class ImageDB {
     })
   }
 
-  async delete(code) {
-    if (!this.db) return false
-    return new Promise((resolve) => {
-      const transaction = this.db.transaction([this.storeName], 'readwrite')
-      const store = transaction.objectStore(this.storeName)
-      const request = store.delete(code)
-      request.onsuccess = () => resolve(true)
-      request.onerror = () => resolve(false)
-    })
-  }
-
   async getAll() {
     if (!this.db) return {}
     return new Promise((resolve) => {
@@ -447,66 +455,65 @@ class ImageDB {
 }
 
 export default {
-  name: 'Works',
+  name: 'WorksRetro',
   data() {
     return {
       currentView: 'artists',
       activeTab: '',
-      toast: { show: false, message: '', type: 'success' },
-      showAddWorkModal: false,
-      showAddArtistModal: false,
-      newWork: { artist: '', code: '', type: 'mainWorks' },
-      newArtist: { name: '', photo: '' },
+      searchQuery: '',
+      workSearchQuery: '',
+      artistSortBy: 'nameAsc',
+      
       artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
       currentWork: null,
       currentWorkList: [],
       currentWorkIndex: 0,
       currentArtistList: [],
       currentArtistIndex: 0,
-      lightbox: { show: false, images: [], currentIndex: 0, code: '' },
+      
       customImages: {},
-      customImagesLoaded: false,
+      artistPhotos: {},
+      viewedArtists: [],
+      viewedWorks: [],
+      
+      showAddWorkModal: false,
       showUploadModal: false,
+      showArtistPhotoModal: false,
+      newWork: { artist: '', code: '', type: 'mainWorks' },
       uploadingWork: null,
       customImageUrl: '',
-      imageDB: null,
-      useLocalStorageFallback: false,
-      artistPhotos: {},
-      showArtistPhotoModal: false,
       editingArtistName: '',
       artistPhotoUrl: '',
-      coverImageUrl: '',
-      showArtistUrlModal: false,
-      artistCustomUrl: '',
-      searchQuery: '',
-      workSearchQuery: '',
-      artistSortBy: 'nameAsc', // nameAsc, nameDesc, mostWorks, leastWorks
-      imageLoadingStates: {},
-      galleryLoadingStates: {},
+      
+      lightbox: { show: false, images: [], currentIndex: 0, code: '' },
+      toast: { show: false, message: '', type: 'success' },
+      
       isPreloading: false,
-      showShortcutsHelp: false,
+      imageDB: null,
+      useLocalStorageFallback: false,
+      customImagesLoaded: false,
+      
+      scrollPositions: {},
+      
+      // Touch gesture tracking
       touchStartX: 0,
-      touchStartY: 0,
       touchEndX: 0,
+      touchStartY: 0,
       touchEndY: 0,
-      minSwipeDistance: 50,
-      scrollPositions: {
-        artists: 0,
-        works: 0
-      },
-      viewedArtists: [],
-      viewedWorks: []
+      handleTouchStart: null,
+      handleTouchEnd: null,
+
+      sortOptions: [
+        { label: 'Name A→Z', value: 'nameAsc' },
+        { label: 'Name Z→A', value: 'nameDesc' },
+        { label: 'Most Works', value: 'mostWorks' },
+        { label: 'Least Works', value: 'leastWorks' }
+      ]
     }
   },
   computed: {
     totalCount() {
       return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0) + (a.compilations?.length || 0), 0)
-    },
-    totalMainWorks() {
-      return this.artists.reduce((sum, a) => sum + (a.mainWorks?.length || 0), 0)
-    },
-    totalCompilations() {
-      return this.artists.reduce((sum, a) => sum + (a.compilations?.length || 0), 0)
     },
     currentArtist() {
       return this.artists.find(a => a.name === this.activeTab)
@@ -535,7 +542,6 @@ export default {
     },
     groupedArtists() {
       const groups = {}
-
       this.filteredArtists.forEach(artist => {
         const firstLetter = artist.name.charAt(0).toUpperCase()
         if (!groups[firstLetter]) {
@@ -543,13 +549,10 @@ export default {
         }
         groups[firstLetter].push(artist)
       })
-
-      return Object.keys(groups)
-        .sort()
-        .map(letter => ({
-          letter,
-          artists: groups[letter]
-        }))
+      return groups
+    },
+    alphabeticalGroups() {
+      return Object.keys(this.groupedArtists).sort()
     },
     filteredMainWorks() {
       if (!this.currentArtist?.mainWorks) return []
@@ -614,49 +617,11 @@ export default {
   mounted() {
     if (process.client) {
       this.imageDB = new ImageDB()
-
-      try {
-        const savedArtistSort = localStorage.getItem('artistSortBy')
-        if (savedArtistSort) this.artistSortBy = savedArtistSort
-      } catch (e) {
-        console.warn('Failed to load artist sort preference:', e)
-      }
-
-      try {
-        const saved = localStorage.getItem('artistPhotos')
-        if (saved) this.artistPhotos = JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to load artist photos:', e)
-      }
-
-      try {
-        const savedViewedArtists = localStorage.getItem('viewedArtists')
-        if (savedViewedArtists) this.viewedArtists = JSON.parse(savedViewedArtists)
-      } catch (e) {
-        console.warn('Failed to load viewed artists:', e)
-      }
-
-      try {
-        const savedViewedWorks = localStorage.getItem('viewedWorks')
-        if (savedViewedWorks) this.viewedWorks = JSON.parse(savedViewedWorks)
-      } catch (e) {
-        console.warn('Failed to load viewed works:', e)
-      }
-
       this.initializeApp()
+      this.setupKeyboardShortcuts()
     }
   },
   methods: {
-    handleArtistSortChange() {
-      const sortNames = {
-        nameAsc: 'Name (A-Z)',
-        nameDesc: 'Name (Z-A)',
-        mostWorks: 'Most Works',
-        leastWorks: 'Least Works'
-      }
-      this.showToast(`Sorted by ${sortNames[this.artistSortBy]}`, 'info')
-    },
-
     async initializeApp() {
       try {
         const dbInitialized = await this.imageDB.init()
@@ -687,188 +652,532 @@ export default {
           const parsed = JSON.parse(saved)
           if (Array.isArray(parsed) && parsed.length > 0) {
             this.artists = normalizeArtists(parsed)
-            // Add timestamps to existing works that don't have them
-            this.migrateWorkTimestamps()
           }
         }
       } catch (e) {
         console.warn('Failed to load artists:', e)
       }
 
-      if (this.artists.length && !this.activeTab) {
-        this.activeTab = this.artists[0].name
+      try {
+        const saved = localStorage.getItem('artistPhotos')
+        if (saved) this.artistPhotos = JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to load artist photos:', e)
       }
 
-      this.setupKeyboardShortcuts()
-      this.setupTouchListeners()
-    },
-
-    migrateWorkTimestamps() {
-      let needsSave = false
-      const now = Date.now()
-
-      this.artists.forEach(artist => {
-        ;['mainWorks', 'compilations'].forEach(type => {
-          if (artist[type]?.length) {
-            artist[type].forEach(work => {
-              if (!work.addedAt) {
-                work.addedAt = now
-                needsSave = true
-              }
-            })
-          }
-        })
-      })
-
-      if (needsSave) {
-        this.artists = [...this.artists]
+      try {
+        const savedViewedArtists = localStorage.getItem('viewedArtists')
+        if (savedViewedArtists) this.viewedArtists = JSON.parse(savedViewedArtists)
+      } catch (e) {
+        console.warn('Failed to load viewed artists:', e)
       }
-    },
 
-    navigateArtist(direction) {
-      const newIndex = this.currentArtistIndex + direction
-      if (newIndex >= 0 && newIndex < this.currentArtistList.length) {
-        this.currentArtistIndex = newIndex
-        const newArtist = this.currentArtistList[newIndex]
-
-        if (!this.viewedArtists.includes(newArtist.name)) {
-          this.viewedArtists.push(newArtist.name)
-        }
-
-        this.activeTab = newArtist.name
-        this.workSearchQuery = ''
-
-        this.$nextTick(() => {
-          window.scrollTo(0, 0)
-        })
+      try {
+        const savedViewedWorks = localStorage.getItem('viewedWorks')
+        if (savedViewedWorks) this.viewedWorks = JSON.parse(savedViewedWorks)
+      } catch (e) {
+        console.warn('Failed to load viewed works:', e)
       }
-    },
 
-    canNavigateArtist(direction) {
-      const newIndex = this.currentArtistIndex + direction
-      return newIndex >= 0 && newIndex < this.currentArtistList.length
+      try {
+        const savedArtistSort = localStorage.getItem('artistSortBy')
+        if (savedArtistSort) this.artistSortBy = savedArtistSort
+      } catch (e) {
+        console.warn('Failed to load artist sort preference:', e)
+      }
     },
 
     setupKeyboardShortcuts() {
       document.addEventListener('keydown', (e) => {
-        if (e.key === '/' && !this.isInputFocused()) {
-          e.preventDefault()
-          if (this.$refs.searchInput) {
-            this.$refs.searchInput.focus()
-          }
-        }
-
-        if (e.key === '?' && !this.isInputFocused()) {
-          e.preventDefault()
-          this.showShortcutsHelp = true
+        if (e.key === 'Escape') {
+          if (this.lightbox.show) this.closeLightbox()
+          else if (this.showAddWorkModal) this.closeAddWorkModal()
+          else if (this.showUploadModal) this.closeUploadModal()
+          else if (this.showArtistPhotoModal) this.closeArtistPhotoModal()
+          else if (this.currentView === 'detail') this.backToWorks()
+          else if (this.currentView === 'works') this.backToArtists()
         }
 
         if (this.lightbox.show) {
-          if (e.key === 'ArrowLeft') {
-            e.preventDefault()
-            this.prevImage()
-          } else if (e.key === 'ArrowRight') {
-            e.preventDefault()
-            this.nextImage()
-          } else if (e.key === 'Escape') {
-            this.closeLightbox()
-          }
-        }
-        else if (this.currentView === 'detail') {
-          if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) {
-            e.preventDefault()
-            this.navigateWork(-1)
-          } else if (e.key === 'ArrowRight' && this.canNavigateWork(1)) {
-            e.preventDefault()
-            this.navigateWork(1)
-          } else if (e.key === ' ' && !this.isInputFocused()) {
-            e.preventDefault()
-            this.openLightbox(this.currentWork, 0)
-          } else if (e.key === 'Escape') {
-            this.backToWorks()
-          }
-        }
-        else if (this.currentView === 'works') {
-          if (!this.isInputFocused()) {
-            if (e.key === 'ArrowLeft' && this.canNavigateArtist(-1)) {
-              e.preventDefault()
-              this.navigateArtist(-1)
-            } else if (e.key === 'ArrowRight' && this.canNavigateArtist(1)) {
-              e.preventDefault()
-              this.navigateArtist(1)
-            }
-          }
-
-          if (e.key === 'Escape') {
-            this.backToArtists()
-          }
+          if (e.key === 'ArrowLeft') this.prevImage()
+          if (e.key === 'ArrowRight') this.nextImage()
         }
 
-        if (e.key === 'Escape') {
-          if (this.showShortcutsHelp) this.showShortcutsHelp = false
-          if (this.showAddWorkModal) this.closeAddWorkModal()
-          if (this.showAddArtistModal) this.closeAddArtistModal()
-          if (this.showUploadModal) this.closeUploadModal()
-          if (this.showArtistPhotoModal) this.closeArtistPhotoModal()
+        if (this.currentView === 'detail' && !this.lightbox.show) {
+          if (e.key === 'ArrowLeft' && this.canNavigateWork(-1)) this.navigateWork(-1)
+          if (e.key === 'ArrowRight' && this.canNavigateWork(1)) this.navigateWork(1)
         }
       })
     },
 
-    isInputFocused() {
-      const activeElement = document.activeElement
-      return activeElement && (
-        activeElement.tagName === 'INPUT' ||
-        activeElement.tagName === 'TEXTAREA' ||
-        activeElement.tagName === 'SELECT'
-      )
+    handleSearch() {
+      // Reactive search
     },
 
-    setupTouchListeners() {
-      if (process.client) {
-        document.addEventListener('touchstart', this.handleTouchStart, { passive: true })
-        document.addEventListener('touchmove', this.handleTouchMove, { passive: true })
-        document.addEventListener('touchend', this.handleTouchEnd, { passive: true })
+    goBack() {
+      if (this.currentView === 'detail') {
+        this.backToWorks()
+      } else if (this.currentView === 'works') {
+        this.backToArtists()
       }
     },
 
-    handleTouchStart(e) {
-      this.touchStartX = e.changedTouches[0].screenX
-      this.touchStartY = e.changedTouches[0].screenY
+    resetToHome() {
+      this.currentView = 'artists'
+      this.activeTab = ''
+      this.searchQuery = ''
+      this.workSearchQuery = ''
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     },
 
-    handleTouchMove(e) {
-      this.touchEndX = e.changedTouches[0].screenX
-      this.touchEndY = e.changedTouches[0].screenY
+    getArtistWorkCount(artist) {
+      return (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0)
     },
 
-    handleTouchEnd() {
-      this.handleSwipe()
+    getProgressiveImage(artist) {
+      if (this.artistPhotos[artist.name]) {
+        return { full: this.artistPhotos[artist.name], thumb: null }
+      }
+
+      const coverWork = this.getCoverWork(artist)
+      if (!coverWork) {
+        return { full: null, thumb: null }
+      }
+
+      return this.getProgressiveWorkImage(coverWork)
+    },
+
+    getProgressiveWorkImage(work) {
+      if (!work) return { full: null, thumb: null }
+      
+      if (this.customImages[work.code]) {
+        return { full: this.customImages[work.code], thumb: null }
+      }
+
+      const parsed = parseWorkCode(work.code)
+      if (!parsed) return { full: null, thumb: null }
+
+      const paddedNum = parsed.number.padStart(5, '0')
+      const dmmId = `${parsed.prefix}${paddedNum}`
+
+      if (dmmId.length < 3) return { full: null, thumb: null }
+
+      return {
+        thumb: `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}ps.jpg`,
+        full: `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
+      }
+    },
+
+    getImageUrl(code, quality = 'pl') {
+      if (quality === 'pl' && this.customImages[code]) return this.customImages[code]
+      const parsed = parseWorkCode(code)
+      if (!parsed) return null
+      const paddedNum = parsed.number.padStart(5, '0')
+      const dmmId = `${parsed.prefix}${paddedNum}`
+      if (dmmId.length < 3) return null
+      if (quality !== 'pl') {
+        const qNum = quality.split('-')[1] || '1'
+        return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`
+      }
+      return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
+    },
+
+    hasCustomImage(code) {
+      return !!this.customImages[code]
+    },
+
+    getCoverWork(artist) {
+      if (artist.cover) {
+        const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
+        const coverWork = allWorks.find(w => w.code === artist.cover)
+        if (coverWork) return coverWork
+      }
+
+      if (artist.mainWorks?.length > 0) {
+        return artist.mainWorks[0]
+      }
+
+      if (artist.compilations?.length > 0) {
+        return artist.compilations[0]
+      }
+
+      return null
+    },
+
+    selectArtist(name) {
+      // Save scroll position before navigating
+      this.saveScrollPosition('artists')
+      
+      if (!this.viewedArtists.includes(name)) {
+        this.viewedArtists.push(name)
+      }
+
+      this.currentArtistList = this.filteredArtists
+      this.currentArtistIndex = this.currentArtistList.findIndex(a => a.name === name)
+
+      this.activeTab = name
+      this.currentView = 'works'
+      this.workSearchQuery = ''
+
+      this.$nextTick(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      })
+    },
+
+    backToArtists() {
+      this.currentView = 'artists'
+      this.activeTab = ''
+      
+      this.$nextTick(() => {
+        this.restoreScrollPosition('artists')
+      })
+    },
+
+    openWorkView(work) {
+      // Save scroll position before navigating
+      this.saveScrollPosition('works')
+      
+      if (!this.viewedWorks.includes(work.code)) {
+        this.viewedWorks.push(work.code)
+      }
+
+      const isMain = this.currentArtist.mainWorks.find(w => w.code === work.code)
+      this.currentWorkList = isMain ? this.filteredMainWorks : this.filteredCompilations
+
+      this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
+      this.currentWork = work
+      this.currentView = 'detail'
+
+      this.$nextTick(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      })
+    },
+
+    backToWorks() {
+      this.currentView = 'works'
+      this.currentWork = null
+      
+      this.$nextTick(() => {
+        this.restoreScrollPosition('works')
+      })
+    },
+
+    saveScrollPosition(view) {
+      if (process.client) {
+        this.scrollPositions[view] = window.scrollY || window.pageYOffset || 0
+      }
+    },
+
+    restoreScrollPosition(view) {
+      if (process.client) {
+        const scrollPos = this.scrollPositions[view] || 0
+        requestAnimationFrame(() => {
+          window.scrollTo({
+            top: scrollPos,
+            behavior: 'instant'
+          })
+        })
+      }
+    },
+
+    navigateWork(direction) {
+      const newIndex = this.currentWorkIndex + direction
+      if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
+        this.currentWorkIndex = newIndex
+        this.currentWork = this.currentWorkList[newIndex]
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    },
+
+    canNavigateWork(direction) {
+      const newIndex = this.currentWorkIndex + direction
+      return newIndex >= 0 && newIndex < this.currentWorkList.length
+    },
+
+    isCoverWork(artistName, workCode) {
+      const artist = this.artists.find(a => a.name === artistName)
+      return artist?.cover === workCode
+    },
+
+    setCoverWork(artistName, workCode) {
+      const artist = this.artists.find(a => a.name === artistName)
+      if (artist) {
+        artist.cover = workCode
+        this.artists = [...this.artists]
+      }
+      this.showToast('Cover updated', 'success')
+    },
+
+    openAddWorkModal() {
+      this.newWork = { artist: this.activeTab || '', code: '', type: 'mainWorks' }
+      this.showAddWorkModal = true
+    },
+
+    closeAddWorkModal() {
+      this.showAddWorkModal = false
+    },
+
+    async addNewWork() {
+      if (!this.newWork.artist || !this.newWork.code) return this.showToast('Required fields', 'error')
+      const code = this.newWork.code.toUpperCase()
+      if (this.artists.some(a => a.mainWorks?.some(w => w.code === code) || a.compilations?.some(w => w.code === code))) {
+        return this.showToast('Code exists', 'error')
+      }
+      const artist = this.artists.find(a => a.name === this.newWork.artist)
+      if (!artist) return this.showToast('Artist not found', 'error')
+      if (!artist[this.newWork.type]) artist[this.newWork.type] = []
+
+      artist[this.newWork.type].push({
+        code,
+        addedAt: Date.now()
+      })
+
+      this.artists = [...this.artists]
+      this.closeAddWorkModal()
+      this.showToast(`Added ${code}`, 'success')
+    },
+
+    openUploadModal(code) {
+      this.uploadingWork = code
+      this.customImageUrl = this.customImages[code] || ''
+      this.showUploadModal = true
+    },
+
+    closeUploadModal() {
+      this.showUploadModal = false
+      this.uploadingWork = null
+      this.customImageUrl = ''
+    },
+
+    async handleCustomImageUrl() {
+      const url = this.customImageUrl.trim()
+      if (!url) {
+        const newCustomImages = { ...this.customImages }
+        delete newCustomImages[this.uploadingWork]
+        this.customImages = newCustomImages
+        this.showToast('Image removed', 'success')
+        this.closeUploadModal()
+        return
+      }
+
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return this.showToast('Must start with http:// or https://', 'error')
+      }
+
+      const img = new Image()
+      const timeout = setTimeout(() => {
+        this.showToast('Load timeout', 'error')
+      }, 10000)
+
+      img.onload = () => {
+        clearTimeout(timeout)
+        this.customImages = { ...this.customImages, [this.uploadingWork]: url }
+        this.showToast('Image added', 'success')
+        this.closeUploadModal()
+      }
+
+      img.onerror = () => {
+        clearTimeout(timeout)
+        this.showToast('Failed to load image', 'error')
+      }
+
+      img.src = url
+    },
+
+    openArtistPhotoModal(artistName) {
+      this.editingArtistName = artistName
+      this.artistPhotoUrl = this.artistPhotos[artistName] || ''
+      this.showArtistPhotoModal = true
+    },
+
+    closeArtistPhotoModal() {
+      this.showArtistPhotoModal = false
+      this.editingArtistName = ''
+      this.artistPhotoUrl = ''
+    },
+
+    updateArtistPhoto() {
+      const url = this.artistPhotoUrl.trim()
+      
+      if (!url) {
+        const newPhotos = { ...this.artistPhotos }
+        delete newPhotos[this.editingArtistName]
+        this.artistPhotos = newPhotos
+        localStorage.setItem('artistPhotos', JSON.stringify(this.artistPhotos))
+        this.showToast('Photo removed', 'success')
+        this.closeArtistPhotoModal()
+        return
+      }
+
+      const img = new Image()
+      const timeout = setTimeout(() => {
+        this.showToast('Load timeout', 'error')
+      }, 10000)
+
+      img.onload = () => {
+        clearTimeout(timeout)
+        this.artistPhotos = { ...this.artistPhotos, [this.editingArtistName]: url }
+        localStorage.setItem('artistPhotos', JSON.stringify(this.artistPhotos))
+        this.showToast('Photo updated', 'success')
+        this.closeArtistPhotoModal()
+      }
+
+      img.onerror = () => {
+        clearTimeout(timeout)
+        this.showToast('Photo load failed', 'error')
+      }
+
+      img.src = url
+    },
+
+    openLightbox(work, startIndex = 0) {
+      const images = [this.getImageUrl(work.code)]
+      for (let i = 1; i <= 20; i++) {
+        images.push(this.getImageUrl(work.code, `jp-${i}`))
+      }
+      this.lightbox = { show: true, images, currentIndex: startIndex, code: work.code }
+      if (process.client) {
+        document.body.style.overflow = 'hidden'
+        // Setup touch events for swipe gestures
+        this.$nextTick(() => {
+          this.setupSwipeGestures()
+        })
+      }
+    },
+
+    closeLightbox() {
+      this.lightbox.show = false
+      if (process.client) {
+        document.body.style.overflow = ''
+        this.cleanupSwipeGestures()
+      }
+    },
+
+    setupSwipeGestures() {
+      if (!process.client) return
+      
+      this.touchStartX = 0
+      this.touchEndX = 0
+      this.touchStartY = 0
+      this.touchEndY = 0
+      
+      const viewer = document.querySelector('.viewer')
+      if (!viewer) return
+      
+      this.handleTouchStart = (e) => {
+        this.touchStartX = e.changedTouches[0].screenX
+        this.touchStartY = e.changedTouches[0].screenY
+      }
+      
+      this.handleTouchEnd = (e) => {
+        this.touchEndX = e.changedTouches[0].screenX
+        this.touchEndY = e.changedTouches[0].screenY
+        this.handleSwipe()
+      }
+      
+      viewer.addEventListener('touchstart', this.handleTouchStart, { passive: true })
+      viewer.addEventListener('touchend', this.handleTouchEnd, { passive: true })
+    },
+
+    cleanupSwipeGestures() {
+      if (!process.client) return
+      
+      const viewer = document.querySelector('.viewer')
+      if (!viewer) return
+      
+      if (this.handleTouchStart) {
+        viewer.removeEventListener('touchstart', this.handleTouchStart)
+      }
+      if (this.handleTouchEnd) {
+        viewer.removeEventListener('touchend', this.handleTouchEnd)
+      }
     },
 
     handleSwipe() {
       const deltaX = this.touchEndX - this.touchStartX
       const deltaY = this.touchEndY - this.touchStartY
-      const absDeltaX = Math.abs(deltaX)
-      const absDeltaY = Math.abs(deltaY)
-
-      if (absDeltaX < this.minSwipeDistance || absDeltaY > absDeltaX) {
-        return
-      }
-
-      if (this.lightbox.show) {
-        if (deltaX > 0) {
-          this.prevImage()
-        } else {
-          this.nextImage()
+      const minSwipeDistance = 50
+      
+      // Check if horizontal swipe is more significant than vertical
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (Math.abs(deltaX) > minSwipeDistance) {
+          if (deltaX > 0) {
+            // Swipe right - previous image
+            this.prevImage()
+          } else {
+            // Swipe left - next image
+            this.nextImage()
+          }
         }
       }
-      else if (this.currentView === 'detail') {
-        if (deltaX > 0 && this.canNavigateWork(-1)) {
-          this.navigateWork(-1)
-        } else if (deltaX < 0 && this.canNavigateWork(1)) {
-          this.navigateWork(1)
-        }
+    },
+
+    nextImage() {
+      this.lightbox.currentIndex = (this.lightbox.currentIndex + 1) % this.lightbox.images.length
+    },
+
+    prevImage() {
+      this.lightbox.currentIndex = (this.lightbox.currentIndex - 1 + this.lightbox.images.length) % this.lightbox.images.length
+    },
+
+    async preloadAllGallery() {
+      if (!this.currentWork) return
+      this.isPreloading = true
+
+      const promises = []
+      for (let i = 1; i <= 20; i++) {
+        const img = new Image()
+        const url = this.getImageUrl(this.currentWork.code, `jp-${i}`)
+        const promise = new Promise((resolve) => {
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+          img.src = url
+        })
+        promises.push(promise)
       }
+
+      await Promise.all(promises)
+      this.isPreloading = false
+      this.showToast('Gallery loaded', 'success')
+    },
+
+    copyToClipboard(code) {
+      navigator.clipboard.writeText(code).then(() => {
+        this.showToast(`Copied: ${code}`, 'success')
+      }).catch(() => {
+        this.showToast('Copy failed', 'error')
+      })
+    },
+
+    openExternalLink(code, type = 'njav') {
+      if (!code) return
+      const formattedCode = code.toLowerCase().replace(/-/g, '-')
+      let url
+
+      if (type === 'missav') {
+        url = `https://missav.ws/en/${formattedCode}`
+      } else if (type === '24av') {
+        url = `https://24av.net/en/v/${formattedCode}`
+      } else {
+        url = `https://www.njav.com/en/xvideos/${formattedCode}`
+      }
+
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+
+    clearViewHistory() {
+      if (confirm('Clear all viewing history?')) {
+        this.viewedArtists = []
+        this.viewedWorks = []
+        localStorage.removeItem('viewedArtists')
+        localStorage.removeItem('viewedWorks')
+        this.showToast('History cleared', 'success')
+      }
+    },
+
+    showToast(msg, type = 'success') {
+      this.toast = { show: true, message: msg, type }
+      setTimeout(() => this.toast.show = false, 2500)
     },
 
     async saveCustomImagesToDB(images) {
@@ -891,462 +1200,65 @@ export default {
       }
     },
 
-    getArtistWorkCount(artist) {
-      return (artist.mainWorks?.length || 0) + (artist.compilations?.length || 0)
-    },
-
-    getWorkType(code) {
-      if (!this.currentArtist) return ''
-      const isMain = this.currentArtist.mainWorks?.some(w => w.code === code)
-      return isMain ? 'Main Work' : 'Compilation'
-    },
-
-    selectArtist(name) {
-      this.saveScrollPosition('artists')
-
-      if (!this.viewedArtists.includes(name)) {
-        this.viewedArtists.push(name)
-      }
-
-      this.currentArtistList = this.filteredArtists
-      this.currentArtistIndex = this.currentArtistList.findIndex(a => a.name === name)
-
-      this.activeTab = name
-      this.currentView = 'works'
-      this.workSearchQuery = ''
-
-      this.$nextTick(() => {
-        window.scrollTo(0, 0)
-      })
-    },
-
-    backToArtists() {
-      this.currentView = 'artists'
-      this.activeTab = ''
-      this.searchQuery = ''
-
-      this.$nextTick(() => {
-        this.restoreScrollPosition('artists')
-      })
-    },
-
-    backToWorks() {
-      this.currentView = 'works'
-      this.currentWork = null
-
-      this.$nextTick(() => {
-        this.restoreScrollPosition('works')
-      })
-    },
-
-    handleSearch() {
-      // Search is reactive
-    },
-
-    handleWorkSearch() {
-      // Search is reactive
-    },
-
-    onThumbLoad(key) {
-      // Thumbnail loaded
-    },
-
-    onImageLoad(key) {
-      this.$set(this.imageLoadingStates, key, 'loaded')
-    },
-
-    onImageError(event, key, type) {
-      this.$set(this.imageLoadingStates, key, 'error')
-      event.target.style.display = 'none'
-    },
-
-    retryImage(key, type) {
-      this.$set(this.imageLoadingStates, key, 'loading')
-      this.$nextTick(() => {
-        this.$set(this.imageLoadingStates, key, null)
-      })
-    },
-
-    onGalleryImageLoad(code, index) {
-      const key = `${code}-${index}`
-      this.$set(this.galleryLoadingStates, key, 'loaded')
-    },
-
-    onGalleryImageError(event, code, index) {
-      const key = `${code}-${index}`
-      this.$set(this.galleryLoadingStates, key, 'error')
-      event.target.style.opacity = '0.2'
-    },
-
-    async preloadAllGallery() {
-      if (!this.currentWork) return
-      this.isPreloading = true
-
-      const promises = []
-      for (let i = 1; i <= 20; i++) {
-        const img = new Image()
-        const url = this.getImageUrl(this.currentWork.code, `jp-${i}`)
-        const key = `${this.currentWork.code}-${i}`
-
-        this.$set(this.galleryLoadingStates, key, 'loading')
-
-        const promise = new Promise((resolve) => {
-          img.onload = () => {
-            this.$set(this.galleryLoadingStates, key, 'loaded')
-            resolve()
-          }
-          img.onerror = () => {
-            this.$set(this.galleryLoadingStates, key, 'error')
-            resolve()
-          }
-          img.src = url
-        })
-
-        promises.push(promise)
-      }
-
-      await Promise.all(promises)
-      this.isPreloading = false
-      this.showToast('Gallery loaded', 'success')
-    },
-
-    getProgressiveImage(artist) {
-      if (this.artistPhotos[artist.name]) {
-        return { full: this.artistPhotos[artist.name], thumb: null }
-      }
-
-      const coverWork = this.getCoverWork(artist)
-      if (!coverWork) {
-        return { full: null, thumb: null }
-      }
-
-      return this.getProgressiveWorkImage(coverWork)
-    },
-
-    getProgressiveWorkImage(work) {
-      if (this.customImages[work.code]) {
-        return { full: this.customImages[work.code], thumb: null }
-      }
-
-      const parsed = parseWorkCode(work.code)
-      if (!parsed) return { full: null, thumb: null }
-
-      const paddedNum = parsed.number.padStart(5, '0')
-      const dmmId = `${parsed.prefix}${paddedNum}`
-
-      if (dmmId.length < 3) return { full: null, thumb: null }
-
-      return {
-        thumb: `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}ps.jpg`,
-        full: `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
-      }
-    },
-
-    hideImage(e) {
-      e.target.style.display = 'none'
-    },
-
-    dimImage(e) {
-      e.target.style.opacity = '0.2'
-    },
-
-    openWorkView(work) {
-      this.saveScrollPosition('works')
-
-      if (!this.viewedWorks.includes(work.code)) {
-        this.viewedWorks.push(work.code)
-      }
-
-      const isMain = this.currentArtist.mainWorks.find(w => w.code === work.code)
-      this.currentWorkList = isMain ? this.filteredMainWorks : this.filteredCompilations
-
-      this.currentWorkIndex = this.currentWorkList.findIndex(w => w.code === work.code)
-      this.currentWork = work
-      this.currentView = 'detail'
-
-      this.$nextTick(() => {
-        window.scrollTo(0, 0)
-        this.preloadAdjacentWorks()
-      })
-    },
-
-    preloadAdjacentWorks() {
-      if (this.currentWorkIndex > 0) {
-        const prevWork = this.currentWorkList[this.currentWorkIndex - 1]
-        const prevImages = this.getProgressiveWorkImage(prevWork)
-        if (prevImages.full) {
-          const img = new Image()
-          img.src = prevImages.full
-        }
-      }
-
-      if (this.currentWorkIndex < this.currentWorkList.length - 1) {
-        const nextWork = this.currentWorkList[this.currentWorkIndex + 1]
-        const nextImages = this.getProgressiveWorkImage(nextWork)
-        if (nextImages.full) {
-          const img = new Image()
-          img.src = nextImages.full
-        }
-      }
-    },
-
-    navigateWork(direction) {
-      const newIndex = this.currentWorkIndex + direction
-      if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
-        this.currentWorkIndex = newIndex
-        this.currentWork = this.currentWorkList[newIndex]
-        this.preloadAdjacentWorks()
-      }
-    },
-
-    canNavigateWork(direction) {
-      const newIndex = this.currentWorkIndex + direction
-      return newIndex >= 0 && newIndex < this.currentWorkList.length
-    },
-
-    getImageUrl(code, quality = 'pl') {
-      if (quality === 'pl' && this.customImages[code]) return this.customImages[code]
-      const parsed = parseWorkCode(code)
-      if (!parsed) return null
-      const paddedNum = parsed.number.padStart(5, '0')
-      const dmmId = `${parsed.prefix}${paddedNum}`
-      if (dmmId.length < 3) return null
-      if (quality !== 'pl') {
-        const qNum = quality.split('-')[1] || '1'
-        return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}jp-${qNum}.jpg`
-      }
-      return `https://pics.dmm.co.jp/digital/video/${dmmId}/${dmmId}pl.jpg`
-    },
-
-    hasCustomImage(code) {
-      return !!this.customImages[code]
-    },
-
-    openLightbox(work, startIndex = 0) {
-      const images = [this.getImageUrl(work.code)]
-      for (let i = 1; i <= 20; i++) {
-        images.push(this.getImageUrl(work.code, `jp-${i}`))
-      }
-      this.lightbox = { show: true, images, currentIndex: startIndex, code: work.code }
-      if (process.client) document.body.style.overflow = 'hidden'
-    },
-
-    closeLightbox() {
-      this.lightbox.show = false
-      if (process.client) document.body.style.overflow = ''
-    },
-
-    nextImage() {
-      this.lightbox.currentIndex = (this.lightbox.currentIndex + 1) % this.lightbox.images.length
-    },
-
-    prevImage() {
-      this.lightbox.currentIndex = (this.lightbox.currentIndex - 1 + this.lightbox.images.length) % this.lightbox.images.length
-    },
-
-    openAddWorkModal() {
-      this.newWork = { artist: this.activeTab || '', code: '', type: 'mainWorks' }
-      this.showAddWorkModal = true
-    },
-
-    closeAddWorkModal() {
-      this.showAddWorkModal = false
-    },
-
-    openAddArtistModal() {
-      this.newArtist = { name: '', photo: '' }
-      this.showAddArtistModal = true
-    },
-
-    closeAddArtistModal() {
-      this.showAddArtistModal = false
-    },
-
-    openUploadModal(code) {
-      this.uploadingWork = code
-      this.customImageUrl = ''
-      this.showUploadModal = true
-    },
-
-    closeUploadModal() {
-      this.showUploadModal = false
-      this.uploadingWork = null
-      this.customImageUrl = ''
-    },
-
-    addNewArtist() {
-      if (!this.newArtist.name.trim()) return this.showToast('Name required', 'error')
-      if (this.artists.some(a => a.name === this.newArtist.name)) return this.showToast('Artist exists', 'error')
-      const newArtist = { name: this.newArtist.name.trim(), photo: this.newArtist.photo || '', mainWorks: [], compilations: [] }
-      this.artists.push(newArtist)
-      this.artists = [...this.artists]
-      this.activeTab = newArtist.name
-      this.closeAddArtistModal()
-      this.showToast(`Added ${newArtist.name}`, 'success')
-    },
-
-    getCoverWork(artist) {
-      if (artist.cover) {
-        const allWorks = [...(artist.mainWorks || []), ...(artist.compilations || [])]
-        const coverWork = allWorks.find(w => w.code === artist.cover)
-        if (coverWork) return coverWork
-      }
-
-      if (artist.mainWorks?.length > 0) {
-        return artist.mainWorks[0]
-      }
-
-      if (artist.compilations?.length > 0) {
-        return artist.compilations[0]
-      }
-
-      return null
-    },
-
-    setCoverWork(artistName, workCode) {
-      const artist = this.artists.find(a => a.name === artistName)
-      if (artist) {
-        artist.cover = workCode
-        this.artists = [...this.artists]
-      }
-      this.showToast('Cover updated', 'success')
-    },
-
-    isCoverWork(artistName, workCode) {
-      const artist = this.artists.find(a => a.name === artistName)
-      return artist?.cover === workCode
-    },
-
-    async addNewWork() {
-      if (!this.newWork.artist || !this.newWork.code) return this.showToast('Required fields', 'error')
-      const code = this.newWork.code.toUpperCase()
-      if (this.artists.some(a => a.mainWorks?.some(w => w.code === code) || a.compilations?.some(w => w.code === code))) {
-        return this.showToast('Code exists', 'error')
-      }
-      const artist = this.artists.find(a => a.name === this.newWork.artist)
-      if (!artist) return this.showToast('Artist not found', 'error')
-      if (!artist[this.newWork.type]) artist[this.newWork.type] = []
-
-      // Add work with timestamp
-      artist[this.newWork.type].push({
-        code,
-        addedAt: Date.now()
-      })
-
-      this.artists = [...this.artists]
-      this.closeAddWorkModal()
-      this.showToast(`Added ${code}`, 'success')
-    },
-
-    hasSimilarCode(code) {
-      const allCodes = this.artists.flatMap(a => [...(a.mainWorks || []).map(w => w.code), ...(a.compilations || []).map(w => w.code)])
-      const similar = allCodes.filter(c => {
-        if (c === code) return false
-        const codeMatch = code.match(/^([A-Z]+)-?(\d+)$/)
-        const checkMatch = c.match(/^([A-Z]+)-?(\d+)$/)
-        if (!codeMatch || !checkMatch) return false
-        const [, prefix1, num1] = codeMatch
-        const [, prefix2, num2] = checkMatch
-        if (prefix1 !== prefix2) return false
-        const diff = Math.abs(parseInt(num1) - parseInt(num2))
-        return diff === 1 || diff === 2
-      })
-      return similar.length > 0
-    },
-
-    copyToClipboard(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        this.showToast(`Copied: ${code}`, 'success')
-      }).catch(() => {
-        this.showToast('Copy failed', 'error')
-      })
-    },
-
-    openExternalLink(code, type = 'njav') {
-      if (!code) return
-      const formattedCode = code.toLowerCase().replace(/-/g, '-')
-      let url
-
-      if (type === 'missav') {
-        url = `https://missav.ws/en/${formattedCode}`
-      } else if (type === '24av') {
-        url = `https://24av.net/en/v/${formattedCode}`
-      } else if (type === '24av-uncensored') {
-        url = `https://24av.net/en/v/${formattedCode}-uncensored-leaked`
-      } else {
-        url = `https://www.njav.com/en/xvideos/${formattedCode}`
-      }
-
-      window.open(url, '_blank', 'noopener,noreferrer')
-    },
-
-    async handleCustomImageUrl() {
-      const url = this.customImageUrl.trim()
-      if (!url) return this.showToast('Enter URL', 'error')
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        return this.showToast('Must start with http:// or https://', 'error')
-      }
-
-      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-      const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext))
-      if (!hasImageExtension) {
-        const proceed = confirm('URL does not end with image extension. Continue?')
-        if (!proceed) return
-      }
-
-      const img = new Image()
-      const timeout = setTimeout(() => {
-        this.showToast('Load timeout', 'error')
-      }, 10000)
-
-      img.onload = () => {
-        clearTimeout(timeout)
-        this.customImages = { ...this.customImages, [this.uploadingWork]: url }
-        this.showToast('Image added', 'success')
-        this.closeUploadModal()
-        this.artists = [...this.artists]
-      }
-
-      img.onerror = () => {
-        clearTimeout(timeout)
-        this.showToast('Failed to load image', 'error')
-      }
-
-      img.src = url
-    },
-
-    async removeCustomImage(code) {
-      if (confirm(`Remove custom image?`)) {
-        const newCustomImages = { ...this.customImages }
-        delete newCustomImages[code]
-        this.customImages = newCustomImages
-        this.showToast('Removed', 'success')
-        this.artists = [...this.artists]
-      }
-    },
-
-    showToast(msg, type = 'success') {
-      this.toast = { show: true, message: msg, type }
-      setTimeout(() => this.toast.show = false, 2500)
-    },
-
     exportData() {
       try {
-        const data = {
-          artists: this.artists,
-          customImages: this.customImages,
-          artistPhotos: this.artistPhotos
-        }
-        const json = JSON.stringify(data, null, 2)
-        const blob = new Blob([json], { type: 'application/json' })
+        // Transform and sort artists data
+        const transformedArtists = this.artists
+          .map(artist => ({
+            name: artist.name,
+            cover: artist.cover || '',
+            url: this.artistPhotos[artist.name] || '',
+            compilations: (artist.compilations || [])
+              .map(w => w.code)
+              .sort((a, b) => a.localeCompare(b)),
+            mainWorks: (artist.mainWorks || [])
+              .map(w => w.code)
+              .sort((a, b) => a.localeCompare(b))
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+
+        // Create the export string in JavaScript format
+        let exportString = 'export const DEFAULT_ARTISTS = [\n'
+        
+        transformedArtists.forEach((artist, index) => {
+          exportString += '  {\n'
+          exportString += `    name: '${artist.name}',\n`
+          exportString += `    cover: '${artist.cover}',\n`
+          exportString += `    url: '${artist.url}',\n`
+          
+          // Compilations
+          if (artist.compilations.length > 0) {
+            exportString += `    compilations: [${artist.compilations.map(c => `'${c}'`).join(', ')}],\n`
+          } else {
+            exportString += `    compilations: [],\n`
+          }
+          
+          // Main works
+          if (artist.mainWorks.length > 0) {
+            exportString += `    mainWorks: [${artist.mainWorks.map(w => `'${w}'`).join(', ')}]\n`
+          } else {
+            exportString += `    mainWorks: []\n`
+          }
+          
+          exportString += '  }'
+          if (index < transformedArtists.length - 1) {
+            exportString += ','
+          }
+          exportString += '\n'
+        })
+        
+        exportString += ']'
+
+        const blob = new Blob([exportString], { type: 'text/javascript' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `works-tracker-${new Date().toISOString().split('T')[0]}.json`
+        a.download = `artists-${new Date().toISOString().split('T')[0]}.js`
         a.click()
         URL.revokeObjectURL(url)
-        this.showToast('Exported', 'success')
+        this.showToast('Exported as .js', 'success')
       } catch (e) {
+        console.error('Export error:', e)
         this.showToast('Export failed', 'error')
       }
     },
@@ -1374,7 +1286,6 @@ export default {
           this.customImages = data.customImages || {}
           this.artistPhotos = data.artistPhotos || {}
           localStorage.setItem('artists', JSON.stringify(this.artists))
-          this.migrateWorkTimestamps()
           this.showToast('Imported', 'success')
         }
         reader.readAsText(file)
@@ -1384,138 +1295,9 @@ export default {
       }
     },
 
-    openArtistPhotoModal(artistName) {
-      this.editingArtistName = artistName
-      this.artistPhotoUrl = this.artistPhotos[artistName] || ''
-      const artist = this.artists.find(a => a.name === artistName)
-      this.coverImageUrl = artist?.url || ''
-      this.showArtistPhotoModal = true
-    },
-
-    openArtistUrl(url) {
-      if (!url) return
-      window.open(url, '_blank', 'noopener,noreferrer')
-    },
-
-    closeArtistPhotoModal() {
-      this.showArtistPhotoModal = false
-      this.editingArtistName = ''
-      this.artistPhotoUrl = ''
-      this.coverImageUrl = ''
-    },
-
-    openArtistUrlModal(artistName) {
-      this.editingArtistName = artistName
-      const artist = this.artists.find(a => a.name === artistName)
-      this.artistCustomUrl = artist?.url || ''
-      this.showArtistUrlModal = true
-    },
-
-    closeArtistUrlModal() {
-      this.showArtistUrlModal = false
-      this.editingArtistName = ''
-      this.artistCustomUrl = ''
-    },
-
-    updateArtistUrl() {
-      const artist = this.artists.find(a => a.name === this.editingArtistName)
-      if (artist) {
-        artist.url = this.artistCustomUrl.trim()
-        this.artists = [...this.artists]
-        this.showToast('URL updated', 'success')
-        this.closeArtistUrlModal()
-      }
-    },
-
-    updateArtistPhoto() {
-      const url = this.artistPhotoUrl.trim()
-      if (!url) {
-        this.updateCoverImage()
-        return
-      }
-
-      const img = new Image()
-      const timeout = setTimeout(() => {
-        this.showToast('Load timeout', 'error')
-      }, 10000)
-
-      img.onload = () => {
-        clearTimeout(timeout)
-        this.artistPhotos = { ...this.artistPhotos, [this.editingArtistName]: url }
-        localStorage.setItem('artistPhotos', JSON.stringify(this.artistPhotos))
-        this.updateCoverImage()
-      }
-
-      img.onerror = () => {
-        clearTimeout(timeout)
-        this.showToast('Photo load failed', 'error')
-      }
-
-      img.src = url
-    },
-
-    updateCoverImage() {
-      const url = this.coverImageUrl.trim()
-      if (!url) {
-        this.showToast('Updated', 'success')
-        this.closeArtistPhotoModal()
-        return
-      }
-
-      const img = new Image()
-      const timeout = setTimeout(() => {
-        this.showToast('Cover load timeout', 'error')
-        this.closeArtistPhotoModal()
-      }, 10000)
-
-      img.onload = () => {
-        clearTimeout(timeout)
-        const artist = this.artists.find(a => a.name === this.editingArtistName)
-        if (artist) {
-          artist.url = url
-          this.artists = [...this.artists]
-        }
-        this.showToast('Updated', 'success')
-        this.closeArtistPhotoModal()
-      }
-
-      img.onerror = () => {
-        clearTimeout(timeout)
-        this.showToast('Cover load failed', 'error')
-      }
-
-      img.src = url
-    },
-
-    saveScrollPosition(view) {
-      if (process.client) {
-        this.scrollPositions[view] = window.scrollY || window.pageYOffset || 0
-      }
-    },
-
-    restoreScrollPosition(view) {
-      if (process.client) {
-        const scrollPos = this.scrollPositions[view] || 0
-        requestAnimationFrame(() => {
-          window.scrollTo({
-            top: scrollPos,
-            behavior: 'instant'
-          })
-        })
-      }
-    },
-
-    clearViewHistory() {
-      if (confirm('Clear all viewing history? This will remove all highlights.')) {
-        this.viewedArtists = []
-        this.viewedWorks = []
-        localStorage.removeItem('viewedArtists')
-        localStorage.removeItem('viewedWorks')
-        this.showToast('History cleared', 'success')
-      }
-    },
-
     async hardRefresh() {
+      if (!confirm('Reset everything? Cannot be undone.')) return
+
       try {
         this.showToast('Refreshing...', 'info')
         localStorage.removeItem('artists')
@@ -1523,17 +1305,24 @@ export default {
         localStorage.removeItem('viewedArtists')
         localStorage.removeItem('viewedWorks')
         localStorage.removeItem('artistSortBy')
+        localStorage.removeItem('customImages')
+        
+        if (this.imageDB) {
+          await this.imageDB.clear()
+        }
+        
         this.artists = normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS)))
         this.currentView = 'artists'
         this.activeTab = ''
         this.artistPhotos = {}
+        this.customImages = {}
         this.viewedArtists = []
         this.viewedWorks = []
         this.artistSortBy = 'nameAsc'
         localStorage.setItem('artists', JSON.stringify(this.artists))
-        this.showToast('Reset to default', 'success')
+        this.showToast('Reset complete', 'success')
       } catch (e) {
-        this.showToast('Refresh failed', 'error')
+        this.showToast('Reset failed', 'error')
       }
     }
   }
@@ -1541,1072 +1330,592 @@ export default {
 </script>
 
 <style scoped>
-/* CSS Variables */
-:root {
-  --bg: #ffffff;
-  --bg-card: #ffffff;
-  --bg-alt: #f9fafb;
-  --text: #111827;
-  --text-light: #6b7280;
-  --border: #e5e7eb;
-  --accent: #58a6ff;
-  --accent-hover: #4a95e8;
-  --purple: #a78bfa;
-  --error: #ef4444;
-  --info: #3b82f6;
-  --success: #10b981;
-  --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --gradient-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
-  /* UX Enhancement Variables */
-  --transition-fast: 0.15s;
-  --transition-normal: 0.3s;
-  --transition-slow: 0.5s;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --focus-ring: 0 0 0 4px rgba(88, 166, 255, 0.15);
-}
-
-*,
-*::before,
-*::after {
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Smooth Scrolling for Better Navigation */
-html {
-  scroll-behavior: smooth;
+:root {
+  --cream: #faf8f5;
+  --ink: #1a1a1a;
+  --gray: #6b6b6b;
+  --red: #ff3b3b;
+  --blue: #0066ff;
+  --border: #e0e0e0;
+  
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* App Container */
-.app-container {
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.works-app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
 }
 
-/* Header - Sticky for Easy Access */
-.header {
-  position: sticky;
+/* TOP BAR */
+.top-bar {
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: var(--cream);
+  border-bottom: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
   z-index: 100;
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 1px 0 0 rgba(88, 166, 255, 0.1);
-  flex-shrink: 0;
 }
 
-.header-inner {
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 10px;
+.top-left {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
-.header-title {
+.logo-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: baseline;
+  gap: 8px;
 }
 
-.header h1 {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.3px;
+.back-btn-fixed {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  transition: all 0.2s var(--ease);
 }
 
-.header-stats {
+.back-btn-fixed:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+.logo-count {
   font-size: 12px;
-  color: var(--text-light);
-  font-weight: 500;
+  color: var(--gray);
+  font-family: var(--font-mono);
+  font-weight: 400;
 }
 
-.header-actions {
+.top-controls {
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  align-items: center;
 }
 
-/* Improved Icon Buttons - Better Touch Targets & Feedback */
+.search-compact {
+  width: 200px;
+  padding: 8px 12px;
+  background: white;
+  border: 2px solid var(--ink);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-weight: 500;
+  outline: none;
+}
+
+.search-compact:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+}
+
+.search-compact::placeholder {
+  color: var(--gray);
+}
+
+.sort-compact {
+  padding: 8px 12px;
+  background: white;
+  border: 2px solid var(--ink);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%231a1a1a' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  outline: none;
+}
+
+.sort-compact:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+}
+
 .icon-btn {
   width: 40px;
   height: 40px;
-  border: 2px solid var(--border);
-  background: var(--bg-card);
+  background: none;
+  border: 2px solid var(--ink);
   cursor: pointer;
-  font-size: 16px;
-  color: var(--text-light);
-  transition: all var(--transition-fast);
-  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  transition: all 0.2s var(--ease);
 }
 
-.icon-btn:hover {
-  background: var(--accent);
-  color: var(--bg);
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
+.icon-btn:hover,
+.icon-btn.active {
+  background: var(--ink);
 }
 
-.icon-btn:active {
-  transform: translateY(0);
+.icon-btn:hover svg,
+.icon-btn.active svg {
+  stroke: var(--cream);
 }
 
-/* Tooltip for Icon Buttons */
-.icon-btn::after {
-  content: attr(title);
-  position: absolute;
-  bottom: -35px;
-  left: 50%;
-  transform: translateX(-50%) scale(0.9);
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: all var(--transition-fast);
-  font-weight: 500;
-}
-
-.icon-btn:hover::after {
-  opacity: 1;
-  transform: translateX(-50%) scale(1);
-}
-
-/* Main Content */
-.main {
-  width: 100%;
-  padding: 12px;
-  flex: 1;
-  background: var(--bg);
-}
-
-.view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 24px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--bg-alt);
-}
-
-.view-header h2 {
-  font-size: 16px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Visual Breadcrumb Effect */
-.view-header h2::before {
-  content: '';
-  width: 4px;
-  height: 20px;
-  background: var(--accent);
-  border-radius: 2px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-/* Improved Search Input - Clear Visual Focus */
-.search-input {
-  padding: 10px 16px 10px 40px;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: inherit;
-  min-width: 200px;
-  transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--bg-card);
-  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 12C9.76142 12 12 9.76142 12 7C12 4.23858 9.76142 2 7 2C4.23858 2 2 4.23858 2 7C2 9.76142 4.23858 12 7 12Z' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 14L10.5 10.5' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 12px center;
-  background-size: 16px;
-  color: var(--text);
-  font-weight: 500;
-  box-shadow: var(--shadow-sm);
-}
-
-.search-input::placeholder {
-  color: var(--text-light);
-  opacity: 0.6;
-}
-
-.search-input:hover {
-  border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15);
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring), 0 2px 12px rgba(88, 166, 255, 0.2);
-  transform: translateY(-1px);
-}
-
-.work-search {
-  flex: 1;
-  min-width: 200px;
-}
-
-/* Improved Sort Select - Better Visual Hierarchy */
-.sort-select {
-  padding: 10px 16px;
-  padding-right: 36px;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: inherit;
-  transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--bg-card);
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 12px;
-  color: var(--text);
+.header-btn {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: 2px solid var(--ink);
   cursor: pointer;
-  font-weight: 500;
-  min-width: 180px;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  box-shadow: var(--shadow-sm);
-}
-
-.sort-select:hover {
-  border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15);
-}
-
-.sort-select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring), 0 2px 12px rgba(88, 166, 255, 0.2);
-  transform: translateY(-1px);
-}
-
-.sort-select option {
-  padding: 10px;
-  background: var(--bg-card);
-  color: var(--text);
-}
-
-/* Controls Row */
-.controls-row {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
   align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--ease);
 }
 
-/* No Results - More Helpful */
-.no-results {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--text-light);
-  font-size: 14px;
-  background: var(--bg-alt);
-  border-radius: 12px;
-  margin: 20px 0;
+.header-btn:hover {
+  background: var(--ink);
 }
 
-.no-results p {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
+.header-btn:hover svg {
+  stroke: var(--cream);
 }
 
-.no-results p::before {
-  content: '🔍';
-  display: block;
-  font-size: 48px;
-  margin-bottom: 16px;
+.header-btn.danger:hover {
+  background: var(--red);
+  border-color: var(--red);
 }
 
-/* Artist Group Styles - Better Visual Separation */
+.header-btn.danger:hover svg {
+  stroke: white;
+}
+
+/* CONTENT */
+.content {
+  padding: 80px 20px 40px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.search-inline {
+  margin-bottom: 32px;
+}
+
+/* ARTIST GROUPING */
 .artist-group {
-  margin-bottom: 48px;
-  scroll-margin-top: 80px;
+  margin-bottom: 56px;
 }
 
 .group-letter {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 20px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  border-bottom: 3px solid var(--accent);
-  letter-spacing: -0.5px;
   position: sticky;
   top: 60px;
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  z-index: 10;
-  -webkit-text-fill-color: var(--text);
-  border-left: 4px solid var(--accent);
-}
-
-/* Artists Grid */
-.artists-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  padding: 4px;
-}
-
-/* Improved Artist Cards - Better Hover Feedback */
-.artist-item {
-  cursor: pointer;
-  position: relative;
-  background: var(--bg-card);
-  border-radius: 12px;
-  overflow: hidden;
-  border: 2px solid var(--border);
-  transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-sm);
-}
-
-.artist-item:hover {
-  border-color: var(--accent);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--accent);
-}
-
-.artist-item:active {
-  transform: translateY(-2px);
-}
-
-.artist-item:hover .artist-cover {
-  filter: brightness(1.05);
-}
-
-/* Pulse Animation for Highlighted Items */
-.artist-item.highlighted {
-  border-color: #fbbf24;
-  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.25);
-  animation: subtlePulse 2s ease-in-out infinite;
-}
-
-@keyframes subtlePulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.25);
-  }
-
-  50% {
-    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.35);
-  }
-}
-
-.artist-item.highlighted::after {
-  content: '✓';
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 28px;
-  height: 28px;
-  background: #fbbf24;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-  z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.artist-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 2;
-  background: #000;
-  border-radius: 12px 12px 0 0;
-  overflow: hidden;
-  margin-bottom: 0;
-  transition: all var(--transition-normal) ease;
-  border: none;
-}
-
-.artist-item:hover .artist-cover {
-  filter: brightness(0.95);
-}
-
-.artist-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: opacity var(--transition-normal), transform var(--transition-slow);
-}
-
-/* Subtle Zoom on Hover */
-.artist-item:hover .artist-cover img {
-  transform: scale(1.05);
-}
-
-.artist-cover img.hidden {
-  opacity: 0;
-}
-
-.artist-meta {
-  padding: 12px;
-  background: var(--bg-card);
-}
-
-.artist-meta h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
-  line-height: 1.4;
-  color: var(--text);
-}
-
-.artist-meta p {
-  font-size: 12px;
-  color: var(--text-light);
-  font-weight: 500;
-}
-
-/* Improved Edit Button - Always Visible on Mobile */
-.edit-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  opacity: 0;
-  transition: all var(--transition-fast);
-  z-index: 10;
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.artist-item:hover .edit-btn {
-  opacity: 1;
-}
-
-.edit-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: scale(1.1);
-}
-
-/* Index Numbers - Better Contrast */
-.index-number {
-  color: var(--text-light);
-  font-weight: 600;
-  margin-right: 4px;
-  opacity: 0.7;
-  font-size: 12px;
-}
-
-.artist-meta .index-number {
-  font-size: 13px;
-}
-
-.work-item p .index-number {
-  font-size: 11px;
-  font-family: inherit;
-}
-
-/* Works Section */
-.works-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 48px;
-  gap: 20px;
-}
-
-/* Improved Back Button - More Obvious */
-.back-btn {
-  background: var(--bg-alt);
-  border: 2px solid var(--border);
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text);
-  padding: 10px 16px;
-  transition: all var(--transition-fast);
-  font-weight: 600;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.back-btn:hover {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-  transform: translateX(-4px);
-}
-
-.title-block {
-  flex: 1;
-  text-align: center;
-}
-
-.title-block h1 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.work-stats {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  font-size: 13px;
-  flex-wrap: wrap;
-}
-
-.count {
-  color: #000;
-  font-weight: 600;
-  background: var(--bg-alt);
-  padding: 4px 12px;
-  border-radius: 6px;
-}
-
-.count-detail {
-  color: #777;
-  font-weight: 500;
-  background: var(--bg-alt);
-  padding: 4px 12px;
-  border-radius: 6px;
-}
-
-.artist-nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.works-section {
-  margin-bottom: 48px;
-}
-
-.works-section h3 {
-  font-size: 12px;
+  z-index: 50;
+  font-size: 48px;
   font-weight: 700;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-bottom: 20px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--accent);
-  display: inline-block;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  background: var(--cream);
+  margin-bottom: 24px;
+  padding: 16px 0 12px;
+  border-bottom: 3px solid var(--ink);
+  letter-spacing: -2px;
 }
 
-/* Works Grid */
-.works-grid {
+.search-inline .search-field {
+  width: 100%;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid var(--ink);
+  font-size: 15px;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-weight: 500;
+  outline: none;
+}
+
+.search-inline .search-field:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+}
+
+.search-inline .search-field::placeholder {
+  color: var(--gray);
+}
+
+/* IMAGE GRID */
+.image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  padding: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 28px;
 }
 
-/* Improved Work Items - Better Visual Feedback */
-.work-item {
-  cursor: pointer;
-  transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--bg-card);
-  border-radius: 12px;
-  overflow: hidden;
-  border: 2px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  position: relative;
-}
-
-.work-item:hover {
-  border-color: var(--purple);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--purple);
-}
-
-.work-item:active {
-  transform: translateY(-2px);
-}
-
-.work-item:hover .work-cover {
-  filter: brightness(1.05);
-}
-
-.work-item.highlighted {
-  border-color: #fbbf24;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
-  animation: subtlePulse 2s ease-in-out infinite;
-}
-
-.work-item.highlighted::after {
-  content: '✓';
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 24px;
-  height: 24px;
-  background: #fbbf24;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
-  z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.work-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 2;
-  background: #000;
-  border-radius: 8px 8px 0 0;
-  overflow: hidden;
-  margin-bottom: 0;
-  transition: filter var(--transition-normal);
-  border: none;
-}
-
-.work-item:hover .work-cover {
-  filter: brightness(0.95);
-}
-
-.work-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
-  transition: opacity var(--transition-normal), transform var(--transition-slow);
-}
-
-.work-item:hover .work-cover img {
-  transform: scale(1.05);
-}
-
-.work-cover img.hidden {
-  opacity: 0;
-}
-
-.work-badges {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  display: flex;
-  gap: 6px;
-  z-index: 5;
-}
-
-.badge {
-  font-size: 11px;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  border-radius: 4px;
-  font-weight: 600;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.badge.cover {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-  color: white;
-}
-
-.badge.warn {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.work-item>p {
-  font-size: 13px;
-  color: var(--text);
-  font-family: 'Monaco', 'Courier', monospace;
-  font-weight: 600;
-  background: var(--bg-card);
-  padding: 12px;
-  text-align: center;
-}
-
-/* Image Loading States - Better Visual Feedback */
-.image-blur {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  filter: blur(20px);
-  transform: scale(1.1);
-  z-index: 1;
-}
-
-.artist-cover img:not(.image-blur),
-.work-cover img:not(.image-blur),
-.cover-large img:not(.image-blur) {
-  position: relative;
-  z-index: 2;
-}
-
-.image-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  z-index: 3;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.image-loading-small {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  z-index: 3;
-}
-
-.spinner-small {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* Improved Retry Buttons */
-.retry-btn {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 10px 20px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  z-index: 4;
-  transition: all var(--transition-fast);
-  font-weight: 600;
-  box-shadow: var(--shadow-md);
-}
-
-.retry-btn:hover {
-  background: var(--accent-hover);
-  transform: translate(-50%, -50%) scale(1.05);
-}
-
-.retry-btn-small {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 16px;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-md);
-}
-
-.retry-btn-small:hover {
-  background: var(--accent-hover);
-  transform: translate(-50%, -50%) scale(1.1);
-}
-
-.placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: 32px;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 300;
-  background: var(--gradient-1);
-}
-
-/* Detail View */
-.detail {
-  padding: 24px;
-}
-
-.swipe-hint {
-  display: none;
-  text-align: center;
-  padding: 12px;
-  margin-bottom: 20px;
-  background: rgba(88, 166, 255, 0.1);
-  border: 2px dashed rgba(88, 166, 255, 0.3);
-  border-radius: 12px;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
-  animation: fadeInOut 4s ease-in-out;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 500px 1fr;
-  gap: 48px;
-}
-
-.detail-left {
-  display: flex;
-  flex-direction: column;
+.image-grid.tight {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 24px;
 }
 
-.cover-large {
+.grid-item {
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s var(--ease);
+}
+
+.grid-item:hover {
+  transform: translateY(-4px);
+}
+
+.grid-item.seen {
+  opacity: 0.4;
+}
+
+.grid-item.seen::before {
+  content: '✓';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 32px;
+  height: 32px;
+  background: var(--ink);
+  color: var(--cream);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  z-index: 10;
+}
+
+.grid-item.seen .item-photo {
+  border-color: var(--gray);
+}
+
+.item-photo {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
-  background: #000;
-  border-radius: 8px;
+  background: white;
+  border: 2px solid var(--ink);
   overflow: hidden;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  border: 2px solid var(--border);
-  box-shadow: var(--shadow-md);
+  margin-bottom: 8px;
 }
 
-.cover-large:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-lg);
-  transform: scale(1.02);
-}
-
-.cover-large img {
+.item-photo img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  transition: opacity var(--transition-normal);
+  object-fit: cover;
+  display: block;
 }
 
-.cover-large img.hidden {
-  opacity: 0;
-}
-
-.image-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 40%);
-  opacity: 0;
-  transition: opacity var(--transition-normal);
+.photo-empty {
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding-bottom: 20px;
-  pointer-events: none;
-  z-index: 5;
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--gray);
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
 }
 
-.cover-large:hover .image-overlay {
+.photo-star {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: var(--ink);
+  color: var(--cream);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  z-index: 10;
+}
+
+.item-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-label.compact {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.label-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+.label-meta {
+  font-size: 12px;
+  color: var(--gray);
+  font-family: var(--font-mono);
+}
+
+.item-edit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: white;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ink);
+  opacity: 0;
+  transition: all 0.2s var(--ease);
+}
+
+.grid-item:hover .item-edit {
   opacity: 1;
 }
 
-.zoom-hint {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 8px 16px;
-  border-radius: 20px;
-  backdrop-filter: blur(10px);
+.item-edit:hover {
+  background: var(--ink);
+  color: var(--cream);
 }
 
-.detail-meta {
+/* CONTENT HEADER */
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 20px;
+}
+
+.nav-add {
+  padding: 12px 20px;
+  background: white;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  transition: all 0.2s var(--ease);
+}
+
+.nav-add:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.header-title {
+  flex: 1;
+}
+
+.header-title h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.title-tags {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray);
+  font-family: var(--font-mono);
+}
+
+/* WORKS BLOCK */
+.works-block {
+  margin-bottom: 56px;
+}
+
+.block-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gray);
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+}
+
+/* DETAIL VIEW */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+}
+
+.detail-hero {
+  display: grid;
+  grid-template-columns: 600px 1fr;
+  gap: 32px;
+  max-width: 100%;
+}
+
+.hero-image {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: white;
+  border: 2px solid var(--ink);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.hero-image:hover {
+  box-shadow: 0 8px 0 var(--ink);
+}
+
+.hero-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.hero-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
-.code-title {
-  font-size: 18px;
-  font-weight: 600;
+.info-code {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-mono);
   cursor: pointer;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid var(--ink);
+  transition: all 0.2s var(--ease);
   user-select: all;
-  font-family: 'Monaco', 'Courier', monospace;
-  transition: all var(--transition-fast);
-  padding: 8px 12px;
-  margin: -8px -12px;
-  border: 2px solid transparent;
-  border-radius: 8px;
 }
 
-.code-title:hover {
-  border-color: var(--accent);
-  background: var(--bg-alt);
+.info-code:hover {
+  background: var(--ink);
+  color: var(--cream);
 }
 
-.detail-type {
-  margin-top: -8px;
+.info-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.type-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  background: var(--bg-alt);
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  font-size: 11px;
-  color: var(--text);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.action-btn {
+  padding: 12px 20px;
+  background: white;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  transition: all 0.2s var(--ease);
 }
 
-.meta-row {
+.action-btn:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.action-btn.active {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.info-links {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.set-cover-btn {
-  padding: 10px 16px;
-  background: var(--bg-alt);
-  border: 2px solid var(--accent);
-  border-radius: 8px;
+.link-pill {
+  padding: 8px 16px;
+  background: var(--ink);
+  color: var(--cream);
+  border: 2px solid var(--ink);
   cursor: pointer;
-  font-size: 13px;
-  transition: all var(--transition-fast);
-  color: var(--accent);
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  transition: all 0.2s var(--ease);
 }
 
-.set-cover-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+.link-pill:hover {
+  background: var(--red);
+  border-color: var(--red);
 }
 
-.set-cover-btn.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.link-btn {
-  padding: 10px 16px;
-  background: var(--bg-alt);
-  border: 2px solid var(--border);
-  cursor: pointer;
-  font-size: 13px;
-  transition: all var(--transition-fast);
-  text-align: center;
-  font-weight: 600;
-  color: var(--text);
-  border-radius: 8px;
-}
-
-.link-btn:hover {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.nav-row {
+.info-nav {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding-top: 16px;
-  border-top: 2px solid var(--border);
-  margin-top: 8px;
+  padding: 16px;
+  background: white;
+  border: 2px solid var(--ink);
 }
 
 .nav-btn {
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--accent);
-  background: var(--bg-card);
+  width: 40px;
+  height: 40px;
+  background: var(--ink);
+  color: var(--cream);
+  border: none;
+  font-size: 18px;
   cursor: pointer;
-  font-size: 16px;
-  transition: all var(--transition-fast);
-  color: var(--accent);
   font-weight: 700;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: all 0.2s var(--ease);
 }
 
 .nav-btn:hover:not(:disabled) {
-  background: var(--accent);
-  color: #fff;
-  transform: scale(1.1);
+  background: var(--red);
 }
 
 .nav-btn:disabled {
@@ -2614,494 +1923,368 @@ html {
   cursor: not-allowed;
 }
 
-.nav-count {
-  font-size: 13px;
-  color: var(--text);
-  min-width: 60px;
-  text-align: center;
+.nav-label {
+  font-family: var(--font-mono);
+  font-size: 14px;
   font-weight: 600;
-  background: var(--bg-alt);
-  padding: 6px 12px;
-  border-radius: 6px;
 }
 
-/* Gallery */
-.detail-right h3 {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-bottom: 20px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--accent);
-}
-
-.gallery-header {
+/* GALLERY */
+.detail-gallery {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.gallery-header h3 {
-  margin-bottom: 0;
-}
-
-.preload-btn {
-  padding: 8px 16px;
-  background: var(--bg-alt);
-  border: 2px solid var(--accent);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: all var(--transition-fast);
-  color: var(--accent);
-}
-
-.preload-btn:hover:not(:disabled) {
-  background: var(--accent);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.preload-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  flex-direction: column;
   gap: 16px;
 }
 
-.gallery-item {
+.gallery-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gallery-bar h3 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gray);
+  font-family: var(--font-mono);
+}
+
+.gallery-load {
+  padding: 8px 16px;
+  background: white;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  transition: all 0.2s var(--ease);
+}
+
+.gallery-load:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.gallery-load:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gallery-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.thumb-box {
   position: relative;
   aspect-ratio: 3 / 2;
-  background: #000;
-  border-radius: 8px;
+  background: white;
+  border: 2px solid var(--ink);
   overflow: hidden;
   cursor: pointer;
-  transition: all var(--transition-normal);
-  border: 2px solid var(--border);
-  box-shadow: var(--shadow-sm);
+  transition: all 0.2s var(--ease);
 }
 
-.gallery-item:hover {
-  border-color: var(--accent);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+.thumb-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 var(--ink);
 }
 
-.gallery-item img {
+.thumb-box img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #000;
-  transition: opacity var(--transition-normal), transform var(--transition-slow);
+  display: block;
 }
 
-.gallery-item:hover img {
-  transform: scale(1.1);
-}
-
-.gallery-item img.hidden {
-  opacity: 0;
-}
-
-.gallery-item img.dimmed {
-  opacity: 0.3;
-}
-
-.gallery-number {
+.thumb-num {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
-  font-size: 11px;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  pointer-events: none;
-  z-index: 5;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
+  bottom: 4px;
+  right: 4px;
+  padding: 2px 6px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
 }
 
-/* Buttons - Improved Touch Targets */
-.primary-btn {
-  padding: 12px 24px;
-  background: var(--accent);
-  color: var(--bg);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
-}
-
-.primary-btn:hover {
-  background: var(--accent-hover);
-  box-shadow: 0 6px 20px rgba(88, 166, 255, 0.5);
-  transform: translateY(-2px);
-}
-
-.primary-btn:active {
-  transform: translateY(0);
-}
-
-.primary-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.secondary-btn {
-  padding: 12px 24px;
-  background: var(--bg-card);
-  color: var(--text);
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all var(--transition-fast);
-  font-weight: 600;
-}
-
-.secondary-btn:hover {
-  background: var(--bg-alt);
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.secondary-btn:active {
-  transform: translateY(0);
-}
-
-/* Modal - Better Visual Hierarchy */
-.modal-overlay {
+/* MODALS */
+.modal-wrap {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(26, 26, 26, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 300;
   padding: 20px;
-  backdrop-filter: blur(8px);
-  animation: fadeIn 0.2s ease-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.modal {
-  background: var(--bg-card);
-  border-radius: 16px;
-  max-width: 450px;
+.modal-box {
   width: 100%;
-  padding: 28px;
-  border: 2px solid var(--border);
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease-out;
+  max-width: 480px;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  padding: 32px;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.modal h3 {
+.modal-box h3 {
   font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: var(--text);
-}
-
-.modal-label {
-  font-size: 13px;
-  color: var(--text);
+  font-weight: 700;
   margin-bottom: 8px;
-  display: block;
-  font-weight: 600;
+  color: var(--ink);
 }
 
-/* Improved Modal Input */
-.input {
+.modal-sub {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  margin-bottom: 20px;
+  opacity: 0.7;
+}
+
+.field {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  font-size: 14px;
+  background: white;
+  border: 2px solid var(--ink);
+  font-size: 15px;
+  font-family: var(--font-sans);
+  color: var(--ink);
   margin-bottom: 16px;
-  transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
-  font-family: inherit;
-  color: var(--text);
-  background: var(--bg-card);
   font-weight: 500;
-  box-shadow: var(--shadow-sm);
-}
-
-.input::placeholder {
-  color: var(--text-light);
-  opacity: 0.6;
-}
-
-.input:hover {
-  border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15);
-}
-
-.input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring), 0 2px 12px rgba(88, 166, 255, 0.2);
-  transform: translateY(-1px);
 }
 
-/* Improved Radio Group */
-.radio-group {
+.field:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+}
+
+.field::placeholder {
+  color: var(--gray);
+}
+
+.radio-row {
   display: flex;
   gap: 12px;
-  margin-bottom: 20px;
-  padding: 12px;
-  background: var(--bg-alt);
-  border-radius: 10px;
-  border: 2px solid var(--border);
+  margin-bottom: 24px;
 }
 
-.radio-group label {
+.radio-row label {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid var(--ink);
   cursor: pointer;
-  font-weight: 500;
-  color: var(--text);
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all var(--transition-fast);
-  flex: 1;
-  justify-content: center;
+  transition: all 0.2s var(--ease);
 }
 
-.radio-group label:hover {
-  background: var(--bg-card);
-  box-shadow: var(--shadow-sm);
+.radio-row label:hover {
+  background: var(--ink);
+  color: var(--cream);
 }
 
-.radio-group input[type="radio"]:checked+span {
+.radio-row input[type="radio"] {
+  width: 18px;
+  height: 18px;
+}
+
+.radio-row span {
+  font-size: 14px;
   font-weight: 600;
 }
 
-.radio-group input[type="radio"] {
-  cursor: pointer;
-  width: 20px;
-  height: 20px;
-  accent-color: var(--accent);
-}
-
-.modal-actions {
+.modal-btns {
   display: flex;
   gap: 12px;
-  margin-top: 24px;
 }
 
-.modal-actions .primary-btn {
+.btn-solid,
+.btn-ghost {
   flex: 1;
+  padding: 14px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  transition: all 0.2s var(--ease);
 }
 
-.modal-actions .secondary-btn {
-  flex: 1;
+.btn-solid {
+  background: var(--ink);
+  color: var(--cream);
+  border: 2px solid var(--ink);
 }
 
-/* Lightbox - Better UX */
-.lightbox {
+.btn-solid:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.btn-solid:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: white;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+
+.btn-ghost:hover {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+/* VIEWER */
+.viewer {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.97);
+  background: rgba(0, 0, 0, 0.96);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-  padding: 20px;
-  backdrop-filter: blur(10px);
+  z-index: 400;
+  padding: 40px;
+  touch-action: pan-y pinch-zoom;
 }
 
-.lightbox img {
+.viewer img {
   max-width: 90%;
-  max-height: 85vh;
+  max-height: 90%;
   object-fit: contain;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
+  border: 4px solid var(--cream);
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
 }
 
-.lb-close {
+.viewer-x {
   position: fixed;
-  top: 24px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  top: 32px;
+  right: 32px;
+  width: 64px;
+  height: 64px;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  font-size: 40px;
   cursor: pointer;
-  font-size: 20px;
-  transition: all var(--transition-fast);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-weight: 300;
+  line-height: 1;
+  transition: all 0.2s var(--ease);
 }
 
-.lb-close:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: rotate(90deg);
+.viewer-x:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+  transform: scale(1.1);
 }
 
-.lb-btn {
+.viewer-arrow {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  width: 56px;
-  height: 56px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  width: 80px;
+  height: 80px;
+  background: var(--cream);
+  border: 4px solid var(--ink);
+  color: var(--ink);
+  font-size: 36px;
   cursor: pointer;
-  font-size: 24px;
-  transition: all var(--transition-fast);
-  border-radius: 50%;
-  backdrop-filter: blur(10px);
+  font-weight: 700;
+  transition: all 0.2s var(--ease);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.lb-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+.viewer-arrow:hover {
+  background: var(--ink);
+  color: var(--cream);
   transform: translateY(-50%) scale(1.1);
 }
 
-.lb-prev {
-  left: 24px;
+.viewer-arrow.prev {
+  left: 32px;
 }
 
-.lb-next {
-  right: 24px;
+.viewer-arrow.next {
+  right: 32px;
 }
 
-.lb-counter {
+.viewer-count {
   position: fixed;
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 24px;
-  font-size: 14px;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 14px 28px;
+  background: var(--cream);
+  border: 4px solid var(--ink);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.lb-swipe-hint {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(88, 166, 255, 0.4);
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  display: none;
-  animation: fadeInOut 4s ease-in-out;
-  backdrop-filter: blur(10px);
-}
-
-/* Toast Notifications - More Noticeable */
+/* TOAST */
 .toast {
   position: fixed;
   bottom: 32px;
   right: 32px;
-  background: var(--accent);
-  color: white;
   padding: 16px 24px;
-  border-radius: 12px;
-  font-size: 14px;
-  z-index: 3000;
-  box-shadow: 0 8px 24px rgba(88, 166, 255, 0.4);
-  font-weight: 600;
-  animation: slideInRight 0.3s ease-out;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  background: var(--ink);
+  color: var(--cream);
+  border: 3px solid var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 500;
 }
 
 .toast-error {
-  background: var(--error);
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+  background: var(--red);
+  border-color: var(--red);
 }
 
 .toast-info {
-  background: var(--info);
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+  background: var(--blue);
+  border-color: var(--blue);
 }
 
 .toast-success {
-  background: var(--success);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 
+/* EMPTY STATE */
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--gray);
+}
+
+/* TRANSITIONS */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity var(--transition-normal);
+  transition: opacity 0.2s;
 }
 
 .fade-enter,
@@ -3109,228 +2292,153 @@ html {
   opacity: 0;
 }
 
-/* Animations */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s var(--ease);
 }
 
-@keyframes fadeInOut {
-
-  0%,
-  100% {
-    opacity: 0;
-  }
-
-  10%,
-  90% {
-    opacity: 1;
-  }
+.expand-enter,
+.expand-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
-/* Loading Skeleton for Better Perceived Performance */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-
-  100% {
-    background-position: 1000px 0;
-  }
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s var(--ease);
 }
 
-.skeleton {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(to right, #f0f0f0 4%, #e0e0e0 25%, #f0f0f0 36%);
-  background-size: 1000px 100%;
+.toast-enter,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .detail-grid {
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+  .detail-hero {
     grid-template-columns: 1fr;
-  }
-
-  .artists-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 14px;
-  }
-
-  .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-
-  .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .swipe-hint {
-    display: block;
+  .search-compact {
+    width: 150px;
+    font-size: 12px;
+    padding: 8px 10px;
   }
-
-  .lb-swipe-hint {
-    display: block;
+  
+  .sort-compact {
+    font-size: 12px;
+    padding: 8px 10px;
+    padding-right: 26px;
   }
-
-  .lb-btn {
-    opacity: 0.6;
+  
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
   }
-
-  /* Make edit buttons always visible on mobile */
-  .edit-btn {
-    opacity: 0.9;
+  
+  .image-grid.tight {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
-
-  .group-letter {
-    top: 55px;
-    font-size: 24px;
-    padding: 8px 16px;
+  
+  .content-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .gallery-thumbs {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  
+  .viewer-arrow {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+  }
+  
+  .viewer-x {
+    width: 56px;
+    height: 56px;
+    font-size: 32px;
   }
 }
 
 @media (max-width: 640px) {
-  .header-inner {
-    padding: 12px;
+  .top-bar {
+    padding: 0 12px;
   }
-
-  .header h1 {
-    font-size: 18px;
+  
+  .back-btn-fixed {
+    padding: 8px 16px;
+    font-size: 13px;
   }
-
-  .header-stats {
+  
+  .search-compact {
+    display: none;
+  }
+  
+  .sort-compact {
+    width: 100px;
     font-size: 11px;
+    padding: 8px;
+    padding-right: 24px;
   }
-
-  .main {
-    padding: 16px 12px;
+  
+  .header-btn {
+    width: 36px;
+    height: 36px;
   }
-
-  .view-header {
-    flex-direction: column;
-    align-items: flex-start;
+  
+  .header-btn svg {
+    width: 14px;
+    height: 14px;
   }
-
-  .header-right {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+  
+  .content {
+    padding: 80px 12px 32px;
   }
-
-  .search-input {
-    width: 100%;
-    min-width: auto;
+  
+  .image-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
-
-  .sort-select {
-    width: 100%;
-    min-width: auto;
+  
+  .image-grid.tight {
+    grid-template-columns: repeat(2, 1fr);
   }
-
-  .works-header {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .work-stats {
-    flex-direction: row;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .controls-row {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .work-search {
-    max-width: 100%;
-  }
-
-  .artists-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-
-  .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
-
-  .detail-grid {
-    gap: 24px;
-  }
-
-  .detail-left {
-    max-width: 100%;
-  }
-
-  /* Larger touch targets on mobile */
-  .icon-btn,
-  .primary-btn,
-  .secondary-btn,
-  .nav-btn {
-    min-height: 48px;
-    min-width: 48px;
-  }
-
-  .link-btn {
-    padding: 12px 16px;
-  }
-
-  .artist-item:active,
-  .work-item:active {
-    transform: scale(0.98);
-  }
-
-  .primary-btn:active,
-  .secondary-btn:active,
-  .icon-btn:active {
-    transform: scale(0.95);
-  }
-
-  /* Better modal on mobile */
-  .modal {
+  
+  .modal-box {
     padding: 24px;
-    border-radius: 12px;
   }
-
-  /* Improve toast on mobile */
-  .toast {
+  
+  .viewer-arrow {
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
+  }
+  
+  .viewer-arrow.prev {
     left: 16px;
+  }
+  
+  .viewer-arrow.next {
     right: 16px;
-    bottom: 16px;
   }
-}
-
-/* Accessibility Improvements */
-@media (prefers-reduced-motion: reduce) {
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  
+  .viewer-x {
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    top: 16px;
+    right: 16px;
   }
-}
-
-/* Focus visible for keyboard navigation */
-*:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Print styles */
-@media print {
-
-  .header-actions,
-  .edit-btn,
-  .button-group,
-  .nav-row {
-    display: none !important;
+  
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
   }
 }
 </style>
