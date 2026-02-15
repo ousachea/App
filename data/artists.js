@@ -163,11 +163,6 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['SONE-828', 'SONE-866', 'SNOS-066', 'SNOS-041', 'SIVR-458', 'SONE-788', 'SONE-783']
   },
   {
-    name: 'Airi Hinata', cover: 'VENU-662',
-    url: '',  // Custom cover
-    compilations: [''], mainWorks: ['NITR-223', 'VENU-668', 'VENU-662', 'JKSR-250', 'NDRA-029']
-  },
-  {
     name: 'Anna Morikawa', cover: '',
     url: '',  // Custom cover
     compilations: [''], mainWorks: ['PRED-018','200GANA-1680']
@@ -245,9 +240,9 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['HMN-519', 'MIDE-752', 'JUQ-580', 'JUQ-905', 'EBOD-973', 'ADN-282', 'JUFE-485', 'JUR-216']
   },
   {
-    name: 'Kanno Sayuki', cover: 'MDYD-789',
+    name: 'Kanno Sayuki/Airi Hinata', cover: 'MDYD-789',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['GVG-122', 'EBOD-137', 'MDYD-789']
+    compilations: [''], mainWorks: ['GVG-122', 'EBOD-137', 'MDYD-789','NITR-223', 'VENU-668', 'VENU-662', 'JKSR-250', 'NDRA-029']
   },
   {
     name: 'Shio Asami/Kanon Hinano', cover: 'IPZZ-736',

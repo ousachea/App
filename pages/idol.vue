@@ -9,10 +9,23 @@
           </svg>
           <span class="back-text">Back</span>
         </button>
-        <button v-else @click="resetToHome" class="logo-btn">
-          <span class="logo-text">WORKS</span>
-          <span class="logo-count">{{ artists.length }}/{{ totalCount }}</span>
-        </button>
+        
+        <div v-if="currentView === 'artists'" class="header-stats">
+          <div class="header-stat">
+            <span class="stat-num">{{ artists.length }}</span>
+            <span class="stat-lbl">Artists</span>
+          </div>
+          <div class="header-divider"></div>
+          <div class="header-stat">
+            <span class="stat-num">{{ totalCount }}</span>
+            <span class="stat-lbl">Works</span>
+          </div>
+          <div class="header-divider"></div>
+          <div class="header-stat">
+            <span class="stat-num">{{ viewedWorks.length }}</span>
+            <span class="stat-lbl">Viewed</span>
+          </div>
+        </div>
       </div>
       
       <div class="top-right">
@@ -32,13 +45,6 @@
           />
           <button v-if="searchQuery" @click="searchQuery = ''" class="search-clear">×</button>
         </div>
-        
-        <!-- Sort dropdown (artists view only) -->
-        <select v-if="currentView === 'artists'" v-model="artistSortBy" class="sort-select">
-          <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
-            {{ opt.label }}
-          </option>
-        </select>
         
         <!-- Menu button for mobile -->
         <button @click="showMenu = !showMenu" class="menu-btn">
@@ -90,22 +96,6 @@
 
     <!-- ARTISTS VIEW - Enhanced grid -->
     <main v-if="currentView === 'artists'" class="content artists-view">
-      <!-- Stats bar -->
-      <div v-if="!searchQuery" class="stats-bar">
-        <div class="stat-item">
-          <span class="stat-value">{{ artists.length }}</span>
-          <span class="stat-label">Artists</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ totalCount }}</span>
-          <span class="stat-label">Works</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">{{ viewedWorks.length }}</span>
-          <span class="stat-label">Viewed</span>
-        </div>
-      </div>
-
       <div v-for="letter in alphabeticalGroups" :key="letter" class="artist-section">
         <div class="section-header">
           <h2 class="section-letter">{{ letter }}</h2>
@@ -221,7 +211,10 @@
                 </svg>
               </div>
             </div>
-            <div class="work-code">{{ work.code }}</div>
+            <div class="work-info">
+              <div class="work-code">{{ work.code }}</div>
+              <span class="work-type main">Main</span>
+            </div>
           </div>
         </div>
       </div>
@@ -258,7 +251,10 @@
                 </svg>
               </div>
             </div>
-            <div class="work-code">{{ work.code }}</div>
+            <div class="work-info">
+              <div class="work-code">{{ work.code }}</div>
+              <span class="work-type comp">Compilation</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1670,6 +1666,39 @@ body {
   gap: 16px;
 }
 
+.header-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-left: 24px;
+}
+
+.header-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-lbl {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-light);
+}
+
 .back-btn {
   display: flex;
   align-items: center;
@@ -1783,34 +1812,6 @@ body {
 .search-clear:hover {
   background: var(--border-dark);
   color: var(--text-primary);
-}
-
-.sort-select {
-  padding: 10px 36px 10px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  color: var(--text-primary);
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23666666' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  transition: all var(--transition);
-}
-
-.sort-select:hover {
-  border-color: var(--border-medium);
-  background-color: var(--bg-tertiary);
-}
-
-.sort-select:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .menu-btn {
@@ -1957,6 +1958,7 @@ body {
 .section-header {
   position: sticky;
   top: 64px;
+  left: 0;
   z-index: 50;
   display: flex;
   align-items: baseline;
@@ -1968,39 +1970,42 @@ body {
 }
 
 .section-letter {
-  font-size: 36px;
+  font-size: 48px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -1px;
+  letter-spacing: -2px;
+  line-height: 1;
 }
 
 .section-count {
-  font-size: 16px;
+  font-size: 18px;
   color: var(--text-tertiary);
   font-weight: 600;
+  margin-left: 4px;
 }
 
 /* ===== ARTIST GRID ===== */
 .artist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  gap: 24px;
 }
 
 .artist-card {
   position: relative;
   background: var(--bg-secondary);
-  border: 2px solid var(--border-light);
+  border: 2px solid #d4d4d4;
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .artist-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
-  border-color: var(--accent-primary);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  border-color: #8b5cf6;
 }
 
 .artist-card.viewed {
@@ -2015,7 +2020,7 @@ body {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 2;
-  background: var(--bg-tertiary);
+  background: #f5f5f5;
   overflow: hidden;
 }
 
@@ -2023,11 +2028,11 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .artist-card:hover .card-image img {
-  transform: scale(1.05);
+  transform: scale(1.03);
 }
 
 .image-placeholder {
@@ -2036,10 +2041,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 64px;
+  font-size: 72px;
   font-weight: 700;
-  color: var(--accent-primary);
-  background: linear-gradient(135deg, #f5f3ff 0%, #fdf4ff 100%);
+  color: #d4d4d4;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
 }
 
 .viewed-badge {
@@ -2058,31 +2063,37 @@ body {
 }
 
 .card-content {
-  padding: 16px;
+  padding: 20px;
+  background: var(--bg-secondary);
+  border-top: 1px solid #f0f0f0;
 }
 
 .card-title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
-  line-height: 1.3;
+  margin-bottom: 12px;
+  line-height: 1.5;
+  letter-spacing: -0.3px;
 }
 
 .card-meta {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .meta-badge {
-  padding: 4px 10px;
-  background: linear-gradient(135deg, var(--accent-light) 0%, var(--secondary-light) 100%);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  padding: 6px 14px;
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--accent-primary);
+  color: #666666;
+  letter-spacing: 0.2px;
+  line-height: 1;
 }
 
 .card-edit {
@@ -2167,21 +2178,23 @@ body {
   align-items: center;
   gap: 8px;
   padding: 12px 20px;
-  background: var(--accent-gradient);
-  border: none;
+  background: #1a1a1a;
+  border: 2px solid #1a1a1a;
   border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   color: white;
   font-family: inherit;
-  transition: all var(--transition);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .add-work-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+  background: #000000;
+  border-color: #000000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* ===== WORKS SECTION ===== */
@@ -2216,13 +2229,13 @@ body {
 .works-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
+  gap: 24px;
 }
 
 .work-card {
   position: relative;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .work-card:hover {
@@ -2230,11 +2243,11 @@ body {
 }
 
 .work-card.viewed {
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .work-card.viewed:hover {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .work-image {
@@ -2242,11 +2255,17 @@ body {
   width: 100%;
   aspect-ratio: 3 / 2;
   background: var(--bg-secondary);
-  border: 2px solid var(--border-light);
+  border: 2px solid #d4d4d4;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin-bottom: 8px;
-  transition: all var(--transition);
+  margin-bottom: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.work-card:hover .work-image {
+  border-color: #8b5cf6;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
 .work-card:hover .work-image {
@@ -2296,11 +2315,44 @@ body {
 }
 
 .work-code {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1a1a1a;
   font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  padding: 2px 0;
+}
+
+.work-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.work-type {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.work-type.main {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.work-type.comp {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
 }
 
 /* ===== DETAIL VIEW ===== */
@@ -2681,6 +2733,7 @@ body {
 
 .modal-body {
   padding: 24px;
+  background: #ffffff;
 }
 
 .modal-subtitle {
@@ -2707,8 +2760,8 @@ body {
 .form-control {
   width: 100%;
   padding: 12px 16px;
-  background: var(--bg-tertiary);
-  border: 1px solid transparent;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
   border-radius: var(--radius-md);
   font-size: 14px;
   color: var(--text-primary);
@@ -2718,7 +2771,7 @@ body {
 
 .form-control:focus {
   outline: none;
-  background: var(--bg-secondary);
+  background: #ffffff;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-light);
 }
@@ -2740,16 +2793,16 @@ body {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: var(--bg-tertiary);
-  border: 1px solid transparent;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition);
 }
 
 .radio-label:hover {
-  background: var(--bg-secondary);
-  border-color: var(--border-medium);
+  background: #f5f5f5;
+  border-color: #d4d4d4;
 }
 
 .radio-label input[type="radio"] {
@@ -2768,7 +2821,8 @@ body {
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  background: var(--bg-tertiary);
+  background: #fafafa;
+  border-top: 1px solid #e5e5e5;
 }
 
 .btn-primary,
@@ -3043,19 +3097,31 @@ body {
     height: 56px;
   }
   
+  .header-stats {
+    gap: 12px;
+    margin-left: 16px;
+  }
+  
+  .stat-num {
+    font-size: 16px;
+  }
+  
+  .stat-lbl {
+    font-size: 11px;
+  }
+  
   .search-input {
     width: 200px;
     font-size: 13px;
     padding: 8px 32px 8px 32px;
   }
   
-  .sort-select {
-    font-size: 13px;
-    padding: 8px 28px 8px 10px;
-  }
-  
   .content {
     padding: 72px 16px 32px;
+  }
+  
+  .section-header {
+    padding: 16px 0;
   }
   
   .stats-bar {
@@ -3107,16 +3173,28 @@ body {
     display: none;
   }
   
+  .header-stats {
+    display: none;
+  }
+  
   .search-input {
     width: 160px;
   }
   
-  .sort-select {
-    display: none;
-  }
-  
   .content {
     padding: 68px 12px 24px;
+  }
+  
+  .section-header {
+    padding: 16px 0;
+  }
+  
+  .section-letter {
+    font-size: 36px;
+  }
+  
+  .section-count {
+    font-size: 16px;
   }
   
   .artist-grid {
