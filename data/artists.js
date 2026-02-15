@@ -13,7 +13,7 @@ export const DEFAULT_ARTISTS = [
   },
   {
     name: 'Anri Okita',
-    cover: '',
+    cover: 'WANZ-265',
     url: '',  // Custom cover
     compilations: [''],
     mainWorks: ['SOE-823','HND-128','MIDE-213','WANZ-265','PPPD-288','MIDE-095','WANZ-062','SOE-636']
@@ -270,7 +270,7 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231','START-136']
   },
   {
-    name: 'Ena Koume', cover: '',
+    name: 'Ena Koume', cover: 'JUFE-131',
     url: '',  // Custom cover
     compilations: ['MKCK-398'], 
     mainWorks: ['CLUB-893', 'JUFE-131', 'KAM-196', 'MADV-609', 'MIMK-137','NACT-066']
