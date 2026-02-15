@@ -1,10 +1,13 @@
 <template>
   <div class="works-app">
-    <!-- Top Bar -->
+    <!-- Enhanced Top Bar with better mobile support -->
     <header class="top-bar">
       <div class="top-left">
-        <button v-if="currentView === 'works' || currentView === 'detail'" @click="goBack" class="back-btn-fixed">
-          ← Back
+        <button v-if="currentView !== 'artists'" @click="goBack" class="back-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          <span class="back-text">Back</span>
         </button>
         <button v-else @click="resetToHome" class="logo-btn">
           <span class="logo-text">WORKS</span>
@@ -12,344 +15,568 @@
         </button>
       </div>
       
-      <div class="top-controls">
-        <input 
-          ref="searchInput"
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search..."
-          class="search-compact"
-          @input="handleSearch"
-        />
+      <div class="top-right">
+        <!-- Search with icon -->
+        <div class="search-wrapper">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input 
+            ref="searchInput"
+            v-model="searchQuery"
+            type="text"
+            :placeholder="currentView === 'works' ? 'Filter works...' : 'Search artists...'"
+            class="search-input"
+            @input="handleSearch"
+          />
+          <button v-if="searchQuery" @click="searchQuery = ''" class="search-clear">×</button>
+        </div>
         
-        <select v-model="artistSortBy" class="sort-compact">
+        <!-- Sort dropdown (artists view only) -->
+        <select v-if="currentView === 'artists'" v-model="artistSortBy" class="sort-select">
           <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
         </select>
         
-        <button @click="exportData" class="header-btn" title="Export">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-        </button>
-        
-        <button @click="triggerImport" class="header-btn" title="Import">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-          </svg>
-        </button>
-        
-        <button @click="clearViewHistory" class="header-btn" title="Clear History">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-          </svg>
-        </button>
-        
-        <button @click="hardRefresh" class="header-btn danger" title="Reset">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M3 12l2.26 2.26A9.75 9.75 0 0012 21a9 9 0 009-9"/>
+        <!-- Menu button for mobile -->
+        <button @click="showMenu = !showMenu" class="menu-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="12" cy="5" r="1"/>
+            <circle cx="12" cy="19" r="1"/>
           </svg>
         </button>
       </div>
     </header>
 
+    <!-- Menu Dropdown -->
+    <transition name="menu-slide">
+      <div v-if="showMenu" class="menu-dropdown">
+        <button @click="exportData(); showMenu = false" class="menu-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export Data
+        </button>
+        
+        <button @click="triggerImport(); showMenu = false" class="menu-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+          Import Data
+        </button>
+        
+        <button @click="clearViewHistory(); showMenu = false" class="menu-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+          </svg>
+          Clear History
+        </button>
+        
+        <div class="menu-divider"></div>
+        
+        <button @click="hardRefresh(); showMenu = false" class="menu-item danger">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M3 12l2.26 2.26A9.75 9.75 0 0012 21a9 9 0 009-9"/>
+          </svg>
+          Reset All Data
+        </button>
+      </div>
+    </transition>
+
     <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
 
-    <!-- ARTISTS VIEW -->
-    <main v-if="currentView === 'artists'" class="content artists-content">
-      <div v-for="letter in alphabeticalGroups" :key="letter" class="artist-group">
-        <h2 class="group-letter">{{ letter }}</h2>
-        <div class="image-grid">
+    <!-- ARTISTS VIEW - Enhanced grid -->
+    <main v-if="currentView === 'artists'" class="content artists-view">
+      <!-- Stats bar -->
+      <div v-if="!searchQuery" class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-value">{{ artists.length }}</span>
+          <span class="stat-label">Artists</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ totalCount }}</span>
+          <span class="stat-label">Works</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ viewedWorks.length }}</span>
+          <span class="stat-label">Viewed</span>
+        </div>
+      </div>
+
+      <div v-for="letter in alphabeticalGroups" :key="letter" class="artist-section">
+        <div class="section-header">
+          <h2 class="section-letter">{{ letter }}</h2>
+          <span class="section-count">{{ groupedArtists[letter].length }}</span>
+        </div>
+        
+        <div class="artist-grid">
           <div 
             v-for="artist in groupedArtists[letter]" 
             :key="artist.name"
-            class="grid-item"
-            :class="{ seen: viewedArtists.includes(artist.name) }"
+            class="artist-card"
+            :class="{ viewed: viewedArtists.includes(artist.name) }"
             @click="selectArtist(artist.name)"
           >
-            <div class="item-photo">
+            <div class="card-image">
               <img 
                 v-if="getProgressiveImage(artist).full"
                 :src="getProgressiveImage(artist).full" 
                 :alt="artist.name"
                 loading="lazy"
               />
-              <div v-else class="photo-empty">
+              <div v-else class="image-placeholder">
                 {{ artist.name.charAt(0) }}
               </div>
+              <div v-if="viewedArtists.includes(artist.name)" class="viewed-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
             </div>
-            <div class="item-label">
-              <span class="label-name">{{ artist.name }}</span>
-              <span class="label-meta">{{ getArtistWorkCount(artist) }}</span>
+            
+            <div class="card-content">
+              <h3 class="card-title">{{ artist.name }}</h3>
+              <div class="card-meta">
+                <span v-if="getArtistWorkCount(artist)" class="meta-badge">
+                  {{ getArtistWorkCount(artist) }} works
+                </span>
+              </div>
             </div>
-            <button @click.stop="openArtistPhotoModal(artist.name)" class="item-edit">✎</button>
+            
+            <button @click.stop="openArtistPhotoModal(artist.name)" class="card-edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <div v-if="filteredArtists.length === 0" class="empty">
-        <p>No results</p>
+      <div v-if="filteredArtists.length === 0" class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <p class="empty-title">No artists found</p>
+        <p class="empty-text">Try adjusting your search</p>
       </div>
     </main>
 
-    <!-- WORKS VIEW -->
-    <main v-else-if="currentView === 'works'" class="content works-content">
-      <div class="content-header">
-        <div class="header-title">
-          <h1>{{ currentArtist?.name }}</h1>
-          <div class="title-tags">
-            <span v-if="currentArtist?.mainWorks?.length">{{ currentArtist.mainWorks.length }} main</span>
-            <span v-if="currentArtist?.compilations?.length">{{ currentArtist.compilations.length }} comp</span>
+    <!-- WORKS VIEW - Improved layout -->
+    <main v-else-if="currentView === 'works'" class="content works-view">
+      <div class="works-header">
+        <div class="header-info">
+          <h1 class="works-title">{{ currentArtist?.name }}</h1>
+          <div class="works-stats">
+            <span v-if="currentArtist?.mainWorks?.length" class="stat-chip main">
+              {{ currentArtist.mainWorks.length }} Main
+            </span>
+            <span v-if="currentArtist?.compilations?.length" class="stat-chip comp">
+              {{ currentArtist.compilations.length }} Compilations
+            </span>
           </div>
         </div>
-        <button @click="openAddWorkModal" class="nav-add">+</button>
+        <button @click="openAddWorkModal" class="add-work-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span>Add Work</span>
+        </button>
       </div>
 
-      <div class="search-inline">
-        <input 
-          v-model="workSearchQuery"
-          type="text"
-          placeholder="Filter works..."
-          class="search-field"
-        />
-      </div>
-
-      <div v-if="filteredMainWorks.length" class="works-block">
-        <h3 class="block-title">MAIN</h3>
-        <div class="image-grid tight">
+      <!-- Main Works Section -->
+      <div v-if="filteredMainWorks.length" class="works-section">
+        <div class="section-title">
+          <h3>Main Works</h3>
+          <span class="title-count">{{ filteredMainWorks.length }}</span>
+        </div>
+        
+        <div class="works-grid">
           <div 
             v-for="work in filteredMainWorks"
             :key="work.code"
-            class="grid-item"
-            :class="{ seen: viewedWorks.includes(work.code) }"
+            class="work-card"
+            :class="{ viewed: viewedWorks.includes(work.code) }"
             @click="openWorkView(work)"
           >
-            <div class="item-photo">
+            <div class="work-image">
               <img 
                 :src="getProgressiveWorkImage(work).full"
                 :alt="work.code"
                 loading="lazy"
               />
-              <div v-if="isCoverWork(currentArtist.name, work.code)" class="photo-star">★</div>
+              <div v-if="isCoverWork(currentArtist.name, work.code)" class="cover-star">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+              <div v-if="viewedWorks.includes(work.code)" class="viewed-overlay">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
             </div>
-            <div class="item-label compact">
-              <span class="label-name">{{ work.code }}</span>
-            </div>
+            <div class="work-code">{{ work.code }}</div>
           </div>
         </div>
       </div>
 
-      <div v-if="filteredCompilations.length" class="works-block">
-        <h3 class="block-title">COMPILATIONS</h3>
-        <div class="image-grid tight">
+      <!-- Compilations Section -->
+      <div v-if="filteredCompilations.length" class="works-section">
+        <div class="section-title">
+          <h3>Compilations</h3>
+          <span class="title-count">{{ filteredCompilations.length }}</span>
+        </div>
+        
+        <div class="works-grid">
           <div 
             v-for="work in filteredCompilations"
             :key="work.code"
-            class="grid-item"
-            :class="{ seen: viewedWorks.includes(work.code) }"
+            class="work-card"
+            :class="{ viewed: viewedWorks.includes(work.code) }"
             @click="openWorkView(work)"
           >
-            <div class="item-photo">
+            <div class="work-image">
               <img 
                 :src="getProgressiveWorkImage(work).full"
                 :alt="work.code"
                 loading="lazy"
               />
-              <div v-if="isCoverWork(currentArtist.name, work.code)" class="photo-star">★</div>
+              <div v-if="isCoverWork(currentArtist.name, work.code)" class="cover-star">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+              <div v-if="viewedWorks.includes(work.code)" class="viewed-overlay">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
             </div>
-            <div class="item-label compact">
-              <span class="label-name">{{ work.code }}</span>
-            </div>
+            <div class="work-code">{{ work.code }}</div>
           </div>
         </div>
       </div>
+
+      <div v-if="filteredMainWorks.length === 0 && filteredCompilations.length === 0" class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+        </svg>
+        <p class="empty-title">No works found</p>
+        <p class="empty-text">{{ workSearchQuery ? 'Try adjusting your search' : 'Add your first work' }}</p>
+      </div>
     </main>
 
-    <!-- DETAIL VIEW -->
-    <main v-else-if="currentView === 'detail'" class="content detail-content">
-      <div class="detail-layout">
-        <div class="detail-hero">
-          <div class="hero-image" @click="openLightbox(currentWork, 0)">
+    <!-- DETAIL VIEW - Enhanced single work view -->
+    <main v-else-if="currentView === 'detail'" class="content detail-view">
+      <div class="detail-container">
+        <!-- Main Image Section -->
+        <div class="detail-main">
+          <div class="main-image" @click="openLightbox(currentWork, 0)">
             <img 
               :src="getProgressiveWorkImage(currentWork).full"
               :alt="currentWork.code"
             />
+            <div class="image-overlay">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 3 21 3 21 9"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+              </svg>
+            </div>
           </div>
 
-          <div class="hero-info">
-            <h1 class="info-code" @click="copyToClipboard(currentWork.code)">
-              {{ currentWork.code }}
-            </h1>
+          <!-- Quick Actions -->
+          <div class="quick-actions">
+            <button 
+              @click="setCoverWork(currentArtist.name, currentWork.code)"
+              class="action-chip"
+              :class="{ active: isCoverWork(currentArtist.name, currentWork.code) }"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              {{ isCoverWork(currentArtist.name, currentWork.code) ? 'Cover' : 'Set Cover' }}
+            </button>
             
-            <div class="info-actions">
-              <button 
-                @click="setCoverWork(currentArtist.name, currentWork.code)"
-                class="action-btn"
-                :class="{ active: isCoverWork(currentArtist.name, currentWork.code) }"
-              >
-                ★ {{ isCoverWork(currentArtist.name, currentWork.code) ? 'COVER' : 'SET COVER' }}
-              </button>
-              
-              <button @click="openUploadModal(currentWork.code)" class="action-btn">
-                {{ hasCustomImage(currentWork.code) ? 'UPDATE IMG' : 'ADD IMG' }}
-              </button>
-            </div>
+            <button @click="openUploadModal(currentWork.code)" class="action-chip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              {{ hasCustomImage(currentWork.code) ? 'Update' : 'Add Image' }}
+            </button>
 
-            <div class="info-links">
-              <button @click="openExternalLink(currentWork.code, 'njav')" class="link-pill">NJAV</button>
-              <button @click="openExternalLink(currentWork.code, 'missav')" class="link-pill">MissAV</button>
-              <button @click="openExternalLink(currentWork.code, '24av')" class="link-pill">24AV</button>
-            </div>
-
-            <div v-if="currentWorkList.length > 1" class="info-nav">
-              <button 
-                @click="navigateWork(-1)" 
-                :disabled="!canNavigateWork(-1)"
-                class="nav-btn"
-              >
-                ←
-              </button>
-              <span class="nav-label">{{ currentWorkIndex + 1 }}/{{ currentWorkList.length }}</span>
-              <button 
-                @click="navigateWork(1)" 
-                :disabled="!canNavigateWork(1)"
-                class="nav-btn"
-              >
-                →
-              </button>
-            </div>
+            <button @click="copyToClipboard(currentWork.code)" class="action-chip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+              Copy Code
+            </button>
           </div>
         </div>
 
-        <div class="detail-gallery">
-          <div class="gallery-bar">
-            <h3>GALLERY</h3>
-            <button @click="preloadAllGallery" class="gallery-load" :disabled="isPreloading">
-              {{ isPreloading ? 'Loading...' : 'Load All' }}
+        <!-- Info Sidebar -->
+        <div class="detail-sidebar">
+          <div class="detail-code">
+            <h1>{{ currentWork.code }}</h1>
+          </div>
+
+          <!-- External Links -->
+          <div class="external-links">
+            <h4>Watch On</h4>
+            <div class="link-group">
+              <button @click="openExternalLink(currentWork.code, 'njav')" class="link-btn njav">
+                NJAV
+              </button>
+              <button @click="openExternalLink(currentWork.code, 'missav')" class="link-btn missav">
+                MissAV
+              </button>
+              <button @click="openExternalLink(currentWork.code, '24av')" class="link-btn av24">
+                24AV
+              </button>
+            </div>
+          </div>
+
+          <!-- Navigation -->
+          <div v-if="currentWorkList.length > 1" class="detail-nav">
+            <button 
+              @click="navigateWork(-1)" 
+              :disabled="!canNavigateWork(-1)"
+              class="nav-arrow"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+            
+            <div class="nav-info">
+              <span class="nav-current">{{ currentWorkIndex + 1 }}</span>
+              <span class="nav-separator">/</span>
+              <span class="nav-total">{{ currentWorkList.length }}</span>
+            </div>
+            
+            <button 
+              @click="navigateWork(1)" 
+              :disabled="!canNavigateWork(1)"
+              class="nav-arrow"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
             </button>
           </div>
-          
-          <div class="gallery-thumbs">
-            <div 
-              v-for="i in 20" 
-              :key="i"
-              class="thumb-box"
-              @click="openLightbox(currentWork, i)"
-            >
-              <img 
-                :src="getImageUrl(currentWork.code, `jp-${i}`)"
-                :alt="`${currentWork.code} ${i}`"
-                loading="lazy"
-              />
-              <span class="thumb-num">{{ i }}</span>
+
+          <!-- Gallery Preview -->
+          <div class="gallery-section">
+            <div class="gallery-header">
+              <h4>Gallery</h4>
+              <button @click="preloadAllGallery" class="preload-btn" :disabled="isPreloading">
+                {{ isPreloading ? 'Loading...' : 'Load All' }}
+              </button>
+            </div>
+            
+            <div class="gallery-grid">
+              <div 
+                v-for="i in 20" 
+                :key="i"
+                class="gallery-thumb"
+                @click="openLightbox(currentWork, i)"
+              >
+                <img 
+                  :src="getImageUrl(currentWork.code, `jp-${i}`)"
+                  :alt="`${currentWork.code} ${i}`"
+                  loading="lazy"
+                />
+                <span class="thumb-label">{{ i }}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </main>
 
-    <!-- MODALS -->
-    <transition name="fade">
-      <div v-if="showAddWorkModal" class="modal-wrap" @click.self="closeAddWorkModal">
-        <div class="modal-box">
-          <h3>Add Work</h3>
-          <select v-model="newWork.artist" class="field">
-            <option value="">Select artist...</option>
-            <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
-          </select>
-          <input v-model="newWork.code" placeholder="Work Code" class="field" />
-          <div class="radio-row">
-            <label>
-              <input v-model="newWork.type" type="radio" value="mainWorks" />
-              <span>Main</span>
-            </label>
-            <label>
-              <input v-model="newWork.type" type="radio" value="compilations" />
-              <span>Compilation</span>
-            </label>
+    <!-- MODALS - Improved design -->
+    <transition name="modal">
+      <div v-if="showAddWorkModal" class="modal-overlay" @click.self="closeAddWorkModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>Add New Work</h3>
+            <button @click="closeAddWorkModal" class="modal-close">×</button>
           </div>
-          <div class="modal-btns">
-            <button @click="addNewWork" class="btn-solid">Add</button>
-            <button @click="closeAddWorkModal" class="btn-ghost">Cancel</button>
+          
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Artist</label>
+              <select v-model="newWork.artist" class="form-control">
+                <option value="">Select artist...</option>
+                <option v-for="a in artists" :key="a.name" :value="a.name">{{ a.name }}</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Work Code</label>
+              <input v-model="newWork.code" placeholder="e.g. ABC-123" class="form-control" />
+            </div>
+
+            <div class="form-group">
+              <label>Type</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input v-model="newWork.type" type="radio" value="mainWorks" />
+                  <span>Main Work</span>
+                </label>
+                <label class="radio-label">
+                  <input v-model="newWork.type" type="radio" value="compilations" />
+                  <span>Compilation</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button @click="closeAddWorkModal" class="btn-secondary">Cancel</button>
+            <button @click="addNewWork" class="btn-primary">Add Work</button>
           </div>
         </div>
       </div>
     </transition>
 
-    <transition name="fade">
-      <div v-if="showUploadModal" class="modal-wrap" @click.self="closeUploadModal">
-        <div class="modal-box">
-          <h3>Custom Image</h3>
-          <p class="modal-sub">{{ uploadingWork }}</p>
-          <input 
-            v-model="customImageUrl" 
-            placeholder="Image URL"
-            class="field"
-            @keyup.enter="handleCustomImageUrl"
-          />
-          <div class="modal-btns">
-            <button @click="handleCustomImageUrl" class="btn-solid" :disabled="!customImageUrl.trim()">
-              {{ customImageUrl.trim() ? 'Add' : 'Remove' }}
+    <transition name="modal">
+      <div v-if="showUploadModal" class="modal-overlay" @click.self="closeUploadModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>Custom Image</h3>
+            <button @click="closeUploadModal" class="modal-close">×</button>
+          </div>
+          
+          <div class="modal-body">
+            <p class="modal-subtitle">{{ uploadingWork }}</p>
+            
+            <div class="form-group">
+              <label>Image URL</label>
+              <input 
+                v-model="customImageUrl" 
+                placeholder="https://example.com/image.jpg"
+                class="form-control"
+                @keyup.enter="handleCustomImageUrl"
+              />
+              <p class="form-hint">Leave empty to remove custom image</p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button @click="closeUploadModal" class="btn-secondary">Cancel</button>
+            <button @click="handleCustomImageUrl" class="btn-primary">
+              {{ customImageUrl.trim() ? 'Save' : 'Remove' }}
             </button>
-            <button @click="closeUploadModal" class="btn-ghost">Cancel</button>
           </div>
         </div>
       </div>
     </transition>
 
-    <transition name="fade">
-      <div v-if="showArtistPhotoModal" class="modal-wrap" @click.self="closeArtistPhotoModal">
-        <div class="modal-box">
-          <h3>Artist Photo</h3>
-          <p class="modal-sub">{{ editingArtistName }}</p>
-          <input 
-            v-model="artistPhotoUrl" 
-            placeholder="Photo URL (empty to remove)"
-            class="field"
-            @keyup.enter="updateArtistPhoto"
-          />
-          <div class="modal-btns">
-            <button @click="updateArtistPhoto" class="btn-solid">
-              {{ artistPhotoUrl.trim() ? 'Update' : 'Remove' }}
+    <transition name="modal">
+      <div v-if="showArtistPhotoModal" class="modal-overlay" @click.self="closeArtistPhotoModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>Artist Photo</h3>
+            <button @click="closeArtistPhotoModal" class="modal-close">×</button>
+          </div>
+          
+          <div class="modal-body">
+            <p class="modal-subtitle">{{ editingArtistName }}</p>
+            
+            <div class="form-group">
+              <label>Photo URL</label>
+              <input 
+                v-model="artistPhotoUrl" 
+                placeholder="https://example.com/photo.jpg"
+                class="form-control"
+                @keyup.enter="updateArtistPhoto"
+              />
+              <p class="form-hint">Leave empty to remove photo</p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button @click="closeArtistPhotoModal" class="btn-secondary">Cancel</button>
+            <button @click="updateArtistPhoto" class="btn-primary">
+              {{ artistPhotoUrl.trim() ? 'Save' : 'Remove' }}
             </button>
-            <button @click="closeArtistPhotoModal" class="btn-ghost">Cancel</button>
           </div>
         </div>
       </div>
     </transition>
 
-    <!-- LIGHTBOX -->
+    <!-- LIGHTBOX - Enhanced viewer -->
     <transition name="fade">
-      <div v-if="lightbox.show" class="viewer" @click.self="closeLightbox">
-        <button class="viewer-x" @click="closeLightbox">×</button>
+      <div v-if="lightbox.show" class="lightbox" @click.self="closeLightbox">
+        <button class="lightbox-close" @click="closeLightbox">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        
         <button 
           v-if="lightbox.images.length > 1"
-          class="viewer-arrow prev"
+          class="lightbox-arrow prev"
           @click="prevImage"
+          :disabled="lightbox.currentIndex === 0"
         >
-          ←
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
         </button>
-        <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
+        
+        <div class="lightbox-content">
+          <img :src="lightbox.images[lightbox.currentIndex]" :alt="lightbox.code" />
+        </div>
+        
         <button 
           v-if="lightbox.images.length > 1"
-          class="viewer-arrow next"
+          class="lightbox-arrow next"
           @click="nextImage"
+          :disabled="lightbox.currentIndex === lightbox.images.length - 1"
         >
-          →
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
         </button>
-        <div class="viewer-count">
+        
+        <div class="lightbox-counter">
           {{ lightbox.currentIndex + 1 }} / {{ lightbox.images.length }}
         </div>
       </div>
     </transition>
 
-    <!-- TOAST -->
+    <!-- TOAST - Refined notifications -->
     <transition name="toast">
       <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
-        {{ toast.message }}
+        <svg v-if="toast.type === 'success'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <svg v-else-if="toast.type === 'error'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ toast.message }}</span>
       </div>
     </transition>
+
+    <!-- Click outside to close menu -->
+    <div v-if="showMenu" class="menu-backdrop" @click="showMenu = false"></div>
   </div>
 </template>
 
@@ -455,7 +682,7 @@ class ImageDB {
 }
 
 export default {
-  name: 'WorksRetro',
+  name: 'WorksImproved',
   data() {
     return {
       currentView: 'artists',
@@ -463,6 +690,7 @@ export default {
       searchQuery: '',
       workSearchQuery: '',
       artistSortBy: 'nameAsc',
+      showMenu: false,
       
       artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
       currentWork: null,
@@ -495,7 +723,6 @@ export default {
       
       scrollPositions: {},
       
-      // Touch gesture tracking
       touchStartX: 0,
       touchEndX: 0,
       touchStartY: 0,
@@ -556,16 +783,16 @@ export default {
     },
     filteredMainWorks() {
       if (!this.currentArtist?.mainWorks) return []
-      if (!this.workSearchQuery.trim()) return this.currentArtist.mainWorks
-      const query = this.workSearchQuery.toLowerCase()
+      if (!this.searchQuery.trim()) return this.currentArtist.mainWorks
+      const query = this.searchQuery.toLowerCase()
       return this.currentArtist.mainWorks.filter(work =>
         work.code.toLowerCase().includes(query)
       )
     },
     filteredCompilations() {
       if (!this.currentArtist?.compilations) return []
-      if (!this.workSearchQuery.trim()) return this.currentArtist.compilations
-      const query = this.workSearchQuery.toLowerCase()
+      if (!this.searchQuery.trim()) return this.currentArtist.compilations
+      const query = this.searchQuery.toLowerCase()
       return this.currentArtist.compilations.filter(work =>
         work.code.toLowerCase().includes(query)
       )
@@ -612,6 +839,18 @@ export default {
       handler(v) {
         if (process.client) localStorage.setItem('artistSortBy', v)
       }
+    },
+    currentView(newView) {
+      if (newView === 'works') {
+        this.$nextTick(() => {
+          this.workSearchQuery = ''
+        })
+      }
+    },
+    showMenu(val) {
+      if (process.client) {
+        document.body.style.overflow = val ? 'hidden' : ''
+      }
     }
   },
   mounted() {
@@ -619,6 +858,11 @@ export default {
       this.imageDB = new ImageDB()
       this.initializeApp()
       this.setupKeyboardShortcuts()
+    }
+  },
+  beforeDestroy() {
+    if (process.client) {
+      document.body.style.overflow = ''
     }
   },
   methods: {
@@ -694,6 +938,7 @@ export default {
           else if (this.showAddWorkModal) this.closeAddWorkModal()
           else if (this.showUploadModal) this.closeUploadModal()
           else if (this.showArtistPhotoModal) this.closeArtistPhotoModal()
+          else if (this.showMenu) this.showMenu = false
           else if (this.currentView === 'detail') this.backToWorks()
           else if (this.currentView === 'works') this.backToArtists()
         }
@@ -711,7 +956,7 @@ export default {
     },
 
     handleSearch() {
-      // Reactive search
+      // Reactive search handled by computed properties
     },
 
     goBack() {
@@ -805,7 +1050,6 @@ export default {
     },
 
     selectArtist(name) {
-      // Save scroll position before navigating
       this.saveScrollPosition('artists')
       
       if (!this.viewedArtists.includes(name)) {
@@ -818,6 +1062,7 @@ export default {
       this.activeTab = name
       this.currentView = 'works'
       this.workSearchQuery = ''
+      this.searchQuery = ''
 
       this.$nextTick(() => {
         window.scrollTo({ top: 0, behavior: 'instant' })
@@ -827,6 +1072,7 @@ export default {
     backToArtists() {
       this.currentView = 'artists'
       this.activeTab = ''
+      this.searchQuery = ''
       
       this.$nextTick(() => {
         this.restoreScrollPosition('artists')
@@ -834,7 +1080,6 @@ export default {
     },
 
     openWorkView(work) {
-      // Save scroll position before navigating
       this.saveScrollPosition('works')
       
       if (!this.viewedWorks.includes(work.code)) {
@@ -885,6 +1130,11 @@ export default {
       if (newIndex >= 0 && newIndex < this.currentWorkList.length) {
         this.currentWorkIndex = newIndex
         this.currentWork = this.currentWorkList[newIndex]
+        
+        if (!this.viewedWorks.includes(this.currentWork.code)) {
+          this.viewedWorks.push(this.currentWork.code)
+        }
+        
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     },
@@ -1038,7 +1288,6 @@ export default {
       this.lightbox = { show: true, images, currentIndex: startIndex, code: work.code }
       if (process.client) {
         document.body.style.overflow = 'hidden'
-        // Setup touch events for swipe gestures
         this.$nextTick(() => {
           this.setupSwipeGestures()
         })
@@ -1061,7 +1310,7 @@ export default {
       this.touchStartY = 0
       this.touchEndY = 0
       
-      const viewer = document.querySelector('.viewer')
+      const viewer = document.querySelector('.lightbox')
       if (!viewer) return
       
       this.handleTouchStart = (e) => {
@@ -1082,7 +1331,7 @@ export default {
     cleanupSwipeGestures() {
       if (!process.client) return
       
-      const viewer = document.querySelector('.viewer')
+      const viewer = document.querySelector('.lightbox')
       if (!viewer) return
       
       if (this.handleTouchStart) {
@@ -1098,14 +1347,11 @@ export default {
       const deltaY = this.touchEndY - this.touchStartY
       const minSwipeDistance = 50
       
-      // Check if horizontal swipe is more significant than vertical
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         if (Math.abs(deltaX) > minSwipeDistance) {
           if (deltaX > 0) {
-            // Swipe right - previous image
             this.prevImage()
           } else {
-            // Swipe left - next image
             this.nextImage()
           }
         }
@@ -1113,11 +1359,15 @@ export default {
     },
 
     nextImage() {
-      this.lightbox.currentIndex = (this.lightbox.currentIndex + 1) % this.lightbox.images.length
+      if (this.lightbox.currentIndex < this.lightbox.images.length - 1) {
+        this.lightbox.currentIndex++
+      }
     },
 
     prevImage() {
-      this.lightbox.currentIndex = (this.lightbox.currentIndex - 1 + this.lightbox.images.length) % this.lightbox.images.length
+      if (this.lightbox.currentIndex > 0) {
+        this.lightbox.currentIndex--
+      }
     },
 
     async preloadAllGallery() {
@@ -1177,7 +1427,7 @@ export default {
 
     showToast(msg, type = 'success') {
       this.toast = { show: true, message: msg, type }
-      setTimeout(() => this.toast.show = false, 2500)
+      setTimeout(() => this.toast.show = false, 3000)
     },
 
     async saveCustomImagesToDB(images) {
@@ -1202,7 +1452,6 @@ export default {
 
     exportData() {
       try {
-        // Transform and sort artists data
         const transformedArtists = this.artists
           .map(artist => ({
             name: artist.name,
@@ -1217,7 +1466,6 @@ export default {
           }))
           .sort((a, b) => a.name.localeCompare(b.name))
 
-        // Create the export string in JavaScript format
         let exportString = 'export const DEFAULT_ARTISTS = [\n'
         
         transformedArtists.forEach((artist, index) => {
@@ -1226,14 +1474,12 @@ export default {
           exportString += `    cover: '${artist.cover}',\n`
           exportString += `    url: '${artist.url}',\n`
           
-          // Compilations
           if (artist.compilations.length > 0) {
             exportString += `    compilations: [${artist.compilations.map(c => `'${c}'`).join(', ')}],\n`
           } else {
             exportString += `    compilations: [],\n`
           }
           
-          // Main works
           if (artist.mainWorks.length > 0) {
             exportString += `    mainWorks: [${artist.mainWorks.map(w => `'${w}'`).join(', ')}]\n`
           } else {
@@ -1330,7 +1576,7 @@ export default {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 * {
   margin: 0;
@@ -1339,50 +1585,113 @@ export default {
 }
 
 :root {
-  --cream: #faf8f5;
-  --ink: #1a1a1a;
-  --gray: #6b6b6b;
-  --red: #ff3b3b;
-  --blue: #0066ff;
-  --border: #e0e0e0;
+  --bg-primary: #fef7ff;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #fef3ff;
+  --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-gradient-alt: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --bg-gradient-soft: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
   
-  --font-sans: 'DM Sans', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
   
-  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --accent-primary: #8b5cf6;
+  --accent-hover: #7c3aed;
+  --accent-light: #f5f3ff;
+  --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  --secondary-accent: #ec4899;
+  --secondary-hover: #db2777;
+  --secondary-light: #fdf2f8;
+  
+  --tertiary-accent: #14b8a6;
+  --tertiary-hover: #0d9488;
+  --tertiary-light: #f0fdfa;
+  
+  --border-light: #e9d5ff;
+  --border-medium: #d8b4fe;
+  --border-dark: #c084fc;
+  
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(139 92 246 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(139 92 246 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(139 92 246 / 0.15);
+  --shadow-xl: 0 20px 25px -5px rgb(139 92 246 / 0.2);
+  --shadow-glow: 0 0 20px rgb(139 92 246 / 0.3);
+  
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
-  background: var(--cream);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  line-height: 1.5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .works-app {
   min-height: 100vh;
+  padding-bottom: 40px;
 }
 
-/* TOP BAR */
+/* ===== TOP BAR ===== */
 .top-bar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
-  background: var(--cream);
-  border-bottom: 2px solid var(--ink);
+  height: 64px;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
   z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-sm);
 }
 
 .top-left {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: all var(--transition);
+}
+
+.back-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-medium);
+}
+
+.back-text {
+  font-weight: 500;
 }
 
 .logo-btn {
@@ -1391,635 +1700,937 @@ body {
   cursor: pointer;
   display: flex;
   align-items: baseline;
-  gap: 8px;
-}
-
-.back-btn-fixed {
-  padding: 10px 20px;
-  background: white;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--ink);
-  transition: all 0.2s var(--ease);
-}
-
-.back-btn-fixed:hover {
-  background: var(--ink);
-  color: var(--cream);
+  gap: 12px;
+  padding: 0;
 }
 
 .logo-text {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  color: var(--ink);
-  font-family: var(--font-mono);
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .logo-count {
-  font-size: 12px;
-  color: var(--gray);
-  font-family: var(--font-mono);
-  font-weight: 400;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-weight: 500;
 }
 
-.top-controls {
+.top-right {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
   align-items: center;
 }
 
-.search-compact {
-  width: 200px;
-  padding: 8px 12px;
-  background: white;
-  border: 2px solid var(--ink);
-  font-size: 13px;
-  font-family: var(--font-sans);
-  color: var(--ink);
-  font-weight: 500;
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 280px;
+  padding: 10px 36px 10px 36px;
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.search-input:focus {
   outline: none;
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-.search-compact:focus {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+.search-input::placeholder {
+  color: var(--text-tertiary);
 }
 
-.search-compact::placeholder {
-  color: var(--gray);
+.search-clear {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background: var(--border-medium);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
 }
 
-.sort-compact {
-  padding: 8px 12px;
-  background: white;
-  border: 2px solid var(--ink);
-  font-size: 13px;
-  font-family: var(--font-sans);
-  color: var(--ink);
+.search-clear:hover {
+  background: var(--border-dark);
+  color: var(--text-primary);
+}
+
+.sort-select {
+  padding: 10px 36px 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
   font-weight: 500;
   cursor: pointer;
   appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%231a1a1a' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23666666' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 8px center;
-  outline: none;
+  background-position: right 12px center;
+  transition: all var(--transition);
 }
 
-.sort-compact:focus {
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+.sort-select:hover {
+  border-color: var(--border-medium);
+  background-color: var(--bg-tertiary);
 }
 
-.icon-btn {
+.sort-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.menu-btn {
   width: 40px;
   height: 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  color: var(--text-secondary);
+}
+
+.menu-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+/* ===== MENU DROPDOWN ===== */
+.menu-dropdown {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  width: 240px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 14px 16px;
   background: none;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s var(--ease);
-}
-
-.icon-btn:hover,
-.icon-btn.active {
-  background: var(--ink);
-}
-
-.icon-btn:hover svg,
-.icon-btn.active svg {
-  stroke: var(--cream);
-}
-
-.header-btn {
-  width: 40px;
-  height: 40px;
-  background: white;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s var(--ease);
-}
-
-.header-btn:hover {
-  background: var(--ink);
-}
-
-.header-btn:hover svg {
-  stroke: var(--cream);
-}
-
-.header-btn.danger:hover {
-  background: var(--red);
-  border-color: var(--red);
-}
-
-.header-btn.danger:hover svg {
-  stroke: white;
-}
-
-/* CONTENT */
-.content {
-  padding: 80px 20px 40px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.search-inline {
-  margin-bottom: 32px;
-}
-
-/* ARTIST GROUPING */
-.artist-group {
-  margin-bottom: 56px;
-}
-
-.group-letter {
-  position: sticky;
-  top: 60px;
-  z-index: 50;
-  font-size: 48px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--ink);
-  background: var(--cream);
-  margin-bottom: 24px;
-  padding: 16px 0 12px;
-  border-bottom: 3px solid var(--ink);
-  letter-spacing: -2px;
-}
-
-.search-inline .search-field {
-  width: 100%;
-  padding: 12px 16px;
-  background: white;
-  border: 2px solid var(--ink);
-  font-size: 15px;
-  font-family: var(--font-sans);
-  color: var(--ink);
-  font-weight: 500;
-  outline: none;
-}
-
-.search-inline .search-field:focus {
-  outline: none;
-  border-color: var(--ink);
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
-}
-
-.search-inline .search-field::placeholder {
-  color: var(--gray);
-}
-
-/* IMAGE GRID */
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 28px;
-}
-
-.image-grid.tight {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 24px;
-}
-
-.grid-item {
-  cursor: pointer;
-  position: relative;
-  transition: all 0.3s var(--ease);
-}
-
-.grid-item:hover {
-  transform: translateY(-4px);
-}
-
-.grid-item.seen {
-  opacity: 0.4;
-}
-
-.grid-item.seen::before {
-  content: '✓';
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 32px;
-  height: 32px;
-  background: var(--ink);
-  color: var(--cream);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  z-index: 10;
-}
-
-.grid-item.seen .item-photo {
-  border-color: var(--gray);
-}
-
-.item-photo {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 2;
-  background: white;
-  border: 2px solid var(--ink);
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.item-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.photo-empty {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  font-weight: 700;
-  color: var(--gray);
-  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
-}
-
-.photo-star {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  background: var(--ink);
-  color: var(--cream);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  z-index: 10;
-}
-
-.item-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.item-label.compact {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
-
-.label-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
-  font-family: var(--font-mono);
-}
-
-.label-meta {
-  font-size: 12px;
-  color: var(--gray);
-  font-family: var(--font-mono);
-}
-
-.item-edit {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 32px;
-  height: 32px;
-  background: white;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  font-size: 16px;
-  color: var(--ink);
-  opacity: 0;
-  transition: all 0.2s var(--ease);
-}
-
-.grid-item:hover .item-edit {
-  opacity: 1;
-}
-
-.item-edit:hover {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-/* CONTENT HEADER */
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
-  gap: 20px;
-}
-
-.nav-add {
-  padding: 12px 20px;
-  background: white;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--ink);
-  transition: all 0.2s var(--ease);
-}
-
-.nav-add:hover {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-.header-title {
-  flex: 1;
-}
-
-.header-title h1 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  letter-spacing: -0.5px;
-}
-
-.title-tags {
-  display: flex;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--gray);
-  font-family: var(--font-mono);
-}
-
-/* WORKS BLOCK */
-.works-block {
-  margin-bottom: 56px;
-}
-
-.block-title {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--gray);
-  margin-bottom: 16px;
-  font-family: var(--font-mono);
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--border);
-}
-
-/* DETAIL VIEW */
-.detail-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 48px;
-}
-
-.detail-hero {
-  display: grid;
-  grid-template-columns: 600px 1fr;
-  gap: 32px;
-  max-width: 100%;
-}
-
-.hero-image {
-  width: 100%;
-  aspect-ratio: 3 / 2;
-  background: white;
-  border: 2px solid var(--ink);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s var(--ease);
-}
-
-.hero-image:hover {
-  box-shadow: 0 8px 0 var(--ink);
-}
-
-.hero-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.hero-info {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.info-code {
-  font-size: 24px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  cursor: pointer;
-  padding: 12px 16px;
-  background: white;
-  border: 2px solid var(--ink);
-  transition: all 0.2s var(--ease);
-  user-select: all;
-}
-
-.info-code:hover {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-.info-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  padding: 12px 20px;
-  background: white;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--ink);
-  transition: all 0.2s var(--ease);
-}
-
-.action-btn:hover {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-.action-btn.active {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-.info-links {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.link-pill {
-  padding: 8px 16px;
-  background: var(--ink);
-  color: var(--cream);
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  transition: all 0.2s var(--ease);
-}
-
-.link-pill:hover {
-  background: var(--red);
-  border-color: var(--red);
-}
-
-.info-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 16px;
-  background: white;
-  border: 2px solid var(--ink);
-}
-
-.nav-btn {
-  width: 40px;
-  height: 40px;
-  background: var(--ink);
-  color: var(--cream);
   border: none;
-  font-size: 18px;
   cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s var(--ease);
-}
-
-.nav-btn:hover:not(:disabled) {
-  background: var(--red);
-}
-
-.nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.nav-label {
-  font-family: var(--font-mono);
   font-size: 14px;
-  font-weight: 600;
-}
-
-/* GALLERY */
-.detail-gallery {
+  font-weight: 500;
+  color: var(--text-primary);
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.gallery-bar {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.gallery-bar h3 {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--gray);
-  font-family: var(--font-mono);
-}
-
-.gallery-load {
-  padding: 8px 16px;
-  background: white;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--ink);
-  transition: all 0.2s var(--ease);
-}
-
-.gallery-load:hover:not(:disabled) {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-.gallery-load:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.gallery-thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
+  transition: all var(--transition);
+  text-align: left;
+  font-family: inherit;
 }
 
-.thumb-box {
-  position: relative;
-  aspect-ratio: 3 / 2;
-  background: white;
-  border: 2px solid var(--ink);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.2s var(--ease);
+.menu-item:hover {
+  background: var(--bg-tertiary);
 }
 
-.thumb-box:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 0 var(--ink);
+.menu-item.danger {
+  color: var(--error);
 }
 
-.thumb-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
+.menu-item.danger:hover {
+  background: #fef2f2;
 }
 
-.thumb-num {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  padding: 2px 6px;
-  background: var(--ink);
-  color: var(--cream);
-  font-size: 10px;
-  font-family: var(--font-mono);
-  font-weight: 700;
+.menu-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 4px 0;
 }
 
-/* MODALS */
-.modal-wrap {
+.menu-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(26, 26, 26, 0.9);
+  z-index: 150;
+}
+
+/* ===== CONTENT ===== */
+.content {
+  padding: 88px 24px 40px;
+}
+
+/* ===== STATS BAR ===== */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-item:nth-child(1) {
+  background: linear-gradient(135deg, #667eea20 0%, #764ba240 100%);
+  border: 2px solid #667eea40;
+}
+
+.stat-item:nth-child(2) {
+  background: linear-gradient(135deg, #f093fb20 0%, #f5576c40 100%);
+  border: 2px solid #f093fb40;
+}
+
+.stat-item:nth-child(3) {
+  background: linear-gradient(135deg, #a8edea20 0%, #fed6e340 100%);
+  border: 2px solid #a8edea40;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== ARTIST SECTION ===== */
+.artist-section {
+  margin-bottom: 48px;
+}
+
+.section-header {
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 0;
+  margin-bottom: 20px;
+  background: var(--bg-primary);
+  border-bottom: 2px solid var(--border-light);
+}
+
+.section-letter {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+}
+
+.section-count {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+/* ===== ARTIST GRID ===== */
+.artist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.artist-card {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.artist-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  border-color: var(--accent-primary);
+}
+
+.artist-card.viewed {
+  opacity: 0.5;
+}
+
+.artist-card.viewed:hover {
+  opacity: 0.7;
+}
+
+.card-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition);
+}
+
+.artist-card:hover .card-image img {
+  transform: scale(1.05);
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  background: linear-gradient(135deg, #f5f3ff 0%, #fdf4ff 100%);
+}
+
+.viewed-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.card-content {
+  padding: 16px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.card-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-badge {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--secondary-light) 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.card-edit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all var(--transition);
+  color: var(--text-secondary);
+}
+
+.artist-card:hover .card-edit {
+  opacity: 1;
+}
+
+.card-edit:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== WORKS VIEW ===== */
+.works-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 20px;
+}
+
+.header-info {
+  flex: 1;
+}
+
+.works-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+
+.works-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-chip {
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border: 2px solid;
+}
+
+.stat-chip.main {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  border-color: #93c5fd;
+}
+
+.stat-chip.comp {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #d97706;
+  border-color: #fcd34d;
+}
+
+.add-work-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  font-family: inherit;
+  transition: all var(--transition);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.add-work-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+}
+
+/* ===== WORKS SECTION ===== */
+.works-section {
+  margin-bottom: 48px;
+}
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.section-title h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.title-count {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+/* ===== WORKS GRID ===== */
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.work-card {
+  position: relative;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.work-card:hover {
+  transform: translateY(-4px);
+}
+
+.work-card.viewed {
+  opacity: 0.4;
+}
+
+.work-card.viewed:hover {
+  opacity: 0.6;
+}
+
+.work-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 8px;
+  transition: all var(--transition);
+}
+
+.work-card:hover .work-image {
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 16px rgba(139, 92, 246, 0.2);
+}
+
+.work-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition);
+}
+
+.work-card:hover .work-image img {
+  transform: scale(1.05);
+}
+
+.cover-star {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.5);
+}
+
+.viewed-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.work-code {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  letter-spacing: 0.3px;
+}
+
+/* ===== DETAIL VIEW ===== */
+.detail-container {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 32px;
+}
+
+.detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.main-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.main-image:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all var(--transition);
+  color: white;
+}
+
+.main-image:hover .image-overlay {
+  opacity: 1;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.action-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.action-chip:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.action-chip.active {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #fbbf24;
+  color: #d97706;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* ===== DETAIL SIDEBAR ===== */
+.detail-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-code {
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+.detail-code h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  letter-spacing: -0.5px;
+  word-break: break-all;
+}
+
+.external-links {
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+.external-links h4 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+
+.link-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.link-btn {
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: all var(--transition);
+  text-align: left;
+}
+
+.link-btn:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow-md);
+}
+
+.link-btn.njav:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+}
+
+.link-btn.missav:hover {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-color: #f093fb;
+  color: white;
+}
+
+.link-btn.av24:hover {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  border-color: #a8edea;
+  color: white;
+}
+
+.detail-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+.nav-arrow {
+  width: 44px;
+  height: 44px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  transition: all var(--transition);
+}
+
+.nav-arrow:hover:not(:disabled) {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.nav-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-info {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+}
+
+.nav-current {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.nav-separator {
+  font-size: 16px;
+  color: var(--text-tertiary);
+}
+
+.nav-total {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* ===== GALLERY SECTION ===== */
+.gallery-section {
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.gallery-header h4 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+.preload-btn {
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.preload-btn:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.preload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.gallery-thumb {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.gallery-thumb:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-label {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+}
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2027,264 +2638,348 @@ body {
   padding: 20px;
 }
 
-.modal-box {
+.modal-card {
   width: 100%;
   max-width: 480px;
-  background: var(--cream);
-  border: 3px solid var(--ink);
-  padding: 32px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
 }
 
-.modal-box h3 {
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-header h3 {
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--ink);
+  color: var(--text-primary);
 }
 
-.modal-sub {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--ink);
+.modal-close {
+  width: 36px;
+  height: 36px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+
+.modal-close:hover {
+  background: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
   margin-bottom: 20px;
-  opacity: 0.7;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
 }
 
-.field {
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-control {
   width: 100%;
   padding: 12px 16px;
-  background: white;
-  border: 2px solid var(--ink);
-  font-size: 15px;
-  font-family: var(--font-sans);
-  color: var(--ink);
-  margin-bottom: 16px;
-  font-weight: 500;
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.form-control:focus {
   outline: none;
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-.field:focus {
-  outline: none;
-  border-color: var(--ink);
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.15);
+.form-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
 }
 
-.field::placeholder {
-  color: var(--gray);
-}
-
-.radio-row {
+.radio-group {
   display: flex;
   gap: 12px;
-  margin-bottom: 24px;
 }
 
-.radio-row label {
+.radio-label {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
-  background: white;
-  border: 2px solid var(--ink);
+  padding: 14px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s var(--ease);
+  transition: all var(--transition);
 }
 
-.radio-row label:hover {
-  background: var(--ink);
-  color: var(--cream);
+.radio-label:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-medium);
 }
 
-.radio-row input[type="radio"] {
+.radio-label input[type="radio"] {
   width: 18px;
   height: 18px;
+  cursor: pointer;
 }
 
-.radio-row span {
+.radio-label span {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
-.modal-btns {
+.modal-footer {
   display: flex;
   gap: 12px;
+  padding: 20px 24px;
+  background: var(--bg-tertiary);
 }
 
-.btn-solid,
-.btn-ghost {
+.btn-primary,
+.btn-secondary {
   flex: 1;
   padding: 14px 20px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  transition: all 0.2s var(--ease);
+  font-weight: 600;
+  font-family: inherit;
+  transition: all var(--transition);
+  border: none;
 }
 
-.btn-solid {
-  background: var(--ink);
-  color: var(--cream);
-  border: 2px solid var(--ink);
+.btn-primary {
+  background: var(--accent-gradient);
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
-.btn-solid:hover:not(:disabled) {
-  background: var(--red);
-  border-color: var(--red);
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
 }
 
-.btn-solid:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
 }
 
-.btn-ghost {
-  background: white;
-  color: var(--ink);
-  border: 2px solid var(--ink);
+.btn-secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
 }
 
-.btn-ghost:hover {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-/* VIEWER */
-.viewer {
+/* ===== LIGHTBOX ===== */
+.lightbox {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.96);
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 400;
-  padding: 40px;
   touch-action: pan-y pinch-zoom;
 }
 
-.viewer img {
+.lightbox-close {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.lightbox-content {
   max-width: 90%;
   max-height: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 90vh;
   object-fit: contain;
-  border: 4px solid var(--cream);
+  border-radius: var(--radius-lg);
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
 }
 
-.viewer-x {
-  position: fixed;
-  top: 32px;
-  right: 32px;
-  width: 64px;
-  height: 64px;
-  background: var(--cream);
-  border: 3px solid var(--ink);
-  color: var(--ink);
-  font-size: 40px;
-  cursor: pointer;
-  font-weight: 300;
-  line-height: 1;
-  transition: all 0.2s var(--ease);
-}
-
-.viewer-x:hover {
-  background: var(--red);
-  border-color: var(--red);
-  color: white;
-  transform: scale(1.1);
-}
-
-.viewer-arrow {
+.lightbox-arrow {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  width: 80px;
-  height: 80px;
-  background: var(--cream);
-  border: 4px solid var(--ink);
-  color: var(--ink);
-  font-size: 36px;
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
   cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s var(--ease);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition);
 }
 
-.viewer-arrow:hover {
-  background: var(--ink);
-  color: var(--cream);
+.lightbox-arrow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
   transform: translateY(-50%) scale(1.1);
 }
 
-.viewer-arrow.prev {
-  left: 32px;
+.lightbox-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
-.viewer-arrow.next {
-  right: 32px;
+.lightbox-arrow.prev {
+  left: 24px;
 }
 
-.viewer-count {
+.lightbox-arrow.next {
+  right: 24px;
+}
+
+.lightbox-counter {
   position: fixed;
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 14px 28px;
-  background: var(--cream);
-  border: 4px solid var(--ink);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 700;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+  color: white;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* TOAST */
+/* ===== TOAST ===== */
 .toast {
   position: fixed;
   bottom: 32px;
   right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 16px 24px;
-  background: var(--ink);
-  color: var(--cream);
-  border: 3px solid var(--ink);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
   z-index: 500;
 }
 
+.toast-success {
+  border-color: var(--success);
+  color: var(--success);
+}
+
 .toast-error {
-  background: var(--red);
-  border-color: var(--red);
+  border-color: var(--error);
+  color: var(--error);
 }
 
 .toast-info {
-  background: var(--blue);
-  border-color: var(--blue);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
-.toast-success {
-  background: var(--ink);
-  border-color: var(--ink);
-}
-
-/* EMPTY STATE */
-.empty {
-  text-align: center;
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 80px 20px;
-  color: var(--gray);
+  color: var(--text-tertiary);
 }
 
-/* TRANSITIONS */
+.empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+
+/* ===== TRANSITIONS ===== */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity 200ms;
 }
 
 .fade-enter,
@@ -2292,20 +2987,37 @@ body {
   opacity: 0;
 }
 
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s var(--ease);
+.modal-enter-active {
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.expand-enter,
-.expand-leave-to {
+.modal-leave-active {
+  transition: all 200ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.modal-enter {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: scale(0.95);
+}
+
+.modal-leave-to {
+  opacity: 0;
+}
+
+.menu-slide-enter-active,
+.menu-slide-leave-active {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-slide-enter,
+.menu-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.3s var(--ease);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast-enter,
@@ -2314,54 +3026,75 @@ body {
   transform: translateY(20px);
 }
 
-/* RESPONSIVE */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1200px) {
-  .detail-hero {
+  .detail-container {
     grid-template-columns: 1fr;
+  }
+  
+  .gallery-grid {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .search-compact {
-    width: 150px;
-    font-size: 12px;
-    padding: 8px 10px;
-  }
-  
-  .sort-compact {
-    font-size: 12px;
-    padding: 8px 10px;
-    padding-right: 26px;
-  }
-  
-  .image-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-  }
-  
-  .image-grid.tight {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-  
-  .content-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .gallery-thumbs {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  }
-  
-  .viewer-arrow {
-    width: 64px;
-    height: 64px;
-    font-size: 28px;
-  }
-  
-  .viewer-x {
-    width: 56px;
+  .top-bar {
+    padding: 0 16px;
     height: 56px;
-    font-size: 32px;
+  }
+  
+  .search-input {
+    width: 200px;
+    font-size: 13px;
+    padding: 8px 32px 8px 32px;
+  }
+  
+  .sort-select {
+    font-size: 13px;
+    padding: 8px 28px 8px 10px;
+  }
+  
+  .content {
+    padding: 72px 16px 32px;
+  }
+  
+  .stats-bar {
+    padding: 16px;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+  }
+  
+  .artist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  
+  .works-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  
+  .works-title {
+    font-size: 24px;
+  }
+  
+  .gallery-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .lightbox-arrow {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .lightbox-arrow.prev {
+    left: 16px;
+  }
+  
+  .lightbox-arrow.next {
+    right: 16px;
   }
 }
 
@@ -2370,75 +3103,82 @@ body {
     padding: 0 12px;
   }
   
-  .back-btn-fixed {
-    padding: 8px 16px;
-    font-size: 13px;
-  }
-  
-  .search-compact {
+  .back-text {
     display: none;
   }
   
-  .sort-compact {
-    width: 100px;
-    font-size: 11px;
-    padding: 8px;
-    padding-right: 24px;
+  .search-input {
+    width: 160px;
   }
   
-  .header-btn {
-    width: 36px;
-    height: 36px;
-  }
-  
-  .header-btn svg {
-    width: 14px;
-    height: 14px;
+  .sort-select {
+    display: none;
   }
   
   .content {
-    padding: 80px 12px 32px;
+    padding: 68px 12px 24px;
   }
   
-  .image-grid {
+  .artist-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    gap: 12px;
   }
   
-  .image-grid.tight {
+  .works-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .works-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .add-work-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .action-chip {
+    justify-content: center;
+  }
+  
+  .gallery-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .modal-box {
-    padding: 24px;
-  }
-  
-  .viewer-arrow {
-    width: 56px;
-    height: 56px;
-    font-size: 24px;
-  }
-  
-  .viewer-arrow.prev {
-    left: 16px;
-  }
-  
-  .viewer-arrow.next {
-    right: 16px;
-  }
-  
-  .viewer-x {
-    width: 48px;
-    height: 48px;
-    font-size: 28px;
-    top: 16px;
-    right: 16px;
+  .modal-card {
+    max-width: 100%;
   }
   
   .toast {
     left: 12px;
     right: 12px;
     bottom: 12px;
+  }
+  
+  .lightbox-close {
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .lightbox-arrow {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .lightbox-arrow.prev {
+    left: 12px;
+  }
+  
+  .lightbox-arrow.next {
+    right: 12px;
   }
 }
 </style>
