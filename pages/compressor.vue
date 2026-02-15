@@ -292,7 +292,7 @@ export default {
         reader.onload = (event) => {
           const img = new Image()
           img.onload = () => {
-            const megapixels = (img.naturalWidth * img.naturalHeight) / 1_000_000
+            const megapixels = (img.naturalWidth * img.naturalHeight) / 1000000;
             resolve({
               width: img.naturalWidth,
               height: img.naturalHeight,
