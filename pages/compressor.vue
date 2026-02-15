@@ -1,5 +1,5 @@
 <!-- pages/compressor.vue -->
-<!-- 100MP+ Self-Contained Compressor for Nuxt 2 -->
+<!-- 100MP+ Self-Contained Compressor for Nuxt 2 - FIXED -->
 
 <template>
   <div class="compressor-container">
@@ -27,7 +27,7 @@
             <div class="drop-subtext">JPG, PNG • Up to 100MP each</div>
 
             <div class="upload-actions">
-              <button class="btn btn-primary" @click="$refs.fileInput.click()">
+              <button class="btn btn-primary" @click.stop="$refs.fileInput.click()">
                 <span>📁</span>
                 <span>Browse Files</span>
               </button>
@@ -65,8 +65,26 @@
             <p>🤖 Auto quality based on image resolution</p>
           </div>
 
+          <div class="setting-item">
+            <div class="setting-label">Size</div>
+            <div class="setting-control setting-control-column">
+              <label class="radio-label">
+                <input v-model="resizeMode" type="radio" value="original">
+                <span>Original</span>
+              </label>
+              <label class="radio-label">
+                <input v-model="resizeMode" type="radio" value="2000px">
+                <span>2000px</span>
+              </label>
+              <label class="radio-label">
+                <input v-model="resizeMode" type="radio" value="1000px">
+                <span>1000px</span>
+              </label>
+            </div>
+          </div>
+
           <div class="dimensions-info">
-            <div class="info-item">📏 Original dimensions preserved</div>
+            <div class="info-item">📏 {{ resizeMode === 'original' ? 'Original dimensions preserved' : 'Images resized to fit ' + resizeMode + ' max' }}</div>
             <div class="info-item">💾 Optimized for 100MP+</div>
           </div>
         </div>
@@ -94,7 +112,7 @@
             <div class="file-count">{{ files.length }} file{{ files.length !== 1 ? 's' : '' }}</div>
           </div>
           <div class="file-items-container">
-            <div v-for="(file, index) in files" :key="index" class="file-item" :class="file.status">
+            <div v-for="(file, index) in files" :key="file.id" class="file-item" :class="file.status">
               <div class="file-preview">
                 <img v-if="file.previewUrl" :src="file.previewUrl" :alt="file.name" class="preview-image" />
                 <span v-else>🖼️</span>
@@ -186,8 +204,10 @@
     </div>
 
     <div v-if="error" class="error-message show">
-      <div class="error-title">{{ error.title }}</div>
-      <div class="error-desc">{{ error.message }}</div>
+      <div class="error-content">
+        <div class="error-title">{{ error.title }}</div>
+        <div class="error-desc">{{ error.message }}</div>
+      </div>
       <button class="btn btn-secondary" @click="error = null">Dismiss</button>
     </div>
   </div>
@@ -207,9 +227,11 @@ export default {
       totalProcessed: 0,
       totalSaved: 0,
       compressionMode: 'adaptive',
+      resizeMode: '2000px',
       maxConcurrent: 2,
       activeCompressions: 0,
       compressionQueue: [],
+      fileIdCounter: 0,
     }
   },
 
@@ -260,6 +282,7 @@ export default {
           const thumbnail = await this.generateThumbnail(file)
 
           const fileObj = {
+            id: `file_${this.fileIdCounter++}_${Date.now()}`,
             name: file.name,
             size: file.size,
             file: file,
@@ -273,26 +296,55 @@ export default {
           this.files.unshift(fileObj)
         } catch (error) {
           console.error('Error adding file:', error)
+          this.showError('Error', `Failed to add ${file.name}`)
         }
       }
     },
 
     removeFile(index) {
       const file = this.files[index]
-      if (file.previewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(file.previewUrl)
-      }
+      this.cleanupFileBlobs(file)
       this.files.splice(index, 1)
+    },
+
+    cleanupFileBlobs(file) {
+      if (file.previewUrl && file.previewUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(file.previewUrl)
+        } catch (e) {
+          console.warn('Failed to revoke preview URL:', e)
+        }
+      }
+      if (file.compressedBlob && typeof file.compressedBlob === 'object') {
+        try {
+          const url = URL.createObjectURL(file.compressedBlob)
+          URL.revokeObjectURL(url)
+        } catch (e) {
+          // Blob already cleaned up
+        }
+      }
     },
 
     // 100MP+ IMAGE HANDLING
     async getImageMetadata(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
+        const timeout = setTimeout(() => {
+          reader.abort()
+          reject(new Error('Metadata timeout'))
+        }, 10000)
+
         reader.onload = (event) => {
+          clearTimeout(timeout)
           const img = new Image()
+          const imgTimeout = setTimeout(() => {
+            img.src = ''
+            reject(new Error('Image load timeout'))
+          }, 10000)
+
           img.onload = () => {
-            const megapixels = (img.naturalWidth * img.naturalHeight) / 1000000;
+            clearTimeout(imgTimeout)
+            const megapixels = (img.naturalWidth * img.naturalHeight) / 1000000
             resolve({
               width: img.naturalWidth,
               height: img.naturalHeight,
@@ -301,10 +353,16 @@ export default {
             })
             img.src = ''
           }
-          img.onerror = () => reject(new Error('Failed to load image'))
+          img.onerror = () => {
+            clearTimeout(imgTimeout)
+            reject(new Error('Failed to load image'))
+          }
           img.src = event.target.result
         }
-        reader.onerror = () => reject(new Error('FileReader failed'))
+        reader.onerror = () => {
+          clearTimeout(timeout)
+          reject(new Error('FileReader failed'))
+        }
         reader.readAsDataURL(file)
       })
     },
@@ -312,9 +370,21 @@ export default {
     async generateThumbnail(file, maxSize = 150) {
       return new Promise((resolve) => {
         const reader = new FileReader()
+        const timeout = setTimeout(() => {
+          reader.abort()
+          resolve(null)
+        }, 5000)
+
         reader.onload = (event) => {
+          clearTimeout(timeout)
           const img = new Image()
+          const imgTimeout = setTimeout(() => {
+            img.src = ''
+            resolve(null)
+          }, 5000)
+
           img.onload = () => {
+            clearTimeout(imgTimeout)
             try {
               let { width, height } = img
               const scale = Math.min(maxSize / width, maxSize / height)
@@ -324,7 +394,7 @@ export default {
               const canvas = document.createElement('canvas')
               canvas.width = width
               canvas.height = height
-              const ctx = canvas.getContext('2d')
+              const ctx = canvas.getContext('2d', { alpha: false })
               ctx.drawImage(img, 0, 0, width, height)
 
               const thumbnail = canvas.toDataURL('image/webp', 0.6)
@@ -332,13 +402,20 @@ export default {
               img.src = ''
               resolve(thumbnail)
             } catch (error) {
+              console.error('Thumbnail error:', error)
               resolve(null)
             }
           }
-          img.onerror = () => resolve(null)
+          img.onerror = () => {
+            clearTimeout(imgTimeout)
+            resolve(null)
+          }
           img.src = event.target.result
         }
-        reader.onerror = () => resolve(null)
+        reader.onerror = () => {
+          clearTimeout(timeout)
+          resolve(null)
+        }
         reader.readAsDataURL(file)
       })
     },
@@ -352,39 +429,81 @@ export default {
       return 85
     },
 
+    getResizeDimensions(width, height) {
+      if (this.resizeMode === 'original') {
+        return { width, height }
+      }
+
+      const maxSize = this.resizeMode === '2000px' ? 2000 : 1000
+      const maxDimension = Math.max(width, height)
+
+      if (maxDimension <= maxSize) {
+        return { width, height }
+      }
+
+      const scale = maxSize / maxDimension
+      return {
+        width: Math.round(width * scale),
+        height: Math.round(height * scale)
+      }
+    },
+
     async compressAll() {
-      if (this.files.length === 0) return
+      if (this.files.length === 0 || this.isProcessing) return
+      
       this.isProcessing = true
       this.progress = 0
+      this.totalProcessed = 0
+      this.totalSaved = 0
 
       const uncompressed = this.files.filter(f => f.status === 'pending')
       this.compressionQueue = [...uncompressed]
+      this.activeCompressions = 0
 
-      while (this.compressionQueue.length > 0 || this.activeCompressions > 0) {
-        while (this.activeCompressions < this.maxConcurrent && this.compressionQueue.length > 0) {
-          const fileObj = this.compressionQueue.shift()
-          this.activeCompressions++
-          this.compressSingle(fileObj).finally(() => {
-            this.activeCompressions--
-            this.updateProgress()
-          })
+      const totalFiles = this.compressionQueue.length
+
+      try {
+        while (this.compressionQueue.length > 0 || this.activeCompressions > 0) {
+          while (this.activeCompressions < this.maxConcurrent && this.compressionQueue.length > 0) {
+            const fileObj = this.compressionQueue.shift()
+            this.activeCompressions++
+            
+            this.compressSingle(fileObj)
+              .then(() => {
+                this.activeCompressions--
+                this.totalProcessed++
+                this.updateProgress(totalFiles)
+              })
+              .catch((error) => {
+                console.error('Compression failed:', error)
+                this.activeCompressions--
+                this.totalProcessed++
+                this.updateProgress(totalFiles)
+              })
+          }
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
-        await new Promise(resolve => setTimeout(resolve, 100))
+      } catch (error) {
+        console.error('Compression queue error:', error)
+        this.showError('Error', 'Compression failed')
+      } finally {
+        this.isProcessing = false
+        this.progress = 100
       }
-
-      this.isProcessing = false
     },
 
     async compressSingle(fileObj) {
-      if (!fileObj.file || fileObj.status !== 'pending') return
-      fileObj.status = 'processing'
+      if (!fileObj || !fileObj.file || fileObj.status !== 'pending') {
+        return
+      }
+
+      this.$set(fileObj, 'status', 'processing')
 
       try {
         const qualityToUse = this.compressionMode === 'adaptive'
           ? this.getAdaptiveQuality(fileObj.metadata.megapixels)
           : this.quality
 
-        // For large images (30MP+), use tiled compression
         let compressedBlob
         if (fileObj.metadata.megapixels > 30) {
           compressedBlob = await this.compressImageTiled(fileObj, qualityToUse)
@@ -393,17 +512,16 @@ export default {
         }
 
         if (compressedBlob && compressedBlob.size > 0) {
-          fileObj.compressedBlob = compressedBlob
-          fileObj.compressedSize = compressedBlob.size
-          fileObj.status = 'compressed'
-          this.totalProcessed++
+          this.$set(fileObj, 'compressedBlob', compressedBlob)
+          this.$set(fileObj, 'compressedSize', compressedBlob.size)
+          this.$set(fileObj, 'status', 'compressed')
           this.totalSaved += Math.max(0, fileObj.size - compressedBlob.size)
         } else {
-          fileObj.status = 'error'
+          this.$set(fileObj, 'status', 'error')
         }
       } catch (error) {
         console.error('Compression error:', error)
-        fileObj.status = 'error'
+        this.$set(fileObj, 'status', 'error')
       }
     },
 
@@ -412,29 +530,45 @@ export default {
       return new Promise((resolve, reject) => {
         const TILE_SIZE = 1024
         const reader = new FileReader()
+        const timeout = setTimeout(() => {
+          reader.abort()
+          reject(new Error('Tiled compression timeout'))
+        }, 60000)
 
         reader.onload = (event) => {
+          clearTimeout(timeout)
           const img = new Image()
+          const imgTimeout = setTimeout(() => {
+            img.src = ''
+            reject(new Error('Image load timeout'))
+          }, 30000)
+
           img.onload = () => {
+            clearTimeout(imgTimeout)
             try {
-              const { width, height } = img
+              const { width, height } = this.getResizeDimensions(img.naturalWidth, img.naturalHeight)
+              
               const outputCanvas = document.createElement('canvas')
               outputCanvas.width = width
               outputCanvas.height = height
-              const outputCtx = outputCanvas.getContext('2d')
+              const outputCtx = outputCanvas.getContext('2d', { alpha: false })
 
               const tilesX = Math.ceil(width / TILE_SIZE)
               const tilesY = Math.ceil(height / TILE_SIZE)
+              const totalTiles = tilesX * tilesY
 
               let completed = 0
               const processNextTile = () => {
-                if (completed >= tilesX * tilesY) {
-                  // All tiles done
+                if (completed >= totalTiles) {
                   outputCanvas.toBlob(
                     (blob) => {
                       outputCanvas.width = outputCanvas.height = 0
                       img.src = ''
-                      resolve(blob)
+                      if (blob) {
+                        resolve(blob)
+                      } else {
+                        reject(new Error('Failed to create blob'))
+                      }
                     },
                     'image/jpeg',
                     quality / 100
@@ -442,28 +576,39 @@ export default {
                   return
                 }
 
-                const tileY = Math.floor(completed / tilesX)
-                const tileX = completed % tilesX
+                try {
+                  const tileY = Math.floor(completed / tilesX)
+                  const tileX = completed % tilesX
 
-                const x = tileX * TILE_SIZE
-                const y = tileY * TILE_SIZE
-                const w = Math.min(TILE_SIZE, width - x)
-                const h = Math.min(TILE_SIZE, height - y)
+                  const x = tileX * TILE_SIZE
+                  const y = tileY * TILE_SIZE
+                  const w = Math.min(TILE_SIZE, width - x)
+                  const h = Math.min(TILE_SIZE, height - y)
 
-                const tileCanvas = document.createElement('canvas')
-                tileCanvas.width = w
-                tileCanvas.height = h
-                const tileCtx = tileCanvas.getContext('2d')
+                  const tileCanvas = document.createElement('canvas')
+                  tileCanvas.width = w
+                  tileCanvas.height = h
+                  const tileCtx = tileCanvas.getContext('2d', { alpha: false })
 
-                tileCtx.drawImage(img, x, y, w, h, 0, 0, w, h)
-                const imageData = tileCtx.getImageData(0, 0, w, h)
-                outputCtx.putImageData(imageData, x, y)
+                  // Calculate source coordinates for scaling
+                  const scaleX = img.naturalWidth / width
+                  const scaleY = img.naturalHeight / height
+                  const sx = x * scaleX
+                  const sy = y * scaleY
+                  const sw = w * scaleX
+                  const sh = h * scaleY
 
-                tileCanvas.width = tileCanvas.height = 0
-                completed++
+                  tileCtx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h)
+                  const imageData = tileCtx.getImageData(0, 0, w, h)
+                  outputCtx.putImageData(imageData, x, y)
 
-                // Yield to browser
-                setTimeout(processNextTile, 0)
+                  tileCanvas.width = tileCanvas.height = 0
+                  completed++
+
+                  setTimeout(processNextTile, 0)
+                } catch (error) {
+                  reject(error)
+                }
               }
 
               processNextTile()
@@ -471,10 +616,16 @@ export default {
               reject(error)
             }
           }
-          img.onerror = () => reject(new Error('Image load failed'))
+          img.onerror = () => {
+            clearTimeout(imgTimeout)
+            reject(new Error('Image load failed'))
+          }
           img.src = event.target.result
         }
-        reader.onerror = () => reject(new Error('FileReader failed'))
+        reader.onerror = () => {
+          clearTimeout(timeout)
+          reject(new Error('FileReader failed'))
+        }
         reader.readAsDataURL(fileObj.file)
       })
     },
@@ -483,21 +634,39 @@ export default {
     async compressImageStandard(fileObj, quality) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
+        const timeout = setTimeout(() => {
+          reader.abort()
+          reject(new Error('Standard compression timeout'))
+        }, 30000)
+
         reader.onload = (event) => {
+          clearTimeout(timeout)
           const img = new Image()
+          const imgTimeout = setTimeout(() => {
+            img.src = ''
+            reject(new Error('Image load timeout'))
+          }, 15000)
+
           img.onload = () => {
+            clearTimeout(imgTimeout)
             try {
+              const { width, height } = this.getResizeDimensions(img.naturalWidth, img.naturalHeight)
+              
               const canvas = document.createElement('canvas')
-              canvas.width = img.naturalWidth
-              canvas.height = img.naturalHeight
-              const ctx = canvas.getContext('2d')
-              ctx.drawImage(img, 0, 0)
+              canvas.width = width
+              canvas.height = height
+              const ctx = canvas.getContext('2d', { alpha: false })
+              ctx.drawImage(img, 0, 0, width, height)
 
               canvas.toBlob(
                 (blob) => {
                   canvas.width = canvas.height = 0
                   img.src = ''
-                  resolve(blob)
+                  if (blob) {
+                    resolve(blob)
+                  } else {
+                    reject(new Error('Failed to create blob'))
+                  }
                 },
                 'image/jpeg',
                 quality / 100
@@ -506,33 +675,46 @@ export default {
               reject(error)
             }
           }
-          img.onerror = () => reject(new Error('Image load failed'))
+          img.onerror = () => {
+            clearTimeout(imgTimeout)
+            reject(new Error('Image load failed'))
+          }
           img.src = event.target.result
         }
-        reader.onerror = () => reject(new Error('FileReader failed'))
+        reader.onerror = () => {
+          clearTimeout(timeout)
+          reject(new Error('FileReader failed'))
+        }
         reader.readAsDataURL(fileObj.file)
       })
     },
 
-    updateProgress() {
-      const total = this.files.filter(f => f.status === 'pending').length + this.totalProcessed
-      const processed = this.totalProcessed + (this.maxConcurrent - this.activeCompressions)
-      this.progress = (processed / this.files.length) * 100
+    updateProgress(totalFiles) {
+      if (totalFiles > 0) {
+        this.progress = (this.totalProcessed / totalFiles) * 100
+      } else {
+        this.progress = 0
+      }
     },
 
     // DOWNLOAD
     downloadFile(file) {
       if (!file.compressedBlob) return
-      const url = URL.createObjectURL(file.compressedBlob)
-      const a = document.createElement('a')
-      a.href = url
-      const originalName = file.name.replace(/\.[^/.]+$/, '')
-      const extension = file.name.split('.').pop()
-      a.download = `${originalName}_compressed.${extension}`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      try {
+        const url = URL.createObjectURL(file.compressedBlob)
+        const a = document.createElement('a')
+        a.href = url
+        const originalName = file.name.replace(/\.[^/.]+$/, '')
+        const extension = file.name.split('.').pop()
+        a.download = `ousa_compressed_${originalName}.${extension}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 100)
+      } catch (error) {
+        console.error('Download error:', error)
+        this.showError('Download failed', 'Could not download file')
+      }
     },
 
     downloadAll() {
@@ -561,7 +743,7 @@ export default {
           if (file.compressedBlob) {
             const originalName = file.name.replace(/\.[^/.]+$/, '')
             const extension = file.name.split('.').pop()
-            zip.file(`${originalName}_compressed.${extension}`, file.compressedBlob)
+            zip.file(`ousa_compressed_${originalName}.${extension}`, file.compressedBlob)
           }
         })
 
@@ -569,26 +751,26 @@ export default {
         const url = URL.createObjectURL(zipBlob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `compressed_${new Date().toISOString().split('T')[0]}.zip`
+        a.download = `ousa_compressed_${new Date().toISOString().split('T')[0]}.zip`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        setTimeout(() => URL.revokeObjectURL(url), 100)
       } catch (error) {
+        console.error('ZIP error:', error)
         this.showError('Download failed', 'Could not create ZIP')
       }
     },
 
     clearSession() {
-      this.files.forEach(file => {
-        if (file.previewUrl?.startsWith('blob:')) {
-          URL.revokeObjectURL(file.previewUrl)
-        }
-      })
+      this.files.forEach(file => this.cleanupFileBlobs(file))
       this.files = []
       this.progress = 0
       this.totalProcessed = 0
       this.totalSaved = 0
+      this.compressionQueue = []
+      this.activeCompressions = 0
+      this.isProcessing = false
     },
 
     // UTILITIES
@@ -610,7 +792,7 @@ export default {
     },
 
     formatSize(bytes) {
-      if (!bytes) return '0 B'
+      if (!bytes || bytes === 0) return '0 B'
       const sizes = ['B', 'KB', 'MB', 'GB']
       const i = Math.floor(Math.log(bytes) / Math.log(1024))
       return Math.round((bytes / Math.pow(1024, i)) * 10) / 10 + ' ' + sizes[i]
@@ -623,11 +805,7 @@ export default {
   },
 
   beforeDestroy() {
-    this.files.forEach(file => {
-      if (file.previewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(file.previewUrl)
-      }
-    })
+    this.files.forEach(file => this.cleanupFileBlobs(file))
   },
 }
 </script>
@@ -677,6 +855,9 @@ export default {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .clear-session-btn:hover {
@@ -829,6 +1010,12 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.setting-control-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .radio-label {
@@ -1291,14 +1478,16 @@ export default {
 .error-message {
   position: fixed;
   top: 1rem;
-  left: 1rem;
-  right: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 500px;
   background: #fff5f5;
   border: 1px solid #fed7d7;
   border-radius: 8px;
   padding: 1rem;
   display: none;
   z-index: 100;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .error-message.show {
@@ -1308,16 +1497,20 @@ export default {
   gap: 1rem;
 }
 
+.error-content {
+  flex: 1;
+}
+
 .error-title {
   font-size: 0.875rem;
   font-weight: 600;
   color: #c53030;
+  margin-bottom: 0.25rem;
 }
 
 .error-desc {
   font-size: 0.875rem;
   color: #721c24;
-  flex: 1;
 }
 
 @media (max-width: 768px) {
@@ -1331,6 +1524,11 @@ export default {
     grid-template-columns: 1fr;
     gap: 1rem;
     height: auto;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }
 </style>
