@@ -1,6 +1,6 @@
 <template>
   <div class="works-app">
-    <!-- Enhanced Top Bar with better mobile support -->
+    <!-- Enhanced Top Bar with all controls visible -->
     <header class="top-bar">
       <div class="top-left">
         <button v-if="currentView !== 'artists'" @click="goBack" class="back-btn">
@@ -45,52 +45,39 @@
           />
           <button v-if="searchQuery" @click="searchQuery = ''" class="search-clear">×</button>
         </div>
-        
-        <!-- Menu button for mobile -->
-        <button @click="showMenu = !showMenu" class="menu-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <circle cx="12" cy="12" r="1"/>
-            <circle cx="12" cy="5" r="1"/>
-            <circle cx="12" cy="19" r="1"/>
-          </svg>
-        </button>
+
+        <!-- Action buttons -->
+        <div class="action-buttons">
+          <button @click="exportData()" class="action-btn" title="Export Data">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            <span class="action-text">Export</span>
+          </button>
+          
+          <button @click="triggerImport()" class="action-btn" title="Import Data">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <span class="action-text">Import</span>
+          </button>
+          
+          <button @click="clearViewHistory()" class="action-btn" title="Clear History">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+            <span class="action-text">Clear</span>
+          </button>
+          
+          <button @click="hardRefresh()" class="action-btn danger" title="Reset All Data">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M3 12l2.26 2.26A9.75 9.75 0 0012 21a9 9 0 009-9"/>
+            </svg>
+            <span class="action-text">Reset</span>
+          </button>
+        </div>
       </div>
     </header>
-
-    <!-- Menu Dropdown -->
-    <transition name="menu-slide">
-      <div v-if="showMenu" class="menu-dropdown">
-        <button @click="exportData(); showMenu = false" class="menu-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-          Export Data
-        </button>
-        
-        <button @click="triggerImport(); showMenu = false" class="menu-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-          </svg>
-          Import Data
-        </button>
-        
-        <button @click="clearViewHistory(); showMenu = false" class="menu-item">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-          </svg>
-          Clear History
-        </button>
-        
-        <div class="menu-divider"></div>
-        
-        <button @click="hardRefresh(); showMenu = false" class="menu-item danger">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M3 12l2.26 2.26A9.75 9.75 0 0012 21a9 9 0 009-9"/>
-          </svg>
-          Reset All Data
-        </button>
-      </div>
-    </transition>
 
     <input ref="fileInput" type="file" accept=".json" hidden @change="importData" />
 
@@ -341,6 +328,9 @@
               <button @click="openExternalLink(currentWork.code, '24av')" class="link-btn av24">
                 24AV
               </button>
+              <button @click="openExternalLink(currentWork.code, '24av-uncensor')" class="link-btn av24-uncensor">
+                24AV Uncensor
+              </button>
             </div>
           </div>
 
@@ -570,9 +560,6 @@
         <span>{{ toast.message }}</span>
       </div>
     </transition>
-
-    <!-- Click outside to close menu -->
-    <div v-if="showMenu" class="menu-backdrop" @click="showMenu = false"></div>
   </div>
 </template>
 
@@ -686,7 +673,6 @@ export default {
       searchQuery: '',
       workSearchQuery: '',
       artistSortBy: 'nameAsc',
-      showMenu: false,
       
       artists: normalizeArtists(JSON.parse(JSON.stringify(DEFAULT_ARTISTS))),
       currentWork: null,
@@ -842,11 +828,6 @@ export default {
           this.workSearchQuery = ''
         })
       }
-    },
-    showMenu(val) {
-      if (process.client) {
-        document.body.style.overflow = val ? 'hidden' : ''
-      }
     }
   },
   mounted() {
@@ -854,11 +835,6 @@ export default {
       this.imageDB = new ImageDB()
       this.initializeApp()
       this.setupKeyboardShortcuts()
-    }
-  },
-  beforeDestroy() {
-    if (process.client) {
-      document.body.style.overflow = ''
     }
   },
   methods: {
@@ -934,7 +910,6 @@ export default {
           else if (this.showAddWorkModal) this.closeAddWorkModal()
           else if (this.showUploadModal) this.closeUploadModal()
           else if (this.showArtistPhotoModal) this.closeArtistPhotoModal()
-          else if (this.showMenu) this.showMenu = false
           else if (this.currentView === 'detail') this.backToWorks()
           else if (this.currentView === 'works') this.backToArtists()
         }
@@ -1404,6 +1379,8 @@ export default {
         url = `https://missav.ws/en/${formattedCode}`
       } else if (type === '24av') {
         url = `https://24av.net/en/v/${formattedCode}`
+      } else if (type === '24av-uncensor') {
+        url = `https://24av.net/en/uncensored/${formattedCode}`
       } else {
         url = `https://www.njav.com/en/xvideos/${formattedCode}`
       }
@@ -1570,7 +1547,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -1654,6 +1630,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+  gap: 20px;
   z-index: 100;
   backdrop-filter: blur(12px);
   background: rgba(255, 255, 255, 0.95);
@@ -1723,36 +1700,11 @@ body {
   font-weight: 500;
 }
 
-.logo-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 0;
-}
-
-.logo-text {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.logo-count {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
 .top-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .search-wrapper {
@@ -1814,82 +1766,49 @@ body {
   color: var(--text-primary);
 }
 
-.menu-btn {
-  width: 40px;
-  height: 40px;
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-secondary);
+  font-family: inherit;
+  transition: all var(--transition);
+  white-space: nowrap;
 }
 
-.menu-btn:hover {
+.action-btn:hover {
   background: var(--bg-tertiary);
   border-color: var(--border-medium);
   color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
-/* ===== MENU DROPDOWN ===== */
-.menu-dropdown {
-  position: fixed;
-  top: 72px;
-  right: 24px;
-  width: 240px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: 200;
-  overflow: hidden;
-}
-
-.menu-item {
-  width: 100%;
-  padding: 14px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all var(--transition);
-  text-align: left;
-  font-family: inherit;
-}
-
-.menu-item:hover {
-  background: var(--bg-tertiary);
-}
-
-.menu-item.danger {
+.action-btn.danger {
   color: var(--error);
 }
 
-.menu-item.danger:hover {
+.action-btn.danger:hover {
   background: #fef2f2;
+  border-color: #fca5a5;
 }
 
-.menu-divider {
-  height: 1px;
-  background: var(--border-light);
-  margin: 4px 0;
-}
-
-.menu-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 150;
+.action-text {
+  font-weight: 600;
 }
 
 /* ===== CONTENT ===== */
@@ -1897,62 +1816,9 @@ body {
   padding: 88px 24px 40px;
 }
 
-/* ===== STATS BAR ===== */
-.stats-bar {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
-  padding: 20px;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-}
-
-.stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px;
-  border-radius: var(--radius-md);
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-item:nth-child(1) {
-  background: linear-gradient(135deg, #667eea20 0%, #764ba240 100%);
-  border: 2px solid #667eea40;
-}
-
-.stat-item:nth-child(2) {
-  background: linear-gradient(135deg, #f093fb20 0%, #f5576c40 100%);
-  border: 2px solid #f093fb40;
-}
-
-.stat-item:nth-child(3) {
-  background: linear-gradient(135deg, #a8edea20 0%, #fed6e340 100%);
-  border: 2px solid #a8edea40;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 /* ===== ARTIST SECTION ===== */
 .artist-section {
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .section-header {
@@ -1963,14 +1829,14 @@ body {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  padding: 16px 0;
-  margin-bottom: 20px;
+  padding: 12px 0;
+  margin-bottom: 16px;
   background: var(--bg-primary);
   border-bottom: 2px solid var(--border-light);
 }
 
 .section-letter {
-  font-size: 48px;
+  font-size: 40px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -2px;
@@ -1978,34 +1844,27 @@ body {
 }
 
 .section-count {
-  font-size: 18px;
+  font-size: 16px;
   color: var(--text-tertiary);
   font-weight: 600;
   margin-left: 4px;
 }
 
-/* ===== ARTIST GRID ===== */
+/* ===== ARTIST GRID - MORE COMPACT ===== */
 .artist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
 }
 
 .artist-card {
   position: relative;
   background: var(--bg-secondary);
-  border: 2px solid #d4d4d4;
+
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.artist-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-  border-color: #8b5cf6;
 }
 
 .artist-card.viewed {
@@ -2030,6 +1889,9 @@ body {
   object-fit: cover;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.card-image img:hover {
+  border-color: #8b5cf6;
+}
 
 .artist-card:hover .card-image img {
   transform: scale(1.03);
@@ -2041,7 +1903,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 72px;
+  font-size: 60px;
   font-weight: 700;
   color: #d4d4d4;
   background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
@@ -2049,10 +1911,10 @@ body {
 
 .viewed-badge {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 32px;
-  height: 32px;
+  top: 10px;
+  left: 10px;
+  width: 28px;
+  height: 28px;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-radius: 50%;
   display: flex;
@@ -2062,34 +1924,35 @@ body {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
+.viewed-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
 .card-content {
-  padding: 20px;
+  padding-top: 8px;
   background: var(--bg-secondary);
   border-top: 1px solid #f0f0f0;
 }
 
 .card-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 12px;
-  line-height: 1.5;
+  margin-bottom: 8px;
+  line-height: 1.4;
   letter-spacing: -0.3px;
 }
 
 .card-meta {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 
 .meta-badge {
-  padding: 6px 14px;
-  background: #f5f5f5;
-  border: 1px solid #e5e5e5;
-  border-radius: 20px;
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 600;
   color: #666666;
   letter-spacing: 0.2px;
@@ -2098,10 +1961,10 @@ body {
 
 .card-edit {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
@@ -2112,6 +1975,11 @@ body {
   opacity: 0;
   transition: all var(--transition);
   color: var(--text-secondary);
+}
+
+.card-edit svg {
+  width: 12px;
+  height: 12px;
 }
 
 .artist-card:hover .card-edit {
@@ -2130,7 +1998,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
   gap: 20px;
 }
 
@@ -2139,23 +2007,23 @@ body {
 }
 
 .works-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   letter-spacing: -0.5px;
   color: var(--text-primary);
 }
 
 .works-stats {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .stat-chip {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.3px;
   border: 2px solid;
@@ -2177,12 +2045,12 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 10px 18px;
   background: #1a1a1a;
   border: 2px solid #1a1a1a;
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: white;
   font-family: inherit;
@@ -2199,20 +2067,20 @@ body {
 
 /* ===== WORKS SECTION ===== */
 .works-section {
-  margin-bottom: 48px;
+  margin-bottom: 40px;
 }
 
 .section-title {
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
   border-bottom: 2px solid var(--border-light);
 }
 
 .section-title h3 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -2220,16 +2088,16 @@ body {
 }
 
 .title-count {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-tertiary);
   font-weight: 600;
 }
 
-/* ===== WORKS GRID ===== */
+/* ===== WORKS GRID - MORE COMPACT ===== */
 .works-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 .work-card {
@@ -2258,7 +2126,7 @@ body {
   border: 2px solid #d4d4d4;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -2266,11 +2134,6 @@ body {
 .work-card:hover .work-image {
   border-color: #8b5cf6;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-}
-
-.work-card:hover .work-image {
-  border-color: var(--accent-primary);
-  box-shadow: 0 8px 16px rgba(139, 92, 246, 0.2);
 }
 
 .work-image img {
@@ -2286,10 +2149,10 @@ body {
 
 .cover-star {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   border-radius: 50%;
   display: flex;
@@ -2299,12 +2162,17 @@ body {
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.5);
 }
 
+.cover-star svg {
+  width: 14px;
+  height: 14px;
+}
+
 .viewed-overlay {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-radius: 50%;
   display: flex;
@@ -2314,13 +2182,18 @@ body {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
+.viewed-overlay svg {
+  width: 16px;
+  height: 16px;
+}
+
 .work-code {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1a1a1a;
   font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
-  letter-spacing: 0.5px;
-  line-height: 1.6;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
   padding: 2px 0;
 }
 
@@ -2328,15 +2201,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   padding: 0 2px;
 }
 
 .work-type {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   white-space: nowrap;
@@ -2525,6 +2398,12 @@ body {
 .link-btn.av24:hover {
   background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
   border-color: #a8edea;
+  color: white;
+}
+
+.link-btn.av24-uncensor:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-color: #fbbf24;
   color: white;
 }
 
@@ -3058,17 +2937,6 @@ body {
   opacity: 0;
 }
 
-.menu-slide-enter-active,
-.menu-slide-leave-active {
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.menu-slide-enter,
-.menu-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
 .toast-enter-active,
 .toast-leave-active {
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -3091,10 +2959,60 @@ body {
   }
 }
 
+/* ===== TABLET OPTIMIZATION (768px - 1024px) ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .top-bar {
+    padding: 0 20px;
+    gap: 16px;
+  }
+
+  .header-stats {
+    gap: 16px;
+    margin-left: 20px;
+  }
+
+  .search-input {
+    width: 200px;
+  }
+
+  .action-text {
+    display: none;
+  }
+  
+  .action-btn {
+    padding: 10px;
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .content {
+    padding: 88px 20px 40px;
+  }
+
+  .artist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+  }
+
+  .works-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  .detail-container {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .top-bar {
     padding: 0 16px;
     height: 56px;
+    gap: 12px;
   }
   
   .header-stats {
@@ -3111,9 +3029,26 @@ body {
   }
   
   .search-input {
-    width: 200px;
+    width: 160px;
     font-size: 13px;
     padding: 8px 32px 8px 32px;
+  }
+
+  .action-buttons {
+    gap: 6px;
+  }
+  
+  .action-btn {
+    padding: 8px;
+  }
+
+  .action-text {
+    display: none;
+  }
+  
+  .action-btn {
+    min-width: 40px;
+    justify-content: center;
   }
   
   .content {
@@ -3121,25 +3056,49 @@ body {
   }
   
   .section-header {
-    padding: 16px 0;
+    padding: 12px 0;
+    margin-bottom: 14px;
   }
-  
-  .stats-bar {
-    padding: 16px;
+
+  .section-letter {
+    font-size: 36px;
   }
-  
-  .stat-value {
-    font-size: 24px;
+
+  .section-count {
+    font-size: 14px;
   }
   
   .artist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+  }
+
+  .card-content {
+    padding: 10px 12px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+
+  .meta-badge {
+    font-size: 10px;
+    padding: 3px 8px;
   }
   
   .works-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .work-code {
+    font-size: 12px;
+  }
+
+  .work-type {
+    font-size: 9px;
+    padding: 2px 6px;
   }
   
   .works-title {
@@ -3167,6 +3126,7 @@ body {
 @media (max-width: 640px) {
   .top-bar {
     padding: 0 12px;
+    gap: 8px;
   }
   
   .back-text {
@@ -3178,7 +3138,21 @@ body {
   }
   
   .search-input {
-    width: 160px;
+    width: 120px;
+  }
+
+  .action-buttons {
+    gap: 4px;
+  }
+  
+  .action-btn {
+    padding: 8px;
+    min-width: 36px;
+  }
+  
+  .action-btn svg {
+    width: 16px;
+    height: 16px;
   }
   
   .content {
@@ -3186,25 +3160,47 @@ body {
   }
   
   .section-header {
-    padding: 16px 0;
+    padding: 10px 0;
+    margin-bottom: 12px;
   }
   
   .section-letter {
-    font-size: 36px;
+    font-size: 32px;
   }
   
   .section-count {
-    font-size: 16px;
+    font-size: 14px;
   }
   
   .artist-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .image-placeholder {
+    font-size: 48px;
+  }
+
+  .card-content {
+    padding: 8px 10px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    margin-bottom: 6px;
   }
   
   .works-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .work-image {
+    margin-bottom: 6px;
+  }
+
+  .work-code {
+    font-size: 11px;
   }
   
   .works-header {

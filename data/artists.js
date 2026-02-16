@@ -5,11 +5,18 @@
 
 export const DEFAULT_ARTISTS = [
   {
-    name: '---',
+    name: '___',
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
-    mainWorks: ['---',]
+    mainWorks: ['___',]
+  },
+  {
+    name: 'Ran Aoi 愛生らん',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['DLDSS-475','DLDSS-457','DLDSS-442','DLDSS-434','BGSD-422']
   },
   {
     name: 'Anri Okita',
@@ -92,8 +99,8 @@ export const DEFAULT_ARTISTS = [
     name: 'Ai Kano',
     cover: '',
     url: '',  // Custom cover
-    compilations: [''],
-    mainWorks: ['JUQ-106', 'JUQ-763', 'JUQ-963','JUL-542','ACHJ-035','JUVR-155']
+    compilations: ['JUMS-137'],
+    mainWorks: ['JUQ-106','JUQ-763','JUQ-963','JUL-542','ACHJ-035','JUVR-155','JUQ-848','ACHJ-059','JUR-125','JUQ-931','JUQ-794','JUQ-686','ACHJ-035','JUQ-132','JUVR-155','JUQ-071','JUSD-958','JUL-804','URE-081','JUL-612','REBD-543','JUL-404','JUL-439','JUL-473']
   },
   {
     name: 'Himari Himari',
@@ -185,9 +192,9 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Asuna Kawai',
     cover: 'VENU-662',
-    url: 'https://image.mgstage.com/images/prestige/abf/009/pb_e_abf-009.jpg',  // Custom cover
-    compilations: [''],
-    mainWorks: ['ABF-119', 'ABF-268', 'ABF-278', 'ABW-268', 'PPT-128', 'ABF-084', 'PPX-009', 'ABW-175', 'ABW-256']
+    url: '',  // Custom cover
+    compilations: ['THU-032'],
+    mainWorks: ['ABF-119', 'ABF-268', 'ABF-278', 'ABW-268', 'PPT-128', 'ABF-084', 'PPX-009', 'ABW-175', 'ABW-256','ABF-321','ABF-310']
   },
   {
     name: 'Collection', cover: '',
@@ -257,7 +264,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Miyu Kiyohara', cover: '',
     url: '',  // Custom cover
-    compilations: ['OFJE-583'], mainWorks: ['SNOS-040','snos-063/','SNOS-096','SONE-743','SONE-621', 'SONE-115', 'SONE-142', 'SONE-342', 'SONE-387', 'SONE-798']
+    compilations: ['OFJE-583'], mainWorks: ['SONE-251','SNOS-139','SNOS-040','snos-063/','SNOS-096','SONE-743','SONE-621', 'SONE-115', 'SONE-142', 'SONE-342', 'SONE-387', 'SONE-798','SSIS-942','SIVR-290','FWAY-004','OFJE-583','SIVR-376','SONE-480']
   },
   {
     name: 'Koibuchi Momona', cover: '',
@@ -337,9 +344,10 @@ export const DEFAULT_ARTISTS = [
     compilations: [''], mainWorks: ['ADN-334', 'HND-991', 'JUFE-300', 'MIMK-091', 'MSFH-010', 'MSFH-014', 'MSFH-018', 'MSFH-024', 'MSFH-030', 'MSFH-034', 'PPPD-926', 'WAAA-065']
   },
   {
-    name: 'Momoka Nishina', cover: '',
+    name: 'Momoka Nishina', 
+    cover: 'JUC-579',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['JUFD-183', 'JUC-579', 'PYU-069', 'SVDVD-278']
+    compilations: [''], mainWorks: ['SACE-024','BDSR-059','JJ-002','HBAD-137','PPPD-127','PPPD-130','HODV-20693','ADZ-241','EKDV-131','PPPD-117','ETC-73','VGD-076','JUFD-137','PPMD-017','YSN-226','BOBB-083','BOBB-076','JUFD-183', 'JUC-579', 'PYU-069', 'SVDVD-278','COM-125','BTH-075','BTH-056','DFDA-110','TYOD-190','FLAV-106','KTDS-359','KTDS-385','FCDC-056','JUFD-233','TID-008','AIKB-004','GAR-267','PPPD-172','YO-122','JUFD-174','JUFD-174 ']
   },
   {
     name: 'Nagarekawa Rio', cover: '',
@@ -364,7 +372,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Rei Kamiki', cover: '',
     url: 'https://pics.dmm.co.jp/mono/movie/adult/1start070/1start070pl.jpg',  // Custom cover
-    compilations: [''], mainWorks: ['START-070', 'START-398', 'STARS-734', 'STARS-979', 'REBDB-686', 'STARS-573', 'STARS-778']
+    compilations: [''], mainWorks: ['START-070', 'START-398', 'STARS-734', 'STARS-979', 'REBDB-686', 'STARS-573', 'STARS-778','START-488','START-508','START-306']
   },
   {
     name: 'Ren Gojou', cover: '',
@@ -439,7 +447,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Yoshine Yuria', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['JUFE-195', 'MIMK-249', 'NGOD-128']
+    compilations: [''], mainWorks: ['JUFE-195', 'MIMK-249', 'NGOD-128','FC2PPV-4845975']
   },
   {
     name: 'Yui Hatano', cover: '',

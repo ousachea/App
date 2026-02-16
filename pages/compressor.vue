@@ -7,7 +7,7 @@
       <div class="header-content">
         <div class="header-text">
           <h1>✨ Smart Compress 100MP+</h1>
-          <p>Optimized for ultra-high resolution images</p>
+          <p>Optimized for ultra-high resolution images & PDFs</p>
         </div>
         <button v-if="files.length > 0" class="clear-session-btn" @click="clearSession">
           <span>🗑️</span>
@@ -23,8 +23,8 @@
           <div class="drop-zone" :class="{ dragover: isDragOver }" @click="$refs.fileInput.click()"
             @dragover.prevent="isDragOver = true" @dragleave="isDragOver = false" @drop.prevent="handleDrop">
             <div class="drop-icon">📸</div>
-            <div class="drop-text">Drop images here</div>
-            <div class="drop-subtext">JPG, PNG • Up to 100MP each</div>
+            <div class="drop-text">Drop images or PDFs here</div>
+            <div class="drop-subtext">JPG, PNG, PDF • Up to 100MP/500MB each</div>
 
             <div class="upload-actions">
               <button class="btn btn-primary" @click.stop="$refs.fileInput.click()">
@@ -33,7 +33,7 @@
               </button>
             </div>
           </div>
-          <input ref="fileInput" type="file" class="file-input" accept="image/*" multiple @change="handleFileSelect">
+          <input ref="fileInput" type="file" class="file-input" accept="image/*,application/pdf" multiple @change="handleFileSelect">
         </div>
 
         <div class="settings-panel">
@@ -74,11 +74,11 @@
               </label>
               <label class="radio-label">
                 <input v-model="resizeMode" type="radio" value="2000px">
-                <span>2000px</span>
+                <span>2000px max</span>
               </label>
               <label class="radio-label">
                 <input v-model="resizeMode" type="radio" value="1000px">
-                <span>1000px</span>
+                <span>1000px max</span>
               </label>
             </div>
           </div>
@@ -94,9 +94,9 @@
       <div class="right-panel">
         <div v-if="files.length === 0" class="empty-state">
           <div class="empty-state-icon">📸</div>
-          <div class="empty-state-title">Ready for 100MP images</div>
+          <div class="empty-state-title">Ready for 100MP images & PDFs</div>
           <div class="empty-state-description">
-            This compressor handles ultra-high resolution images efficiently
+            This compressor handles ultra-high resolution images and PDF documents efficiently
           </div>
           <div class="empty-state-features">
             <div class="feature-item">⚡ Streaming compression</div>
@@ -115,6 +115,7 @@
             <div v-for="(file, index) in files" :key="file.id" class="file-item" :class="file.status">
               <div class="file-preview">
                 <img v-if="file.previewUrl" :src="file.previewUrl" :alt="file.name" class="preview-image" />
+                <span v-else-if="file.isPDF" class="file-type-icon">📄</span>
                 <span v-else>🖼️</span>
               </div>
 
@@ -128,9 +129,13 @@
                     </span>
                   </div>
 
-                  <div v-if="file.metadata" class="file-metadata">
+                  <div v-if="file.metadata && !file.isPDF" class="file-metadata">
                     <span class="megapixels">{{ file.metadata.megapixels.toFixed(1) }}MP</span>
                     <span class="dimensions">{{ file.metadata.width }}×{{ file.metadata.height }}</span>
+                  </div>
+                  
+                  <div v-if="file.isPDF" class="file-metadata">
+                    <span class="file-type-badge">PDF</span>
                   </div>
 
                   <div v-if="file.status === 'processing'" class="processing-info">
@@ -264,9 +269,12 @@ export default {
     },
 
     async addFiles(newFiles) {
-      const imageFiles = newFiles.filter(file => {
-        if (!file.type.startsWith('image/')) {
-          this.showError('Invalid', `${file.name} is not an image`)
+      const validFiles = newFiles.filter(file => {
+        const isImage = file.type.startsWith('image/')
+        const isPDF = file.type === 'application/pdf'
+        
+        if (!isImage && !isPDF) {
+          this.showError('Invalid', `${file.name} is not an image or PDF`)
           return false
         }
         if (file.size > 500 * 1024 * 1024) {
@@ -276,10 +284,25 @@ export default {
         return true
       })
 
-      for (const file of imageFiles) {
+      for (const file of validFiles) {
         try {
-          const metadata = await this.getImageMetadata(file)
-          const thumbnail = await this.generateThumbnail(file)
+          const isPDF = file.type === 'application/pdf'
+          let metadata = null
+          let thumbnail = null
+
+          if (isPDF) {
+            metadata = {
+              width: 0,
+              height: 0,
+              megapixels: 0,
+              estimatedMemory: file.size / (1024 * 1024),
+              isPDF: true,
+            }
+            thumbnail = null // PDFs don't get thumbnails
+          } else {
+            metadata = await this.getImageMetadata(file)
+            thumbnail = await this.generateThumbnail(file)
+          }
 
           const fileObj = {
             id: `file_${this.fileIdCounter++}_${Date.now()}`,
@@ -291,6 +314,7 @@ export default {
             compressedBlob: null,
             previewUrl: thumbnail,
             metadata: metadata,
+            isPDF: isPDF,
           }
 
           this.files.unshift(fileObj)
@@ -448,6 +472,38 @@ export default {
       }
     },
 
+    async compressPDF(fileObj) {
+      try {
+        const { PDFDocument } = await import('pdf-lib')
+        
+        const arrayBuffer = await fileObj.file.arrayBuffer()
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { 
+          ignoreEncryption: true,
+          updateMetadata: false 
+        })
+
+        // Remove metadata to reduce size
+        pdfDoc.setTitle('')
+        pdfDoc.setAuthor('')
+        pdfDoc.setSubject('')
+        pdfDoc.setKeywords([])
+        pdfDoc.setProducer('')
+        pdfDoc.setCreator('')
+
+        // Save with compression
+        const compressedPdfBytes = await pdfDoc.save({
+          useObjectStreams: true,
+          addDefaultPage: false,
+          objectsPerTick: 50,
+        })
+
+        return new Blob([compressedPdfBytes], { type: 'application/pdf' })
+      } catch (error) {
+        console.error('PDF compression error:', error)
+        throw error
+      }
+    },
+
     async compressAll() {
       if (this.files.length === 0 || this.isProcessing) return
       
@@ -500,6 +556,21 @@ export default {
       this.$set(fileObj, 'status', 'processing')
 
       try {
+        // Handle PDF compression
+        if (fileObj.isPDF) {
+          const compressedBlob = await this.compressPDF(fileObj)
+          if (compressedBlob && compressedBlob.size > 0) {
+            this.$set(fileObj, 'compressedBlob', compressedBlob)
+            this.$set(fileObj, 'compressedSize', compressedBlob.size)
+            this.$set(fileObj, 'status', 'compressed')
+            this.totalSaved += Math.max(0, fileObj.size - compressedBlob.size)
+          } else {
+            this.$set(fileObj, 'status', 'error')
+          }
+          return
+        }
+
+        // Handle image compression
         const qualityToUse = this.compressionMode === 'adaptive'
           ? this.getAdaptiveQuality(fileObj.metadata.megapixels)
           : this.quality
@@ -1163,6 +1234,19 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.file-type-icon {
+  font-size: 1.5rem;
+}
+
+.file-type-badge {
+  background: #ff9800;
+  color: white;
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.6rem;
 }
 
 .file-info {
