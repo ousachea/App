@@ -269,7 +269,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Koibuchi Momona', cover: '',
     url: 'https://pics.dmm.co.jp/mono/movie/adult/1start165/1start165pl.jpg',  // Custom cover
-    compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231','START-136']
+    compilations: [''], mainWorks: ['STARS-712', 'START-042', 'START-165', 'START-231','START-136','START-384','START-501','START-288','START-254']
   },
   {
     name: 'Ena Koume', cover: 'JUFE-131',
