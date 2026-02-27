@@ -117,44 +117,101 @@
 
         <!-- Edit Panel -->
         <div class="edit-panel" v-if="editMode">
-          <div class="edit-field">
-            <label>Merchant ID:</label>
-            <input v-model="editMerchantID" type="text" class="edit-input" placeholder="Enter merchant ID">
+          <div class="edit-panel-header">
+            <h3>Edit KHQR Data</h3>
+            <span class="edit-info">Modify fields and update checksum</span>
           </div>
-          <div class="edit-field">
-            <label>Currency:</label>
-            <select v-model="editCurrency" class="edit-select">
-              <option value="KHR">KHR (Cambodian Riel)</option>
-              <option value="USD">USD (US Dollar)</option>
-            </select>
+
+          <div class="edit-form-section">
+            <div class="edit-field">
+              <label>Merchant ID:</label>
+              <input v-model="editMerchantID" type="text" class="edit-input" placeholder="e.g., MERCHANT123"
+                maxlength="50">
+              <span v-if="editMerchantID" class="edit-field-hint">{{ editMerchantID.length }} chars</span>
+            </div>
+
+            <div class="edit-field">
+              <label>Currency:</label>
+              <select v-model="editCurrency" class="edit-select">
+                <option value="KHR">KHR (Cambodian Riel)</option>
+                <option value="USD">USD (US Dollar)</option>
+              </select>
+            </div>
+
+            <div class="edit-field">
+              <label>Amount:</label>
+              <input v-model="editAmount" type="text" class="edit-input" placeholder="e.g., 100.50"
+                @input="validateAmount">
+              <span v-if="editAmount && !isValidAmount()" class="edit-field-error">⚠️ Invalid amount format</span>
+              <span v-else-if="editAmount" class="edit-field-hint">Valid amount</span>
+            </div>
+
+            <div class="edit-field">
+              <label>Merchant Name:</label>
+              <input v-model="editMerchantName" type="text" class="edit-input" placeholder="e.g., My Business"
+                maxlength="50">
+              <span v-if="editMerchantName" class="edit-field-hint">{{ editMerchantName.length }} chars</span>
+            </div>
+
+            <div class="edit-field">
+              <label>Merchant City:</label>
+              <input v-model="editMerchantCity" type="text" class="edit-input" placeholder="e.g., Phnom Penh"
+                maxlength="50">
+              <span v-if="editMerchantCity" class="edit-field-hint">{{ editMerchantCity.length }} chars</span>
+            </div>
+
+            <div class="edit-field">
+              <label>Bank Name:</label>
+              <select v-model="editBankName" class="edit-select">
+                <option value="">-- Select Bank --</option>
+                <option v-for="bank in cambodianBanks" :key="bank" :value="bank">{{ bank }}</option>
+              </select>
+            </div>
+
+            <div class="edit-field">
+              <label>Merchant Category Code (MCC):</label>
+              <div class="mcc-selection">
+                <input v-model="mccSearchInput" type="text" class="edit-input"
+                  placeholder="Search MCC code or description...">
+                <select v-model="editMCC" class="edit-select">
+                  <option value="">-- Select Category --</option>
+                  <option v-for="(desc, code) in filteredMCCForEdit" :key="code" :value="code">
+                    {{ code }} - {{ desc }}
+                  </option>
+                </select>
+              </div>
+              <span v-if="editMCC" class="edit-field-hint">
+                Selected: {{ editMCC }} - {{ merchantCategoryMap[editMCC] }}
+              </span>
+            </div>
           </div>
-          <div class="edit-field">
-            <label>Amount:</label>
-            <input v-model="editAmount" type="text" class="edit-input" placeholder="Enter amount">
+
+          <div class="edit-validation-summary">
+            <div class="validation-item" :class="{ 'valid': editMerchantID, 'invalid': !editMerchantID }">
+              <span class="validation-icon">{{ editMerchantID ? '✓' : '○' }}</span>
+              <span>Merchant ID</span>
+            </div>
+            <div class="validation-item"
+              :class="{ 'valid': editAmount && isValidAmount(), 'invalid': editAmount && !isValidAmount() }">
+              <span class="validation-icon">{{ (editAmount && isValidAmount()) ? '✓' : '○' }}</span>
+              <span>Amount</span>
+            </div>
+            <div class="validation-item" :class="{ 'valid': editMerchantName, 'invalid': !editMerchantName }">
+              <span class="validation-icon">{{ editMerchantName ? '✓' : '○' }}</span>
+              <span>Merchant Name</span>
+            </div>
+            <div class="validation-item" :class="{ 'valid': editMCC, 'invalid': !editMCC }">
+              <span class="validation-icon">{{ editMCC ? '✓' : '○' }}</span>
+              <span>MCC</span>
+            </div>
           </div>
-          <div class="edit-field">
-            <label>Merchant Name:</label>
-            <input v-model="editMerchantName" type="text" class="edit-input" placeholder="Enter merchant name">
-          </div>
-          <div class="edit-field">
-            <label>Bank Name:</label>
-            <select v-model="editBankName" class="edit-select">
-              <option value="">-- Select Bank --</option>
-              <option v-for="bank in cambodianBanks" :key="bank" :value="bank">{{ bank }}</option>
-            </select>
-          </div>
-          <div class="edit-field">
-            <label>Merchant Category Code:</label>
-            <select v-model="editMCC" class="edit-select">
-              <option value="">-- Select Category --</option>
-              <option v-for="(desc, code) in merchantCategoryMap" :key="code" :value="code">
-                {{ code }} - {{ desc }}
-              </option>
-            </select>
-          </div>
+
           <div class="edit-actions">
-            <button @click="updateMerchantData" class="btn btn-primary edit-update-btn">
+            <button @click="updateMerchantData" class="btn btn-primary edit-update-btn" :disabled="!canUpdate()">
               🔐 Update & Encrypt Checksum (CRC-16/IBM-3740)
+            </button>
+            <button @click="resetEditForm" class="btn btn-secondary edit-reset-btn">
+              ↻ Reset Form
             </button>
             <button @click="toggleEditMode" class="btn btn-secondary edit-cancel-btn">
               ❌ Cancel
@@ -630,8 +687,10 @@ export default {
       editCurrency: 'KHR',
       editAmount: '',
       editMerchantName: '',
+      editMerchantCity: '',
       editBankName: '',
       editMCC: '',
+      mccSearchInput: '',
       downloadFormat: 'svg',
       cambodianBanks: [
         'ABA Bank',
@@ -1018,6 +1077,23 @@ export default {
 
       return filtered;
     },
+
+    filteredMCCForEdit() {
+      if (!this.mccSearchInput.trim()) {
+        return this.merchantCategoryMap;
+      }
+
+      const filter = this.mccSearchInput.toLowerCase();
+      const filtered = {};
+
+      Object.entries(this.merchantCategoryMap).forEach(([code, desc]) => {
+        if (code.includes(filter) || desc.toLowerCase().includes(filter)) {
+          filtered[code] = desc;
+        }
+      });
+
+      return filtered;
+    },
   },
   mounted() {
     if (this.manualQRInput.trim()) {
@@ -1271,89 +1347,155 @@ export default {
     toggleEditMode() {
       this.editMode = !this.editMode;
       if (this.editMode) {
-        this.editMerchantID = this.headerInfo.tag29Nested?.['01']?.value || this.headerInfo.tag30Nested?.['01']?.value || this.headerInfo.bankInfoNested?.['01']?.value || '';
+        // Initialize all edit fields from current data
+        this.editMerchantID = this.headerInfo.tag29Nested?.['01']?.value ||
+          this.headerInfo.tag30Nested?.['01']?.value ||
+          this.headerInfo.bankInfoNested?.['01']?.value || '';
+
         this.editCurrency = this.headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR';
+
         this.editAmount = this.headerInfo.amountTag?.value || '';
+
         this.editMerchantName = this.headerInfo.merchantNameTag?.value || '';
-        this.editBankName = this.headerInfo.tag29Nested?.['02']?.value || this.headerInfo.tag30Nested?.['02']?.value || this.headerInfo.bankInfoNested?.['02']?.value || '';
+
+        this.editMerchantCity = this.headerInfo.merchantCityTag?.value || '';
+
+        this.editBankName = this.headerInfo.tag29Nested?.['02']?.value ||
+          this.headerInfo.tag30Nested?.['02']?.value ||
+          this.headerInfo.bankInfoNested?.['02']?.value || '';
+
         this.editMCC = this.headerInfo.merchantCategoryTag?.value || '';
+
+        this.mccSearchInput = '';
+      } else {
+        this.resetEditForm();
       }
     },
 
     updateMerchantData() {
-      if (!this.qrResult) return;
+      if (!this.qrResult || !this.canUpdate()) {
+        this.showNotification('❌ Please fill in required fields', 'error');
+        return;
+      }
 
-      let updatedResult = this.qrResult;
+      try {
+        let updatedResult = this.qrResult;
 
-      if (this.editMerchantID) {
-        if (this.headerInfo.tag29Nested?.['01']) {
-          const oldTag = '01' + String(this.headerInfo.tag29Nested['01'].length).padStart(2, '0') + this.headerInfo.tag29Nested['01'].value;
-          const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
-          updatedResult = updatedResult.replace(oldTag, newTag);
-        } else if (this.headerInfo.tag30Nested?.['01']) {
-          const oldTag = '01' + String(this.headerInfo.tag30Nested['01'].length).padStart(2, '0') + this.headerInfo.tag30Nested['01'].value;
-          const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
-          updatedResult = updatedResult.replace(oldTag, newTag);
-        } else if (this.headerInfo.bankInfoNested?.['01']) {
-          const oldTag = '01' + String(this.headerInfo.bankInfoNested['01'].length).padStart(2, '0') + this.headerInfo.bankInfoNested['01'].value;
-          const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
-          updatedResult = updatedResult.replace(oldTag, newTag);
+        // Update Merchant ID in Tag 29/30/51
+        if (this.editMerchantID) {
+          updatedResult = this.updateTag(updatedResult,
+            this.headerInfo.tag29Nested?.['01'] ||
+            this.headerInfo.tag30Nested?.['01'] ||
+            this.headerInfo.bankInfoNested?.['01'],
+            '01', this.editMerchantID);
         }
-      }
 
-      if (this.headerInfo.currencyTag) {
-        const newCurrency = this.editCurrency === 'USD' ? '840' : '116';
-        const oldTag53 = '53' + String(this.headerInfo.currencyTag.length).padStart(2, '0') + this.headerInfo.currencyTag.value;
-        const newTag53 = '53' + '03' + newCurrency;
-        updatedResult = updatedResult.replace(oldTag53, newTag53);
-      }
-
-      if (this.editAmount && this.headerInfo.amountTag) {
-        const oldTag54 = '54' + String(this.headerInfo.amountTag.length).padStart(2, '0') + this.headerInfo.amountTag.value;
-        const newLength = String(this.editAmount.length).padStart(2, '0');
-        const newTag54 = '54' + newLength + this.editAmount;
-        updatedResult = updatedResult.replace(oldTag54, newTag54);
-      }
-
-      if (this.editMerchantName && this.headerInfo.merchantNameTag) {
-        const oldTag59 = '59' + String(this.headerInfo.merchantNameTag.length).padStart(2, '0') + this.headerInfo.merchantNameTag.value;
-        const newLength = String(this.editMerchantName.length).padStart(2, '0');
-        const newTag59 = '59' + newLength + this.editMerchantName;
-        updatedResult = updatedResult.replace(oldTag59, newTag59);
-      }
-
-      if (this.editBankName) {
-        if (this.headerInfo.tag29Nested?.['02']) {
-          const oldTag = '02' + String(this.headerInfo.tag29Nested['02'].length).padStart(2, '0') + this.headerInfo.tag29Nested['02'].value;
-          const newTag = '02' + String(this.editBankName.length).padStart(2, '0') + this.editBankName;
-          updatedResult = updatedResult.replace(oldTag, newTag);
-        } else if (this.headerInfo.tag30Nested?.['02']) {
-          const oldTag = '02' + String(this.headerInfo.tag30Nested['02'].length).padStart(2, '0') + this.headerInfo.tag30Nested['02'].value;
-          const newTag = '02' + String(this.editBankName.length).padStart(2, '0') + this.editBankName;
-          updatedResult = updatedResult.replace(oldTag, newTag);
-        } else if (this.headerInfo.bankInfoNested?.['02']) {
-          const oldTag = '02' + String(this.headerInfo.bankInfoNested['02'].length).padStart(2, '0') + this.headerInfo.bankInfoNested['02'].value;
-          const newTag = '02' + String(this.editBankName.length).padStart(2, '0') + this.editBankName;
-          updatedResult = updatedResult.replace(oldTag, newTag);
+        // Update Currency (Tag 53)
+        if (this.headerInfo.currencyTag) {
+          const newCurrency = this.editCurrency === 'USD' ? '840' : '116';
+          const oldTag53 = '53' + String(this.headerInfo.currencyTag.length).padStart(2, '0') + this.headerInfo.currencyTag.value;
+          const newTag53 = '53' + '03' + newCurrency;
+          updatedResult = updatedResult.replace(oldTag53, newTag53);
         }
+
+        // Update Amount (Tag 54)
+        if (this.editAmount && this.headerInfo.amountTag) {
+          updatedResult = this.updateTag(updatedResult,
+            this.headerInfo.amountTag, '54', this.editAmount, true);
+        }
+
+        // Update Merchant Name (Tag 59)
+        if (this.editMerchantName && this.headerInfo.merchantNameTag) {
+          updatedResult = this.updateTag(updatedResult,
+            this.headerInfo.merchantNameTag, '59', this.editMerchantName, true);
+        }
+
+        // Update Merchant City (Tag 60)
+        if (this.editMerchantCity && this.headerInfo.merchantCityTag) {
+          updatedResult = this.updateTag(updatedResult,
+            this.headerInfo.merchantCityTag, '60', this.editMerchantCity, true);
+        }
+
+        // Update Bank Name in Tag 29/30/51
+        if (this.editBankName) {
+          updatedResult = this.updateTag(updatedResult,
+            this.headerInfo.tag29Nested?.['02'] ||
+            this.headerInfo.tag30Nested?.['02'] ||
+            this.headerInfo.bankInfoNested?.['02'],
+            '02', this.editBankName);
+        }
+
+        // Update MCC (Tag 52)
+        if (this.editMCC && this.headerInfo.merchantCategoryTag) {
+          updatedResult = this.updateTag(updatedResult,
+            this.headerInfo.merchantCategoryTag, '52', this.editMCC);
+        }
+
+        // Remove old checksum
+        updatedResult = updatedResult.replace(/63\d{2}[A-F0-9a-f]{4}$/, '');
+
+        // Calculate and add new checksum
+        const newChecksum = this.calculateCRC16(updatedResult);
+        updatedResult = updatedResult + '63' + '04' + newChecksum;
+
+        this.manualQRInput = updatedResult;
+        this.processQRResult(updatedResult);
+        this.editMode = false;
+        this.mccSearchInput = '';
+
+        this.showNotification('✅ Data updated! Checksum encrypted with CRC-16/IBM-3740', 'success');
+      } catch (error) {
+        console.error('Update error:', error);
+        this.showNotification('❌ Error updating QR data', 'error');
       }
+    },
 
-      if (this.editMCC && this.headerInfo.merchantCategoryTag) {
-        const oldTag52 = '52' + String(this.headerInfo.merchantCategoryTag.length).padStart(2, '0') + this.headerInfo.merchantCategoryTag.value;
-        const newTag52 = '52' + '04' + this.editMCC;
-        updatedResult = updatedResult.replace(oldTag52, newTag52);
+    updateTag(qrString, tagData, tagNumber, newValue, useFullTag = false) {
+      if (!tagData) return qrString;
+
+      if (useFullTag) {
+        const oldTag = tagNumber + String(tagData.length).padStart(2, '0') + tagData.value;
+        const newTag = tagNumber + String(newValue.length).padStart(2, '0') + newValue;
+        return qrString.replace(oldTag, newTag);
+      } else {
+        const oldTag = tagNumber + String(tagData.length).padStart(2, '0') + tagData.value;
+        const newTag = tagNumber + String(newValue.length).padStart(2, '0') + newValue;
+        return qrString.replace(oldTag, newTag);
       }
+    },
 
-      updatedResult = updatedResult.replace(/63\d{2}[A-F0-9a-f]{4}$/, '');
+    isValidAmount() {
+      if (!this.editAmount) return false;
+      return /^\d+(\.\d{1,2})?$/.test(this.editAmount);
+    },
 
-      const newChecksum = this.calculateCRC16(updatedResult);
-      updatedResult = updatedResult + '63' + '04' + newChecksum;
+    validateAmount() {
+      // Only allow valid amount formats
+      this.editAmount = this.editAmount.replace(/[^0-9.]/g, '');
+      // Prevent multiple dots
+      const parts = this.editAmount.split('.');
+      if (parts.length > 2) {
+        this.editAmount = parts[0] + '.' + parts[1];
+      }
+    },
 
-      this.manualQRInput = updatedResult;
-      this.processQRResult(updatedResult);
-      this.editMode = false;
+    canUpdate() {
+      return this.editMerchantID &&
+        this.editMerchantName &&
+        this.editAmount &&
+        this.isValidAmount() &&
+        this.editMCC;
+    },
 
-      this.showNotification('✅ Data updated! Checksum encrypted with CRC-16/IBM-3740', 'success');
+    resetEditForm() {
+      this.editMerchantID = '';
+      this.editCurrency = 'KHR';
+      this.editAmount = '';
+      this.editMerchantName = '';
+      this.editMerchantCity = '';
+      this.editBankName = '';
+      this.editMCC = '';
+      this.mccSearchInput = '';
     },
 
     showNotification(message, type = 'info') {
@@ -1962,6 +2104,35 @@ export default {
   box-shadow: 0 8px 20px rgba(14, 165, 233, 0.2);
 }
 
+.edit-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid rgba(14, 165, 233, 0.3);
+}
+
+.edit-panel-header h3 {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #0c4a6e;
+  margin: 0;
+}
+
+.edit-info {
+  font-size: 0.85rem;
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.edit-form-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
 .edit-field {
   margin-bottom: 1.8rem;
   display: flex;
@@ -1974,6 +2145,68 @@ export default {
   font-size: 0.9rem;
   color: #0c4a6e;
   letter-spacing: 0.2px;
+}
+
+.edit-field-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: #16a34a;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+
+.edit-field-error {
+  display: block;
+  font-size: 0.75rem;
+  color: #dc2626;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+
+.mcc-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.edit-validation-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border: 2px solid #7dd3fc;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  animation: slideUpIn 0.4s ease;
+}
+
+.validation-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.validation-item.valid {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #16a34a;
+  border: 1px solid #22c55e;
+}
+
+.validation-item.invalid {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.validation-icon {
+  font-size: 1rem;
+  font-weight: 900;
 }
 
 .edit-input,
@@ -2004,26 +2237,49 @@ export default {
 
 .edit-actions {
   display: flex;
-  gap: 1.2rem;
+  gap: 1rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 2px solid rgba(14, 165, 233, 0.2);
+  flex-wrap: wrap;
 }
 
 .edit-update-btn {
   flex: 1;
+  min-width: 200px;
   background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
   color: white;
   box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
   font-weight: 900;
   font-size: 0.95rem;
   padding: 1.1rem 2.2rem;
+  transition: all 0.3s ease;
 }
 
-.edit-update-btn:hover {
+.edit-update-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);
   box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
   transform: translateY(-3px);
+}
+
+.edit-update-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+}
+
+.edit-reset-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  font-weight: 900;
+  padding: 0.85rem 1.5rem;
+}
+
+.edit-reset-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #ca8a04 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  transform: translateY(-2px);
 }
 
 .edit-cancel-btn {
@@ -2031,6 +2287,7 @@ export default {
   color: #0284c7;
   border: 2px solid #7dd3fc;
   font-weight: 900;
+  padding: 0.85rem 1.5rem;
 }
 
 .edit-cancel-btn:hover {
