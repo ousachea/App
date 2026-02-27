@@ -1,6 +1,5 @@
 <template>
   <div class="container">
-
     <div class="scanner-card">
       <div class="header">
         <div class="header-content">
@@ -65,6 +64,11 @@
           (headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR') : 'N/A' }}</span>
           </div>
           <div class="summary-item">
+            <span class="summary-label">Category:</span>
+            <span class="summary-value">{{ getMerchantCategoryDescription(headerInfo.merchantCategoryTag?.value) ||
+          'N/A' }}</span>
+          </div>
+          <div class="summary-item">
             <span class="summary-label">Data:</span>
             <span class="summary-value">{{ qrResult.length }} bytes / {{ Object.keys(parsedTLV).length }} tags</span>
           </div>
@@ -108,6 +112,15 @@
             <select v-model="editBankName" class="edit-select">
               <option value="">-- Select Bank --</option>
               <option v-for="bank in cambodianBanks" :key="bank" :value="bank">{{ bank }}</option>
+            </select>
+          </div>
+          <div class="edit-field">
+            <label>Merchant Category Code:</label>
+            <select v-model="editMCC" class="edit-select">
+              <option value="">-- Select Category --</option>
+              <option v-for="(desc, code) in merchantCategoryMap" :key="code" :value="code">
+                {{ code }} - {{ desc }}
+              </option>
             </select>
           </div>
           <div class="edit-actions">
@@ -526,6 +539,20 @@
           </div>
 
           <div class="reference-section">
+            <h3 class="reference-title">💼 Merchant Category Codes (MCC)</h3>
+            <div class="mcc-search">
+              <input v-model="mccSearchFilter" type="text" placeholder="Search MCC by code or description..."
+                class="mcc-search-input">
+            </div>
+            <div class="mcc-list">
+              <div class="mcc-item" v-for="(desc, code) in filteredMCCMap" :key="code">
+                <span class="mcc-code">{{ code }}</span>
+                <span class="mcc-desc">{{ desc }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-section">
             <h3 class="reference-title">💱 Currency Codes</h3>
             <div class="currency-grid">
               <div class="currency-item">
@@ -543,19 +570,13 @@
 
     </div>
   </div>
-  </div>
-  </div>
 </template>
 
 <script>
-import PageSwitcher from '../components/PageSwitcher.vue';
 import QrScanner from 'qr-scanner';
 import QRCode from 'qrcode';
 
 export default {
-  components: {
-    PageSwitcher,
-  },
   data() {
     return {
       qrResult: '',
@@ -578,6 +599,7 @@ export default {
       editAmount: '',
       editMerchantName: '',
       editBankName: '',
+      editMCC: '',
       downloadFormat: 'svg',
       cambodianBanks: [
         'ABA Bank',
@@ -585,9 +607,14 @@ export default {
         'ACLEDA Bank',
         'Chip Mong Bank',
         'Phnom Penh Commercial Bank',
+        'Wing Bank',
+        'Metfone Bank',
+        'Campu Bank',
+        'Sabay Bank',
       ],
       copiedItemId: null,
       livePreview: true,
+      mccSearchFilter: '',
       sampleDataOptions: [
         {
           name: 'Static Merchant',
@@ -622,17 +649,308 @@ export default {
         '704': 'Vietnamese Dong (VND)',
       },
       merchantCategoryMap: {
-        '7392': 'Money Transfer / Remittance',
-        '5411': 'Supermarkets and Grocery Stores',
+        // 0700-0999: Agricultural services
+        '0742': 'Veterinary Services',
+        '0743': 'Wine Producers',
+        '0744': 'Champagne Producers',
+        '0763': 'Agricultural Co-operatives',
+        '0780': 'Landscaping and Horticultural Services',
+        // 1500-2999: Contracted services
+        '1520': 'General Contractors - Residential and Commercial',
+        '1711': 'Heating, Plumbing and Air-Conditioning Contractors',
+        '1731': 'Electrical Contractors',
+        '1740': 'Masonry, Stonework, Tile Setting Contractors',
+        '1750': 'Carpentry Contractors',
+        '1761': 'Roofing, Siding and Sheet Metal Work Contractors',
+        '1771': 'Concrete Work Contractors',
+        '1799': 'Special Trade Contractors - Not Elsewhere Classified',
+        '2741': 'Miscellaneous Publishing and Printing Services',
+        '2791': 'Typesetting, Platemaking and Related Services',
+        '2842': 'Specialty Cleaning, Polishing and Sanitation',
+        // 4000-4799: Transportation
+        '4011': 'Railroads',
+        '4111': 'Local and Suburban Commuter Passenger Transportation',
+        '4112': 'Passenger Railways',
+        '4119': 'Ambulance Services',
+        '4121': 'Taxi-cabs and Limousines',
+        '4131': 'Bus Lines',
+        '4214': 'Motor Freight Carriers and Trucking',
+        '4215': 'Courier Services - Air and Ground',
+        '4225': 'Public Warehousing and Storage',
+        '4411': 'Steamships and Cruise Lines',
+        '4457': 'Boat Rentals and Leasing',
+        '4468': 'Marinas, Marine Service and Supplies',
+        '4511': 'Airlines and Air Carriers',
+        '4582': 'Airports, Flying Fields and Airport Terminals',
+        '4722': 'Travel Agencies and Tour Operators',
+        '4784': 'Tolls and Bridge Fees',
+        '4789': 'Transportation Services - Not Elsewhere Classified',
+        // 4800-4999: Utilities
+        '4812': 'Telecommunication Equipment and Telephone Sales',
+        '4814': 'Telecommunication Services',
+        '4816': 'Computer Network/Information Services',
+        '4821': 'Telegraph Services',
+        '4829': 'Wire Transfers and Money Orders',
+        '4899': 'Cable and Other Pay Television Services',
+        '4900': 'Utilities - Electric, Gas, Water and Sanitary',
+        // 5000-5599: Retail outlets
+        '5013': 'Motor Vehicle Supplies and New Parts',
+        '5021': 'Office and Commercial Furniture',
+        '5039': 'Construction Materials - Not Elsewhere Classified',
+        '5044': 'Office, Photographic, Photocopy Equipment',
+        '5045': 'Computers, Computer Peripheral Equipment',
+        '5046': 'Commercial Equipment - Not Elsewhere Classified',
+        '5047': 'Dental/Laboratory/Medical/Ophthalmic Equipment',
+        '5051': 'Metal Service Centres and Offices',
+        '5065': 'Electrical Parts and Equipment',
+        '5072': 'Hardware Equipment and Supplies',
+        '5074': 'Plumbing and Heating Equipment and Supplies',
+        '5085': 'Industrial Supplies - Not Elsewhere Classified',
+        '5094': 'Precious Stones and Metals, Watches and Jewellery',
+        '5099': 'Durable Goods - Not Elsewhere Classified',
+        '5111': 'Stationery, Office Supplies and Printing Paper',
+        '5122': 'Drugs, Drug Proprietors',
+        '5131': 'Piece Goods, Notions and Other Dry Goods',
+        '5137': 'Men\'s, Women\'s and Children\'s Uniforms',
+        '5139': 'Commercial Footwear',
+        '5169': 'Chemicals and Allied Products',
+        '5172': 'Petroleum and Petroleum Products',
+        '5192': 'Books, Periodicals and Newspapers',
+        '5193': 'Florists\' Supplies, Nursery Stock and Flowers',
+        '5198': 'Paints, Varnishes and Supplies',
+        '5199': 'Non-durable Goods - Not Elsewhere Classified',
+        '5200': 'Home Supply Warehouse Outlets',
+        '5211': 'Lumber and Building Materials Outlets',
+        '5231': 'Glass, Paint and Wallpaper Shops',
+        '5251': 'Hardware Shops',
+        '5261': 'Lawn and Garden Supplies Outlets',
+        '5262': 'Ecommerce Site - Marketplace Operator',
+        '5271': 'Mobile Home Dealers',
+        '5300': 'Wholesale Clubs',
+        '5309': 'Duty-free Shops',
+        '5310': 'Discount Shops',
+        '5311': 'Department Stores',
+        '5331': 'Variety Stores',
+        '5399': 'Miscellaneous General Merchandise',
+        '5411': 'Groceries and Supermarkets',
+        '5422': 'Freezer and Locker Meat Provisioners',
+        '5441': 'Candy, Nut and Confectionery Shops',
+        '5451': 'Dairies',
+        '5462': 'Bakeries',
+        '5499': 'Miscellaneous Food Shops',
+        // 5500-5599: Automobiles and vehicles
+        '5511': 'Car and Truck Dealers - New and Used',
+        '5521': 'Car and Truck Dealers - Used Only',
+        '5531': 'Auto and Home Supply Outlets',
+        '5532': 'Automotive Tyre Outlets',
+        '5533': 'Automotive Parts and Accessories Outlets',
+        '5541': 'Service Stations - With or Without Ancillary Services',
+        '5542': 'Automated Fuel Dispensers',
+        '5551': 'Boat Dealers',
+        '5552': 'Electrical Vehicle Charging',
+        '5561': 'Camper, Recreational and Utility Trailer Dealers',
+        '5571': 'Motorcycle Shops and Dealers',
+        '5592': 'Motor Home Dealers',
+        '5598': 'Snowmobile Dealers',
+        '5599': 'Miscellaneous Automotive Dealers',
+        // 5600-5699: Clothing outlets
+        '5611': 'Men\'s and Boys\' Clothing and Accessory Shops',
+        '5621': 'Women\'s Ready-to-wear Shops',
+        '5631': 'Women\'s Accessory and Specialty Shops',
+        '5641': 'Children\'s and Infants\' Wear Shops',
+        '5651': 'Family Clothing Shops',
+        '5655': 'Sports and Riding Apparel Shops',
+        '5661': 'Shoe Shops',
+        '5681': 'Furriers and Fur Shops',
+        '5691': 'Men\'s and Women\'s Clothing Shops',
+        '5697': 'Tailors, Seamstresses, Mending and Alterations',
+        '5698': 'Wig and Toupee Shops',
+        '5699': 'Miscellaneous Apparel and Accessory Shops',
+        // 5700-5999: Miscellaneous outlets
+        '5712': 'Furniture, Home Furnishings and Equipment Shops',
+        '5713': 'Floor Covering Services',
+        '5714': 'Drapery, Window Covering and Upholstery Shops',
+        '5715': 'Alcoholic Beverage Wholesalers',
+        '5718': 'Fireplaces, Fireplace Screens and Accessories Shops',
+        '5719': 'Miscellaneous Home Furnishing Specialty Shops',
+        '5722': 'Household Appliance Shops',
+        '5723': 'Gun and Ammunition Shops',
+        '5732': 'Electronics Shops',
+        '5733': 'Music Shops - Musical Instruments, Pianos and Sheet Music',
+        '5734': 'Computer Software Outlets',
+        '5735': 'Record Shops',
+        '5811': 'Caterers',
         '5812': 'Eating Places and Restaurants',
-        '5942': 'Bookstores',
-        '5999': 'Other Retail Stores',
-        '6211': 'Securities Brokers and Dealers',
-        '6301': 'Insurance Agents and Brokers',
-        '7011': 'Lodging and Hotels',
-        '7999': 'Entertainment and Recreation',
+        '5813': 'Drinking Places - Bars, Taverns, Night-clubs',
+        '5814': 'Fast Food Restaurants',
+        '5815': 'Digital Goods - Media: Books, Movies, Music',
+        '5816': 'Digital Goods - Games',
+        '5817': 'Digital Goods - Application (Excludes Games)',
+        '5818': 'Large Digital Goods Merchant',
+        '5912': 'Drug Stores and Pharmacies',
+        '5921': 'Package Shops - Beer, Wine and Liquor',
+        '5931': 'Used Merchandise and Second-hand Shops',
+        '5932': 'Antique Shops - Sales, Repairs and Restoration',
+        '5933': 'Pawn Shops',
+        '5935': 'Wrecking and Salvage Yards',
+        '5937': 'Antique Reproduction Shops',
+        '5940': 'Bicycle Shops - Sales and Service',
+        '5941': 'Sporting Goods Shops',
+        '5942': 'Bookshops',
+        '5943': 'Stationery, Office and School Supply Shops',
+        '5944': 'Jewellery, Watch, Clock and Silverware Shops',
+        '5945': 'Hobby, Toy and Game Shops',
+        '5946': 'Camera and Photographic Supply Shops',
+        '5947': 'Gift, Card, Novelty and Souvenir Shops',
+        '5948': 'Luggage and Leather Goods Shops',
+        '5949': 'Sewing, Needlework, Fabric and Piece Goods Shops',
+        '5950': 'Glassware and Crystal Shops',
+        '5960': 'Direct Marketing - Insurance Services',
+        '5962': 'Telemarketing - Travel-related Arrangement Services',
+        '5963': 'Door-to-door Sales',
+        '5964': 'Direct Marketing - Catalogue Merchants',
+        '5965': 'Direct Marketing - Combination Catalogue and Retail',
+        '5966': 'Direct Marketing - Outbound Telemarketing Merchants',
+        '5967': 'Direct Marketing - Inbound Telemarketing Merchants',
+        '5968': 'Direct Marketing - Continuity/Subscription Merchants',
+        '5969': 'Direct Marketing - Not Elsewhere Classified',
+        '5970': 'Artist Supply and Craft Shops',
+        '5971': 'Art Dealers and Galleries',
+        '5972': 'Stamp and Coin Shops',
+        '5973': 'Religious Goods and Shops',
+        '5975': 'Hearing Aids - Sales, Service and Supplies',
+        '5976': 'Orthopaedic Goods and Prosthetic Devices',
+        '5977': 'Cosmetic Shops',
+        '5978': 'Typewriter Outlets - Sales, Service and Rentals',
+        '5983': 'Fuel Dealers - Fuel Oil, Wood, Coal',
+        '5992': 'Florists',
+        '5993': 'Cigar Shops and Stands',
+        '5994': 'Newsagents and News-stands',
+        '5995': 'Pet Shops, Pet Food and Supplies',
+        '5996': 'Swimming Pools - Sales, Supplies and Services',
+        '5997': 'Electric Razor Shops - Sales and Service',
+        '5998': 'Tent and Awning Shops',
+        '5999': 'Miscellaneous and Specialty Retail Outlets',
+        // 6000-7299: Service providers
+        '6010': 'Financial Institutions - Manual Cash Disbursements',
+        '6011': 'Financial Institutions - Automated Cash Disbursements',
+        '6012': 'Financial Institutions - Merchandise and Services',
+        '6051': 'Non-financial Institutions - Foreign Currency',
+        '6211': 'Securities - Brokers and Dealers',
+        '6300': 'Insurance Sales, Underwriting and Premiums',
+        '7011': 'Lodging - Hotels, Motels and Resorts',
+        '7012': 'Timeshares',
+        '7032': 'Sporting and Recreational Camps',
+        '7033': 'Trailer Parks and Camp-sites',
+        '7210': 'Laundry, Cleaning and Garment Services',
+        '7211': 'Laundry Services - Family and Commercial',
+        '7216': 'Dry Cleaners',
+        '7217': 'Carpet and Upholstery Cleaning',
+        '7221': 'Photographic Studios',
+        '7230': 'Beauty and Barber Shops',
+        '7251': 'Shoe Repair Shops, Shoe Shine Parlours',
+        '7261': 'Funeral Services and Crematoriums',
+        '7273': 'Dating and Escort Services',
+        '7276': 'Tax Preparation Services',
+        '7277': 'Counselling Services - Debt, Marriage and Personal',
+        '7278': 'Buying and Shopping Services and Clubs',
+        '7296': 'Clothing Rentals - Costumes, Uniforms',
+        '7297': 'Massage Parlours',
+        '7298': 'Health and Beauty Spas',
+        '7299': 'Miscellaneous Personal Services',
+        '7311': 'Advertising Services',
+        '7321': 'Consumer Credit Reporting Agencies',
+        '7322': 'Debt Collection Agencies',
+        '7333': 'Commercial Photography, Art and Graphics',
+        '7338': 'Quick Copy, Reproduction and Blueprinting Services',
+        '7339': 'Stenographic and Secretarial Support Services',
+        '7342': 'Exterminating and Disinfecting Services',
+        '7349': 'Cleaning, Maintenance and Janitorial Services',
+        '7361': 'Employment Agencies and Temporary Help Services',
+        '7372': 'Computer Programming, Data Processing Services',
+        '7375': 'Information Retrieval Services',
+        '7379': 'Computer Maintenance and Repair Services',
+        '7392': 'Money Transfer / Remittance - Management, Consulting',
+        '7393': 'Detective Agencies, Protective Agencies and Security',
+        '7394': 'Equipment, Tool, Furniture and Appliance Rentals',
+        '7395': 'Photofinishing Laboratories and Photo Developing',
+        '7399': 'Business Services - Not Elsewhere Classified',
+        '7512': 'Automobile Rentals',
+        '7513': 'Truck and Utility Trailer Rentals',
+        '7519': 'Motor Home and Recreational Vehicle Rentals',
+        '7523': 'Parking Lots and Garages',
+        '7531': 'Automotive Body Repair Shops',
+        '7534': 'Tyre Retreading and Repair Shops',
+        '7535': 'Automotive Paint Shops',
+        '7538': 'Automotive Service Shops - Non-dealer',
+        '7542': 'Car Washes',
+        '7549': 'Towing Services',
+        '7622': 'Electronics Repair Shops',
+        '7623': 'Air Conditioning and Refrigeration Repair',
+        '7629': 'Electrical and Small Appliance Repair Shops',
+        '7631': 'Watch, Clock and Jewellery Repair Shops',
+        '7641': 'Furniture Reupholstery, Repair and Refinishing',
+        '7692': 'Welding Services',
+        '7699': 'Miscellaneous Repair Shops and Related Services',
+        // 7800-7999: Amusement and entertainment
+        '7800': 'Government Owned Lotteries',
+        '7801': 'Government Licensed Online Casinos',
+        '7802': 'Government-licensed Horse/Dog Racing',
+        '7829': 'Motion Picture and Video Tape Production',
+        '7832': 'Motion Picture Theatres',
+        '7841': 'Video Tape Rentals',
+        '7911': 'Dance Halls, Studios and Schools',
+        '7922': 'Theatrical Producers and Ticket Agencies',
+        '7929': 'Bands, Orchestras and Miscellaneous Entertainers',
+        '7932': 'Billiard and Pool Establishments',
+        '7933': 'Bowling Alleys',
+        '7941': 'Commercial Sports, Professional Sports Clubs',
+        '7991': 'Tourist Attractions and Exhibits',
+        '7992': 'Public Golf Courses',
+        '7993': 'Video Amusement Game Supplies',
+        '7994': 'Video Game Arcades and Establishments',
+        '7995': 'Betting, Including Lottery Tickets, Casino Gaming',
+        '7996': 'Amusement Parks, Circuses, Carnivals',
+        '7997': 'Membership Clubs - Sports, Recreation, Athletic',
+        '7998': 'Aquariums, Seaquariums and Dolphinariums',
+        '7999': 'Recreation Services - Not Elsewhere Classified',
+        // 8000-8999: Professional services and membership organizations
+        '8011': 'Doctors and Physicians - Not Elsewhere Classified',
+        '8021': 'Dentists and Orthodontists',
+        '8031': 'Osteopaths',
+        '8041': 'Chiropractors',
+        '8042': 'Optometrists and Ophthalmologists',
+        '8043': 'Opticians, Optical Goods and Eyeglasses',
+        '8049': 'Podiatrists and Chiropodists',
+        '8050': 'Nursing and Personal Care Facilities',
+        '8062': 'Hospitals',
+        '8071': 'Medical and Dental Laboratories',
+        '8099': 'Medical Services and Health Practitioners',
+        '8111': 'Legal Services and Attorneys',
         '8211': 'Elementary and Secondary Schools',
         '8220': 'Colleges, Universities, Professional Schools',
+        '8241': 'Correspondence Schools',
+        '8244': 'Business and Secretarial Schools',
+        '8249': 'Trade and Vocational Schools',
+        '8299': 'Schools and Educational Services',
+        '8351': 'Child Care Services',
+        '8398': 'Charitable and Social Service Organizations',
+        '8641': 'Civic, Social and Fraternal Associations',
+        '8651': 'Political Organizations',
+        '8661': 'Religious Organizations',
+        '8675': 'Automobile Associations',
+        '8699': 'Membership Organizations - Not Elsewhere Classified',
+        '8734': 'Testing Laboratories - Non-medical',
+        '8911': 'Architectural, Engineering and Surveying Services',
+        '8931': 'Accounting, Auditing and Bookkeeping Services',
+        '8999': 'Professional Services - Not Elsewhere Classified',
+        // 9200-9402: Government services
+        '9211': 'Court Costs, Including Alimony and Child Support',
+        '9222': 'Fines',
+        '9223': 'Bail and Bond Payments',
+        '9311': 'Tax Payments',
+        '9402': 'Postal Services - Government Only',
+        '9399': 'Government Services - Not Elsewhere Classified',
       },
       countryCodeMap: {
         'KH': 'Cambodia',
@@ -651,20 +969,37 @@ export default {
       },
     };
   },
+  computed: {
+    filteredMCCMap() {
+      if (!this.mccSearchFilter.trim()) {
+        return this.merchantCategoryMap;
+      }
+
+      const filter = this.mccSearchFilter.toLowerCase();
+      const filtered = {};
+
+      Object.entries(this.merchantCategoryMap).forEach(([code, desc]) => {
+        if (code.includes(filter) || desc.toLowerCase().includes(filter)) {
+          filtered[code] = desc;
+        }
+      });
+
+      return filtered;
+    },
+  },
   mounted() {
     if (this.manualQRInput.trim()) {
       this.$nextTick(() => {
         this.decodeManualQR();
       });
     }
-    // Auto-generate QR code
+
     if (this.qrDataToGenerate.trim()) {
       this.$nextTick(() => {
         this.generateQRCode();
       });
     }
 
-    // Add global paste listener for Ctrl+V / Cmd+V
     document.addEventListener('paste', this.handleGlobalPaste);
   },
 
@@ -680,13 +1015,12 @@ export default {
     },
 
     qrDataToGenerate(newValue) {
-      if (newValue.trim()) {
-        if (this.livePreview) {
-          this.generateQRPreview();
-        }
+      if (newValue.trim() && this.livePreview) {
+        this.generateQRPreview();
       }
     },
   },
+
   methods: {
     decodeManualQR() {
       if (this.manualQRInput.trim()) {
@@ -695,9 +1029,7 @@ export default {
     },
 
     handlePaste(event) {
-      // Allow the paste to complete
       this.$nextTick(() => {
-        // Automatically process the pasted data
         if (this.manualQRInput.trim()) {
           const pastedData = this.manualQRInput.trim();
           this.processQRResult(pastedData);
@@ -708,7 +1040,6 @@ export default {
 
     async pasteFromClipboard() {
       try {
-        // Modern Clipboard API
         if (navigator.clipboard && navigator.clipboard.readText) {
           const text = await navigator.clipboard.readText();
           if (text && text.trim()) {
@@ -721,23 +1052,20 @@ export default {
             this.showNotification('❌ Clipboard is empty', 'error');
           }
         } else {
-          // Fallback for older browsers
           this.showNotification('❌ Clipboard access not available', 'error');
         }
       } catch (error) {
         console.error('Clipboard error:', error);
-        this.showNotification('❌ Failed to read clipboard. Please paste manually.', 'error');
+        this.showNotification('❌ Failed to read clipboard', 'error');
       }
     },
 
     handleGlobalPaste(event) {
-      // Handle Ctrl+V / Cmd+V anywhere on the page
       try {
         const clipboardData = event.clipboardData || window.clipboardData;
         const pastedText = clipboardData.getData('text');
 
         if (pastedText && pastedText.trim()) {
-          // Check if it looks like KHQR data
           if (pastedText.includes('00') && (pastedText.includes('29') || pastedText.includes('30') || pastedText.includes('51'))) {
             this.manualQRInput = pastedText.trim();
             this.$nextTick(() => {
@@ -756,7 +1084,7 @@ export default {
       if (data) {
         this.manualQRInput = data;
         this.$nextTick(() => {
-          event.target.value = ''; // Reset selector
+          event.target.value = '';
         });
       }
     },
@@ -765,7 +1093,6 @@ export default {
       this.qrResult = qrString;
       this.parsedTLV = this.parseTLVStructure(qrString);
 
-      // Reset nested objects
       this.headerInfo.tag29Nested = {};
       this.headerInfo.tag30Nested = {};
       this.headerInfo.bankInfoNested = {};
@@ -775,38 +1102,35 @@ export default {
       const baseInfo = this.extractHeaderInfo(this.parsedTLV);
       this.headerInfo = { ...this.headerInfo, ...baseInfo };
 
-      // Extract tag 29 (Merchant Type with nested info)
       if (this.parsedTLV['29']) {
         this.headerInfo.tag29 = this.parsedTLV['29'];
         this.headerInfo.tag29Nested = this.parseTLVStructure(this.parsedTLV['29'].value);
       }
 
-      // Extract tag 30 (Merchant Info with nested data)
       if (this.parsedTLV['30']) {
         this.headerInfo.tag30 = this.parsedTLV['30'];
         this.headerInfo.tag30Nested = this.parseTLVStructure(this.parsedTLV['30'].value);
       }
 
-      // Extract bank info (Tag 51)
       if (this.parsedTLV['51']) {
         this.headerInfo.bankInfoTag = this.parsedTLV['51'];
         this.headerInfo.bankInfoNested = this.parseTLVStructure(this.parsedTLV['51'].value);
       }
 
-      // Extract other tags
       if (this.parsedTLV['52']) this.headerInfo.merchantCategoryTag = this.parsedTLV['52'];
       if (this.parsedTLV['53']) this.headerInfo.currencyTag = this.parsedTLV['53'];
       if (this.parsedTLV['54']) this.headerInfo.amountTag = this.parsedTLV['54'];
       if (this.parsedTLV['58']) this.headerInfo.countryTag = this.parsedTLV['58'];
       if (this.parsedTLV['59']) this.headerInfo.merchantNameTag = this.parsedTLV['59'];
       if (this.parsedTLV['60']) this.headerInfo.merchantCityTag = this.parsedTLV['60'];
+
       if (this.parsedTLV['62']) {
         this.headerInfo.additionalDataTag = this.parsedTLV['62'];
         this.headerInfo.tag62Nested = this.parseTLVStructure(this.parsedTLV['62'].value);
       }
+
       if (this.parsedTLV['63']) this.headerInfo.encryptionTag = this.parsedTLV['63'];
 
-      // Extract timestamp
       if (this.parsedTLV['99']) {
         this.headerInfo.timestampTag = this.parsedTLV['99'];
         this.headerInfo.timestampNested = this.parseTLVStructure(this.parsedTLV['99'].value);
@@ -829,19 +1153,15 @@ export default {
 
         if (isNaN(length) || length < 0) break;
 
-        // If length exceeds remaining data, try to find next tag
         if (position + length > dataString.length) {
-          // Look for next potential tag by scanning ahead
           let found = false;
           for (let i = position; i < Math.min(position + length + 10, dataString.length - 4); i++) {
             const nextTag = dataString.substring(i, i + 2);
             const nextLenStr = dataString.substring(i + 2, i + 4);
             const nextLen = parseInt(nextLenStr, 10);
 
-            // Check if this looks like a valid tag/length pair
             if (/^\d{2}$/.test(nextTag) && !isNaN(nextLen) && nextLen > 0 && nextLen < 255 &&
               i + 4 + nextLen <= dataString.length) {
-              // Looks like a valid tag, use current position + truncated length
               const truncatedLength = i - position;
               if (truncatedLength > 0) {
                 const value = dataString.substring(position, position + truncatedLength);
@@ -904,21 +1224,6 @@ export default {
       });
     },
 
-    copyItemValue(value, itemId) {
-      navigator.clipboard.writeText(value).then(() => {
-        this.copiedItemId = itemId;
-        setTimeout(() => {
-          this.copiedItemId = null;
-        }, 1500);
-      });
-    },
-
-    generateQRPreview() {
-      if (this.livePreview && this.qrDataToGenerate.trim()) {
-        this.generateQRCode();
-      }
-    },
-
     getMerchantCategoryDescription(code) {
       return this.merchantCategoryMap[code] || `Category: ${code}`;
     },
@@ -934,12 +1239,12 @@ export default {
     toggleEditMode() {
       this.editMode = !this.editMode;
       if (this.editMode) {
-        // Extract current values from parsed TLV
         this.editMerchantID = this.headerInfo.tag29Nested?.['01']?.value || this.headerInfo.tag30Nested?.['01']?.value || this.headerInfo.bankInfoNested?.['01']?.value || '';
         this.editCurrency = this.headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR';
         this.editAmount = this.headerInfo.amountTag?.value || '';
         this.editMerchantName = this.headerInfo.merchantNameTag?.value || '';
         this.editBankName = this.headerInfo.tag29Nested?.['02']?.value || this.headerInfo.tag30Nested?.['02']?.value || this.headerInfo.bankInfoNested?.['02']?.value || '';
+        this.editMCC = this.headerInfo.merchantCategoryTag?.value || '';
       }
     },
 
@@ -948,9 +1253,7 @@ export default {
 
       let updatedResult = this.qrResult;
 
-      // Update Merchant ID in Tag 29/30/51
       if (this.editMerchantID) {
-        // Try tag 29 first
         if (this.headerInfo.tag29Nested?.['01']) {
           const oldTag = '01' + String(this.headerInfo.tag29Nested['01'].length).padStart(2, '0') + this.headerInfo.tag29Nested['01'].value;
           const newTag = '01' + String(this.editMerchantID.length).padStart(2, '0') + this.editMerchantID;
@@ -966,7 +1269,6 @@ export default {
         }
       }
 
-      // Update Currency (Tag 53)
       if (this.headerInfo.currencyTag) {
         const newCurrency = this.editCurrency === 'USD' ? '840' : '116';
         const oldTag53 = '53' + String(this.headerInfo.currencyTag.length).padStart(2, '0') + this.headerInfo.currencyTag.value;
@@ -974,7 +1276,6 @@ export default {
         updatedResult = updatedResult.replace(oldTag53, newTag53);
       }
 
-      // Update Amount (Tag 54)
       if (this.editAmount && this.headerInfo.amountTag) {
         const oldTag54 = '54' + String(this.headerInfo.amountTag.length).padStart(2, '0') + this.headerInfo.amountTag.value;
         const newLength = String(this.editAmount.length).padStart(2, '0');
@@ -982,7 +1283,6 @@ export default {
         updatedResult = updatedResult.replace(oldTag54, newTag54);
       }
 
-      // Update Merchant Name (Tag 59)
       if (this.editMerchantName && this.headerInfo.merchantNameTag) {
         const oldTag59 = '59' + String(this.headerInfo.merchantNameTag.length).padStart(2, '0') + this.headerInfo.merchantNameTag.value;
         const newLength = String(this.editMerchantName.length).padStart(2, '0');
@@ -990,7 +1290,6 @@ export default {
         updatedResult = updatedResult.replace(oldTag59, newTag59);
       }
 
-      // Update Bank Name in Tag 29/30/51
       if (this.editBankName) {
         if (this.headerInfo.tag29Nested?.['02']) {
           const oldTag = '02' + String(this.headerInfo.tag29Nested['02'].length).padStart(2, '0') + this.headerInfo.tag29Nested['02'].value;
@@ -1007,10 +1306,14 @@ export default {
         }
       }
 
-      // Remove old checksum (Tag 63)
+      if (this.editMCC && this.headerInfo.merchantCategoryTag) {
+        const oldTag52 = '52' + String(this.headerInfo.merchantCategoryTag.length).padStart(2, '0') + this.headerInfo.merchantCategoryTag.value;
+        const newTag52 = '52' + '04' + this.editMCC;
+        updatedResult = updatedResult.replace(oldTag52, newTag52);
+      }
+
       updatedResult = updatedResult.replace(/63\d{2}[A-F0-9a-f]{4}$/, '');
 
-      // Calculate and add new checksum using CRC-16/IBM-3740
       const newChecksum = this.calculateCRC16(updatedResult);
       updatedResult = updatedResult + '63' + '04' + newChecksum;
 
@@ -1018,12 +1321,10 @@ export default {
       this.processQRResult(updatedResult);
       this.editMode = false;
 
-      // Show success notification
       this.showNotification('✅ Data updated! Checksum encrypted with CRC-16/IBM-3740', 'success');
     },
 
     showNotification(message, type = 'info') {
-      // Create and show notification (can be enhanced with a proper toast library)
       const notification = document.createElement('div');
       notification.className = `notification notification-${type}`;
       notification.textContent = message;
@@ -1035,14 +1336,6 @@ export default {
       }, 3000);
     },
 
-    getMerchantTypeDescription(code) {
-      const typeMap = {
-        '29': 'Remittance',
-        '30': 'Merchant',
-      };
-      return typeMap[code] || `Merchant Type: ${code}`;
-    },
-
     getCurrencyDescription(code) {
       const codeStr = String(code).padStart(3, '0');
       return this.currencyCodeMap[codeStr] || `Currency Code: ${code}`;
@@ -1050,37 +1343,6 @@ export default {
 
     getCountryDescription(code) {
       return this.countryCodeMap[code] || `Country: ${code}`;
-    },
-
-    getTimestampReadable(timestamp) {
-      if (!timestamp) return '';
-
-      let ms = parseInt(timestamp, 10);
-      if (isNaN(ms)) return '';
-
-      try {
-        const date = new Date(ms);
-        const now = new Date();
-        const isExpired = date < now;
-
-        const options = {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          timeZone: 'Asia/Bangkok' // Cambodia uses Bangkok timezone (UTC+7)
-        };
-        const dateStr = date.toLocaleString('en-US', options) + ' ICT';
-
-        if (isExpired) {
-          return dateStr + ' ❌ Expired';
-        }
-        return dateStr;
-      } catch {
-        return '';
-      }
     },
 
     getTimestampReadableWithoutExpired(timestamp) {
@@ -1098,7 +1360,7 @@ export default {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
-          timeZone: 'Asia/Bangkok' // Cambodia uses Bangkok timezone (UTC+7)
+          timeZone: 'Asia/Bangkok'
         };
         return date.toLocaleString('en-US', options) + ' ICT';
       } catch {
@@ -1145,7 +1407,6 @@ export default {
     },
 
     validateChecksum(qrData) {
-      // Extract checksum tag
       const checksumMatch = qrData.match(/63\d{2}([A-Fa-f0-9]{4})$/);
       if (!checksumMatch) return null;
 
@@ -1157,16 +1418,16 @@ export default {
     },
 
     getCRCCalculatorLink() {
-      // Get QR data without the last 4 digits (checksum value)
       let qrWithoutChecksum = this.qrResult;
-
-      // Remove tag 63 entirely (6304 + 4 digits = 8 characters)
       qrWithoutChecksum = qrWithoutChecksum.replace(/63\d{2}[A-Fa-f0-9]{4}$/, '');
-
-      // Encode for URL
       const encodedData = encodeURIComponent(qrWithoutChecksum);
-
       return `https://crccalc.com/?crc=${encodedData}&method=CRC-16/IBM-3740&datatype=ascii&outtype=hex`;
+    },
+
+    generateQRPreview() {
+      if (this.livePreview && this.qrDataToGenerate.trim()) {
+        this.generateQRCode();
+      }
     },
 
     async generateQRCode() {
@@ -1199,7 +1460,6 @@ export default {
       const link = document.createElement('a');
 
       if (this.downloadFormat === 'svg') {
-        // Generate SVG format
         QRCode.toString(this.qrDataToGenerate.trim(), {
           errorCorrectionLevel: 'H',
           type: 'image/svg+xml',
@@ -1222,14 +1482,12 @@ export default {
           document.body.removeChild(link);
         });
       } else if (this.downloadFormat === 'jpg') {
-        // Generate JPG from PNG
         link.href = this.generatedQRImage;
         link.download = `khqr-${Date.now()}.jpg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       } else {
-        // PNG (default)
         link.href = this.generatedQRImage;
         link.download = `khqr-${Date.now()}.png`;
         document.body.appendChild(link);
@@ -1271,124 +1529,6 @@ export default {
   border-radius: 0;
   box-shadow: 0 4px 16px rgba(14, 165, 233, 0.1);
   margin: 0;
-}
-
-.header-top {
-  display: none;
-}
-
-.header-controls {
-  display: none;
-}
-
-.control-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  color: white;
-  padding: 0.6rem 0.8rem;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.control-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: scale(1.05);
-}
-
-.summary-card {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.3rem;
-  padding: 1.8rem;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 2px solid #7dd3fc;
-  border-radius: 14px;
-  margin-bottom: 2rem;
-  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.18);
-  animation: slideUpIn 0.5s ease;
-}
-
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.summary-label {
-  font-size: 0.85rem;
-  font-weight: 900;
-  color: #0c4a6e;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-
-.summary-value {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #0284c7;
-  word-break: break-word;
-}
-
-.live-preview-toggle {
-  display: flex;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding: 1.4rem;
-  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
-  border: 2px solid #7dd3fc;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.12);
-}
-
-.toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  cursor: pointer;
-}
-
-.toggle-checkbox {
-  display: none;
-}
-
-.toggle-switch {
-  position: relative;
-  width: 52px;
-  height: 28px;
-  background: #d0d0d0;
-  border-radius: 14px;
-  transition: background-color 0.3s ease;
-  border: 2px solid #7dd3fc;
-}
-
-.toggle-checkbox:checked+.toggle-switch {
-  background: #06b6d4;
-  border-color: #0284c7;
-}
-
-.toggle-switch::after {
-  content: '';
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  background: white;
-  border-radius: 50%;
-  top: 1px;
-  left: 1px;
-  transition: left 0.3s ease;
-}
-
-.toggle-checkbox:checked+.toggle-switch::after {
-  left: 25px;
-}
-
-.toggle-text {
-  font-weight: 800;
-  color: #0c4a6e;
-  font-size: 0.95rem;
 }
 
 .header {
@@ -1469,18 +1609,6 @@ export default {
   font-weight: 700;
 }
 
-@keyframes slideInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-2px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .tab-content {
   display: flex;
   flex-direction: column;
@@ -1542,12 +1670,6 @@ export default {
   outline: none;
   background: #f0f9ff;
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
-}
-
-.sample-select:focus {
-  outline: none;
-  border-color: #000000;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .input-field {
@@ -1655,10 +1777,6 @@ export default {
   transform: translateY(-2px);
 }
 
-.paste-btn:active {
-  transform: translateY(0);
-}
-
 .result-section {
   padding: 2.8rem 2.5rem;
   padding-bottom: 220px;
@@ -1687,6 +1805,34 @@ export default {
 .header-buttons {
   display: flex;
   gap: 1rem;
+}
+
+.copy-btn {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  color: #0284c7;
+  border: 2px solid #7dd3fc;
+  padding: 0.75rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0px;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.15);
+}
+
+.copy-btn:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+  color: white;
+  border-color: #0284c7;
+  box-shadow: 0 6px 12px rgba(14, 165, 233, 0.3);
+  transform: translateY(-2px);
+}
+
+.edit-active {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  border-color: #dc2626 !important;
 }
 
 .edit-panel {
@@ -1739,10 +1885,6 @@ export default {
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2);
 }
 
-.edit-input::placeholder {
-  color: #7dd3fc;
-}
-
 .edit-actions {
   display: flex;
   gap: 1.2rem;
@@ -1779,58 +1921,99 @@ export default {
   border-color: #0284c7;
 }
 
-.edit-active {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: white !important;
-  border-color: #dc2626 !important;
-}
-
-.checksum-valid {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  border-left-color: #22c55e !important;
-}
-
-.copy-btn {
+.summary-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.3rem;
+  padding: 1.8rem;
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  color: #0284c7;
   border: 2px solid #7dd3fc;
-  padding: 0.75rem 1.2rem;
-  border-radius: 8px;
+  border-radius: 14px;
+  margin-bottom: 2rem;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.18);
+  animation: slideUpIn 0.5s ease;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.summary-label {
   font-size: 0.85rem;
+  font-weight: 900;
+  color: #0c4a6e;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.summary-value {
+  font-size: 1rem;
   font-weight: 800;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  letter-spacing: 0px;
-  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.15);
+  color: #0284c7;
+  word-break: break-word;
 }
 
-.copy-btn:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
-  color: white;
+.live-preview-toggle {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.4rem;
+  background: linear-gradient(135deg, #ecf0ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.12);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  cursor: pointer;
+}
+
+.toggle-checkbox {
+  display: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 52px;
+  height: 28px;
+  background: #d0d0d0;
+  border-radius: 14px;
+  transition: background-color 0.3s ease;
+  border: 2px solid #7dd3fc;
+}
+
+.toggle-checkbox:checked+.toggle-switch {
+  background: #06b6d4;
   border-color: #0284c7;
-  box-shadow: 0 6px 12px rgba(14, 165, 233, 0.3);
-  transform: translateY(-2px);
 }
 
-.crc-link {
-  margin-left: auto;
-  color: #0066cc;
-  text-decoration: none;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #0066cc;
-  border-radius: 2px;
-  transition: all 0.2s ease;
-  cursor: pointer;
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  top: 1px;
+  left: 1px;
+  transition: left 0.3s ease;
 }
 
-.crc-link:hover {
-  background: #0066cc;
-  color: white;
+.toggle-checkbox:checked+.toggle-switch::after {
+  left: 25px;
 }
 
-/* TLV Tree Structure */
+.toggle-text {
+  font-weight: 800;
+  color: #0c4a6e;
+  font-size: 0.95rem;
+}
+
 .tlv-tree {
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.8rem;
@@ -1878,32 +2061,6 @@ export default {
   box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
 }
 
-.copy-item-btn {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: #06b6d4;
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  opacity: 0;
-}
-
-.tree-item:hover .copy-item-btn {
-  opacity: 1;
-}
-
-.copy-item-btn:hover {
-  background: #e0f2fe;
-  color: #0284c7;
-}
-
-.copy-item-btn.copied {
-  color: #16a34a;
-}
-
 .tree-length {
   background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
   color: #0c4a6e;
@@ -1948,20 +2105,6 @@ export default {
   margin-left: 0.8rem;
 }
 
-.tree-timestamp {
-  padding: 0.5rem 0;
-  padding-left: 3rem;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.tree-timestamp .tree-meaning {
-  color: #06b6d4;
-  font-style: normal;
-  font-weight: 800;
-  margin-left: 0;
-}
-
 .tree-sublayer {
   display: flex;
   flex-direction: column;
@@ -1974,18 +2117,6 @@ export default {
   width: 100%;
   margin-left: 0.5rem;
   animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-15px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .tree-subitem-line {
@@ -2002,42 +2133,10 @@ export default {
   animation: fadeInUp 0.3s ease forwards;
 }
 
-.tree-sublayer>.tree-subitem-line:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.tree-sublayer>.tree-subitem-line:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.tree-sublayer>.tree-subitem-line:nth-child(5) {
-  animation-delay: 0.3s;
-}
-
 .tree-subitem-line:hover {
   background: #f9f9f9;
   transform: translateX(3px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.tree-subitem-timestamp {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 0.3rem 0.4rem;
-  font-size: 0.7rem;
 }
 
 .tree-subitem-conversion {
@@ -2050,13 +2149,6 @@ export default {
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 0px;
-}
-
-.tree-subitem-timestamp .tree-meaning {
-  color: #0066cc;
-  font-style: normal;
-  font-weight: 600;
-  margin-left: 0;
 }
 
 .tree-subitem-conversion .tree-meaning {
@@ -2075,15 +2167,27 @@ export default {
   color: #ef4444 !important;
 }
 
-.tree-data-long {
-  background: #b8b8b8;
-  color: #ffffff;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #000000;
+.crc-link {
+  margin-left: auto;
+  color: #0066cc;
+  text-decoration: none;
+  font-size: 0.75rem;
   font-weight: 600;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #0066cc;
   border-radius: 2px;
-  word-break: break-all;
-  max-width: 100%;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.crc-link:hover {
+  background: #0066cc;
+  color: white;
+}
+
+.checksum-valid {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-left-color: #22c55e !important;
 }
 
 .generate-result {
@@ -2180,485 +2284,6 @@ export default {
   transition: background-color 0.2s ease;
 }
 
-@media (max-width: 1200px) {
-  .tlv-tree {
-    font-size: 0.75rem;
-  }
-}
-
-/* Mobile Responsive - Tablet and Below */
-@media (max-width: 768px) {
-  * {
-    touch-action: manipulation;
-  }
-
-  .header {
-    padding: 1.5rem 1.2rem;
-    border-bottom: 3px solid #0284c7;
-  }
-
-  .title {
-    font-size: 1.6rem;
-    font-weight: 900;
-    letter-spacing: -0.5px;
-  }
-
-  .subtitle {
-    font-size: 0.8rem;
-    margin-top: 0.4rem;
-  }
-
-  .tab-navigation {
-    padding: 0 0.8rem;
-    gap: 0;
-    top: 5rem;
-  }
-
-  .tab-button {
-    padding: 1rem 1rem;
-    font-size: 0.85rem;
-    gap: 0.4rem;
-    flex: 1;
-    justify-content: center;
-  }
-
-  .tab-icon {
-    font-size: 1rem;
-  }
-
-  .input-area {
-    padding: 1.5rem 1.2rem;
-    gap: 1.2rem;
-  }
-
-  .sample-selector {
-    flex-direction: column;
-    padding: 1.2rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .sample-label {
-    font-size: 0.9rem;
-    width: 100%;
-  }
-
-  .sample-select {
-    width: 100%;
-    padding: 0.9rem;
-    font-size: 15px;
-  }
-
-  .input-field {
-    height: 120px;
-    padding: 1rem;
-    font-size: 16px;
-    margin-bottom: 1rem;
-    border-radius: 10px;
-  }
-
-  .input-field::placeholder {
-    font-size: 14px;
-  }
-
-  .action-buttons {
-    display: flex;
-    flex-direction: row;
-    gap: 1rem;
-    margin-top: 1.5rem;
-  }
-
-  .action-buttons .btn {
-    flex: 1;
-    padding: 0.9rem 1.2rem;
-    font-size: 0.9rem;
-    border-radius: 10px;
-  }
-
-  .btn {
-    width: auto;
-    padding: 0.9rem 1.2rem;
-    font-size: 0.9rem;
-    border-radius: 10px;
-  }
-
-  .btn-secondary {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    color: #0284c7;
-    border: 2px solid #7dd3fc;
-  }
-
-  .summary-card {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 1.2rem;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-  }
-
-  .summary-item {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.8rem 0;
-    border-bottom: 1px solid rgba(14, 165, 233, 0.1);
-  }
-
-  .summary-item:last-child {
-    border-bottom: none;
-  }
-
-  .summary-label {
-    font-size: 0.8rem;
-    font-weight: 900;
-  }
-
-  .summary-value {
-    font-size: 0.95rem;
-    font-weight: 700;
-  }
-
-  .live-preview-toggle {
-    padding: 1.2rem;
-    margin-bottom: 1.5rem;
-    border-radius: 10px;
-  }
-
-  .toggle-text {
-    font-size: 0.9rem;
-  }
-
-  .result-section {
-    padding: 1.5rem 1.2rem;
-    padding-bottom: 200px;
-  }
-
-  .result-header {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .result-header h2 {
-    font-size: 1.3rem;
-    width: 100%;
-  }
-
-  .header-buttons {
-    width: 100%;
-    display: flex;
-    gap: 0.8rem;
-  }
-
-  .copy-btn {
-    padding: 0.8rem 1rem;
-    font-size: 0.8rem;
-    border-radius: 8px;
-    flex: 1;
-  }
-
-  .edit-panel {
-    padding: 1.5rem 1.2rem;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-  }
-
-  .edit-field {
-    margin-bottom: 1.5rem;
-    gap: 0.6rem;
-  }
-
-  .edit-field label {
-    font-size: 0.9rem;
-    font-weight: 900;
-  }
-
-  .edit-input,
-  .edit-select {
-    padding: 0.9rem;
-    font-size: 16px;
-    border-radius: 8px;
-  }
-
-  .edit-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1.2rem;
-  }
-
-  .edit-update-btn,
-  .edit-cancel-btn {
-    width: 100%;
-    padding: 1rem 1.2rem;
-  }
-
-  .tree-item {
-    padding: 0.7rem 0;
-    gap: 0.4rem;
-  }
-
-  .tree-item:hover {
-    padding-left: 1rem;
-  }
-
-  .tree-tag,
-  .tree-length,
-  .tree-data {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.5rem;
-  }
-
-  .tree-meaning {
-    font-size: 0.7rem;
-    margin-left: 0.4rem;
-  }
-
-  .copy-item-btn {
-    opacity: 1;
-    padding: 0.4rem 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .tlv-tree {
-    font-size: 0.8rem;
-  }
-
-  .live-preview-toggle {
-    flex-direction: column;
-    padding: 1.2rem;
-  }
-
-  .toggle-label {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .notification {
-    right: 15px;
-    top: 20px;
-    padding: 1rem 1.2rem;
-    font-size: 0.85rem;
-    border-radius: 10px;
-  }
-}
-
-/* Extra Small Phones - Below 480px */
-@media (max-width: 480px) {
-  .header {
-    padding: 1.2rem 1rem;
-  }
-
-  .title {
-    font-size: 1.4rem;
-  }
-
-  .subtitle {
-    font-size: 0.75rem;
-  }
-
-  .tab-navigation {
-    padding: 0 0.5rem;
-  }
-
-  .tab-button {
-    padding: 0.85rem 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .input-area {
-    padding: 1.2rem 1rem;
-  }
-
-  .sample-selector {
-    padding: 1rem;
-  }
-
-  .input-field {
-    height: 100px;
-    padding: 0.9rem;
-  }
-
-  .btn {
-    padding: 0.85rem 1rem;
-    font-size: 0.85rem;
-    border-radius: 8px;
-  }
-
-  .summary-card {
-    padding: 1rem;
-    gap: 0.8rem;
-  }
-
-  .summary-label {
-    font-size: 0.75rem;
-  }
-
-  .summary-value {
-    font-size: 0.9rem;
-  }
-
-  .result-section {
-    padding: 1.2rem 1rem;
-  }
-
-  .result-header h2 {
-    font-size: 1.2rem;
-  }
-
-  .edit-panel {
-    padding: 1.2rem 1rem;
-  }
-
-  .edit-input,
-  .edit-select {
-    padding: 0.8rem;
-    font-size: 16px;
-  }
-
-  .tree-tag,
-  .tree-length,
-  .tree-data {
-    font-size: 0.7rem;
-  }
-
-  .tree-meaning {
-    font-size: 0.65rem;
-  }
-
-  .notification {
-    right: 10px;
-    top: 15px;
-    padding: 0.9rem 1rem;
-    font-size: 0.8rem;
-  }
-
-  .copy-item-btn {
-    padding: 0.3rem 0.4rem;
-    font-size: 0.7rem;
-  }
-}
-
-.notification {
-  position: fixed;
-  top: 30px;
-  right: 30px;
-  padding: 1.2rem 1.8rem;
-  border-radius: 12px;
-  font-weight: 800;
-  font-size: 0.95rem;
-  z-index: 9999;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  animation: slideIn 0.3s ease;
-  opacity: 1;
-  transition: opacity 0.3s ease;
-}
-
-.notification-success {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #166534;
-  border: 2px solid #22c55e;
-}
-
-.notification-info {
-  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
-  color: #0c4a6e;
-  border: 2px solid #06b6d4;
-}
-
-.notification-error {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #991b1b;
-  border: 2px solid #ef4444;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(400px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Smooth, Non-Glitchy Animations */
-@keyframes slideUpIn {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeInScale {
-  from {
-    transform: scale(0.98);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes glowPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
-  }
-
-  50% {
-    box-shadow: 0 6px 16px rgba(14, 165, 233, 0.25);
-  }
-}
-
-@keyframes bobbing {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes slideDown {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Reference Tab Styles */
 .reference-tab {
   padding: 2.5rem 2rem;
 }
@@ -2775,9 +2400,360 @@ export default {
   font-size: 0.9rem;
 }
 
-/* Validator Tab Styles */
-/* Mobile Responsive for Reference Tab */
+.notification {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  padding: 1.2rem 1.8rem;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.notification-success {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  border: 2px solid #22c55e;
+}
+
+.notification-info {
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  color: #0c4a6e;
+  border: 2px solid #06b6d4;
+}
+
+.notification-error {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border: 2px solid #ef4444;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUpIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* MCC Styles */
+.mcc-search {
+  margin-bottom: 1.5rem;
+}
+
+.mcc-search-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #7dd3fc;
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: #0c4a6e;
+  background: white;
+  transition: all 0.3s ease;
+  font-weight: 800;
+}
+
+.mcc-search-input:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18);
+}
+
+.mcc-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.mcc-item {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #7dd3fc;
+  border-radius: 10px;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.mcc-item:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+}
+
+.mcc-code {
+  font-weight: 900;
+  color: #0284c7;
+  text-align: center;
+  font-size: 1rem;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.mcc-desc {
+  color: #0c4a6e;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1200px) {
+  .tlv-tree {
+    font-size: 0.75rem;
+  }
+}
+
 @media (max-width: 768px) {
+  * {
+    touch-action: manipulation;
+  }
+
+  .header {
+    padding: 1.5rem 1.2rem;
+    border-bottom: 3px solid #0284c7;
+  }
+
+  .title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+  }
+
+  .tab-navigation {
+    padding: 0 0.8rem;
+    gap: 0;
+    top: 5rem;
+  }
+
+  .tab-button {
+    padding: 1rem 1rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .input-area {
+    padding: 1.5rem 1.2rem;
+  }
+
+  .sample-selector {
+    flex-direction: column;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .sample-label {
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .sample-select {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 15px;
+  }
+
+  .input-field {
+    height: 120px;
+    padding: 1rem;
+    font-size: 16px;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .summary-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(14, 165, 233, 0.1);
+  }
+
+  .summary-item:last-child {
+    border-bottom: none;
+  }
+
+  .summary-label {
+    font-size: 0.8rem;
+  }
+
+  .summary-value {
+    font-size: 0.95rem;
+  }
+
+  .live-preview-toggle {
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .result-section {
+    padding: 1.5rem 1.2rem;
+    padding-bottom: 200px;
+  }
+
+  .result-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .result-header h2 {
+    font-size: 1.3rem;
+    width: 100%;
+  }
+
+  .header-buttons {
+    width: 100%;
+    display: flex;
+    gap: 0.8rem;
+  }
+
+  .copy-btn {
+    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    flex: 1;
+  }
+
+  .edit-panel {
+    padding: 1.5rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .edit-field {
+    margin-bottom: 1.5rem;
+  }
+
+  .edit-field label {
+    font-size: 0.9rem;
+  }
+
+  .edit-input,
+  .edit-select {
+    padding: 0.9rem;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  .edit-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+  }
+
+  .edit-update-btn,
+  .edit-cancel-btn {
+    width: 100%;
+    padding: 1rem 1.2rem;
+  }
+
+  .tree-item {
+    padding: 0.7rem 0;
+    gap: 0.4rem;
+  }
+
+  .tree-tag,
+  .tree-length,
+  .tree-data {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .tree-meaning {
+    font-size: 0.7rem;
+    margin-left: 0.4rem;
+  }
+
+  .mcc-list {
+    max-height: 400px;
+  }
+
+  .mcc-item {
+    grid-template-columns: 80px 1fr;
+    gap: 0.8rem;
+    padding: 0.8rem;
+  }
+
+  .mcc-code {
+    font-size: 0.9rem;
+  }
+
+  .mcc-desc {
+    font-size: 0.85rem;
+  }
+
   .reference-tab {
     padding: 1.5rem 1.2rem;
   }
@@ -2788,9 +2764,72 @@ export default {
     gap: 0.8rem;
   }
 
-  .tag-def {
-    flex-direction: column;
+  .notification {
+    right: 15px;
+    top: 20px;
+    padding: 1rem 1.2rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 1.2rem 1rem;
+  }
+
+  .title {
+    font-size: 1.4rem;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+  }
+
+  .tab-button {
+    padding: 0.85rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .input-area {
+    padding: 1.2rem 1rem;
+  }
+
+  .sample-selector {
+    padding: 1rem;
+  }
+
+  .input-field {
+    height: 100px;
+    padding: 0.9rem;
+  }
+
+  .btn {
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
     gap: 0.8rem;
+  }
+
+  .result-section {
+    padding: 1.2rem 1rem;
+  }
+
+  .result-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .edit-panel {
+    padding: 1.2rem 1rem;
+  }
+
+  .notification {
+    right: 10px;
+    top: 15px;
+    padding: 0.9rem 1rem;
+    font-size: 0.8rem;
   }
 }
 </style>
