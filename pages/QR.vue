@@ -52,6 +52,17 @@
 
       <!-- Results - TLV Tree Structure -->
       <div v-if="qrResult && activeTab === 'decode'" class="result-section">
+        <!-- MCC Warning Alert -->
+        <div v-if="!headerInfo.merchantCategoryTag" class="mcc-warning-alert">
+          <span class="mcc-warning-icon">⚠️</span>
+          <div class="mcc-warning-content">
+            <span class="mcc-warning-title">Merchant Category Code (MCC) Not Found</span>
+            <span class="mcc-warning-desc">Tag 52 is missing. Consider adding MCC in edit mode for complete merchant
+              classification.</span>
+          </div>
+          <button @click="toggleEditMode" class="mcc-warning-btn">Add MCC</button>
+        </div>
+
         <!-- Data Summary Card -->
         <div class="summary-card">
           <div class="summary-item">
@@ -63,10 +74,28 @@
             <span class="summary-value">{{ headerInfo.amountTag?.value ? headerInfo.amountTag.value + ' ' +
           (headerInfo.currencyTag?.value === '840' ? 'USD' : 'KHR') : 'N/A' }}</span>
           </div>
-          <div class="summary-item">
-            <span class="summary-label">Category:</span>
-            <span class="summary-value">{{ getMerchantCategoryDescription(headerInfo.merchantCategoryTag?.value) ||
-          'N/A' }}</span>
+          <div class="summary-item"
+            :class="{ 'mcc-present': headerInfo.merchantCategoryTag, 'mcc-missing': !headerInfo.merchantCategoryTag }">
+            <span class="summary-label">Category (MCC):</span>
+            <span class="summary-value">
+              <span v-if="headerInfo.merchantCategoryTag" class="mcc-badge mcc-badge-present">
+                ✓ {{ headerInfo.merchantCategoryTag.value }}
+              </span>
+              <span v-else class="mcc-badge mcc-badge-missing">
+                ✗ Not Present
+              </span>
+            </span>
+          </div>
+          <div class="summary-item" :class="getTimestampStatusClass()">
+            <span class="summary-label">Timestamp:</span>
+            <span class="summary-value">
+              <span v-if="headerInfo.timestampNested?.['01']" :class="getTimestampBadgeClass()">
+                {{ getTimestampStatus() }}
+              </span>
+              <span v-else class="ts-badge ts-badge-none">
+                ✗ Not Present
+              </span>
+            </span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Data:</span>
@@ -273,12 +302,14 @@
           </div>
 
           <!-- Tag 52: Merchant Category -->
-          <div class="tree-item" v-if="headerInfo.merchantCategoryTag">
-            <span class="tree-tag">52</span>
+          <div class="tree-item" v-if="headerInfo.merchantCategoryTag"
+            :class="{ 'mcc-tag-present': headerInfo.merchantCategoryTag }">
+            <span class="tree-tag mcc-tag-highlight">52</span>
             <span class="tree-length">{{ formatLength(headerInfo.merchantCategoryTag.length) }}</span>
             <span class="tree-data">{{ headerInfo.merchantCategoryTag.value }}</span>
             <span class="tree-meaning">= {{ getMerchantCategoryDescription(headerInfo.merchantCategoryTag.value)
               }}</span>
+            <span class="mcc-indicator">✓ MCC Present</span>
           </div>
 
           <!-- Tag 53: Currency -->
@@ -369,10 +400,11 @@
           </div>
 
           <!-- Tag 99: Timestamp (nested) -->
-          <div class="tree-item tree-parent" v-if="headerInfo.timestampTag">
-            <span class="tree-tag">99</span>
+          <div class="tree-item tree-parent" v-if="headerInfo.timestampTag" :class="getTimestampStatusClass()">
+            <span class="tree-tag" :class="getTimestampStatusClass()">99</span>
             <span class="tree-length">{{ formatLength(headerInfo.timestampTag.length) }}</span>
             <span class="tree-meaning">= Timestamp</span>
+            <span class="ts-tree-indicator">{{ getTimestampStatus() }}</span>
 
             <!-- Sub-layer for Tag 99 -->
             <div class="tree-sublayer" v-if="Object.keys(headerInfo.timestampNested).length > 0">
@@ -395,7 +427,7 @@
                 <span class="tree-meaning">= Expiry Time</span>
               </div>
               <div class="tree-subitem-conversion" v-if="headerInfo.timestampNested['01']"
-                :class="{ 'timestamp-expired': isTimestampExpired(headerInfo.timestampNested['01'].value) }">
+                :class="{ 'timestamp-expired': isTimestampExpired(headerInfo.timestampNested['01'].value), 'timestamp-valid': !isTimestampExpired(headerInfo.timestampNested['01'].value) }">
                 <span class="tree-meaning">→ {{
           getTimestampReadableWithoutExpired(headerInfo.timestampNested['01'].value) }}</span>
               </div>
@@ -1500,6 +1532,91 @@ export default {
       this.qrDataToGenerate = '';
       this.generatedQRImage = null;
     },
+
+    calculateTimeDifference(timeDiff) {
+      const totalSeconds = Math.floor(timeDiff / 1000);
+
+      const weeks = Math.floor(totalSeconds / (7 * 24 * 60 * 60));
+      const remainingAfterWeeks = totalSeconds % (7 * 24 * 60 * 60);
+
+      const days = Math.floor(remainingAfterWeeks / (24 * 60 * 60));
+      const remainingAfterDays = remainingAfterWeeks % (24 * 60 * 60);
+
+      const hours = Math.floor(remainingAfterDays / (60 * 60));
+      const remainingAfterHours = remainingAfterDays % (60 * 60);
+
+      const minutes = Math.floor(remainingAfterHours / 60);
+      const seconds = remainingAfterHours % 60;
+
+      return { weeks, days, hours, minutes, seconds };
+    },
+
+    formatTimeDifference(weeks, days, hours, minutes, seconds) {
+      const parts = [];
+
+      if (weeks > 0) parts.push(`${weeks}w`);
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0) parts.push(`${hours}h`);
+      if (minutes > 0) parts.push(`${minutes}m`);
+      if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+
+      return parts.join(' ');
+    },
+
+    getTimestampStatus() {
+      if (!this.headerInfo.timestampNested?.['01']) {
+        return '✗ Not Present';
+      }
+
+      const expiryTime = parseInt(this.headerInfo.timestampNested['01'].value, 10);
+      const now = new Date().getTime();
+
+      if (isNaN(expiryTime)) {
+        return '⚠️ Invalid';
+      }
+
+      if (expiryTime > now) {
+        const timeDiff = expiryTime - now;
+        const { weeks, days, hours, minutes, seconds } = this.calculateTimeDifference(timeDiff);
+        const formattedTime = this.formatTimeDifference(weeks, days, hours, minutes, seconds);
+        return `✓ Valid (${formattedTime} left)`;
+      } else {
+        const timeDiff = now - expiryTime;
+        const { weeks, days, hours, minutes, seconds } = this.calculateTimeDifference(timeDiff);
+        const formattedTime = this.formatTimeDifference(weeks, days, hours, minutes, seconds);
+        return `✗ Expired (${formattedTime} ago)`;
+      }
+    },
+
+    getTimestampStatusClass() {
+      if (!this.headerInfo.timestampNested?.['01']) {
+        return 'ts-missing';
+      }
+
+      const expiryTime = parseInt(this.headerInfo.timestampNested['01'].value, 10);
+      const now = new Date().getTime();
+
+      if (isNaN(expiryTime)) {
+        return 'ts-invalid';
+      }
+
+      return expiryTime > now ? 'ts-valid' : 'ts-expired';
+    },
+
+    getTimestampBadgeClass() {
+      if (!this.headerInfo.timestampNested?.['01']) {
+        return 'ts-badge ts-badge-none';
+      }
+
+      const expiryTime = parseInt(this.headerInfo.timestampNested['01'].value, 10);
+      const now = new Date().getTime();
+
+      if (isNaN(expiryTime)) {
+        return 'ts-badge ts-badge-invalid';
+      }
+
+      return expiryTime > now ? 'ts-badge ts-badge-valid' : 'ts-badge ts-badge-expired';
+    },
   },
 };
 </script>
@@ -1955,6 +2072,192 @@ export default {
   word-break: break-word;
 }
 
+/* MCC Highlight Styles */
+.mcc-warning-alert {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 1.5rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  animation: slideUpIn 0.4s ease;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.mcc-warning-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.mcc-warning-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.mcc-warning-title {
+  font-weight: 900;
+  color: #92400e;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+.mcc-warning-desc {
+  font-weight: 600;
+  color: #b45309;
+  font-size: 0.85rem;
+}
+
+.mcc-warning-btn {
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.mcc-warning-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #ca8a04 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.mcc-present {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+  border-left: 4px solid #22c55e !important;
+  padding-left: 1rem !important;
+}
+
+.mcc-missing {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+  padding-left: 1rem !important;
+}
+
+.mcc-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.mcc-badge-present {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  border: 2px solid #16a34a;
+}
+
+.mcc-badge-missing {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  border: 2px solid #dc2626;
+}
+
+/* Timestamp Styles */
+.ts-valid {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+  border-left: 4px solid #22c55e !important;
+  padding-left: 1rem !important;
+}
+
+.ts-expired {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+  padding-left: 1rem !important;
+}
+
+.ts-invalid {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  border-left: 4px solid #f59e0b !important;
+  padding-left: 1rem !important;
+}
+
+.ts-missing {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+  border-left: 4px solid #9ca3af !important;
+  padding-left: 1rem !important;
+}
+
+.ts-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.ts-badge-valid {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  border: 2px solid #16a34a;
+}
+
+.ts-badge-expired {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  border: 2px solid #dc2626;
+}
+
+.ts-badge-invalid {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  border: 2px solid #d97706;
+}
+
+.ts-tree-indicator {
+  margin-left: auto;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ts-valid .ts-tree-indicator {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+}
+
+.ts-expired .ts-tree-indicator {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.ts-invalid .ts-tree-indicator {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.timestamp-valid {
+  background: #f0fdf4 !important;
+  border-color: #86efac !important;
+}
+
+.timestamp-valid .tree-meaning {
+  color: #16a34a !important;
+  font-weight: 700;
+}
+
 .live-preview-toggle {
   display: flex;
   align-items: center;
@@ -2052,6 +2355,33 @@ export default {
   border-radius: 4px;
   transition: all 0.2s ease;
   font-size: 0.8rem;
+}
+
+.mcc-tag-highlight {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  color: white !important;
+  border: 2px solid #16a34a !important;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4) !important;
+}
+
+.mcc-tag-present {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+}
+
+.mcc-tag-present:hover {
+  background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%) !important;
+}
+
+.mcc-indicator {
+  margin-left: auto;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
 }
 
 .tree-item:hover .tree-tag {
