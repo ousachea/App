@@ -12,6 +12,27 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['___',]
   },
   {
+    name: 'Ouka Rin',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['NMSL-025',]
+  },
+  {
+    name: 'Kagura Momoka',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['SONE-729','SONE-647','SNOS-107','SONE-368','SONE-319','SONE-166','SONE-131']
+  },
+  {
+    name: 'Himari Kosaka',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['LULU-387','AVSA-344','NACR-891','HOMA-147','SMOK-012','CEMD-676','DVAJ-692']
+  },
+  {
     name: 'Ran Aoi 愛生らん',
     cover: '',
     url: '',  // Custom cover
@@ -214,7 +235,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Hana Himesaki', cover: 'NSFS-012',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['NACX-148','348NTR-024', 'ABP-892', 'ABP-943', 'ABP-971', 'ABW-019', 'FPRE-199', 'JUFE-264', 'KAM-213', 'LULU-076', 'MIAA-392', 'MXGS-1306', 'NSFS-012', '300MIUM-720']
+    compilations: [''], mainWorks: ['FPRE-199','NACX-148','348NTR-024', 'ABP-892', 'ABP-943', 'ABP-971', 'ABW-019', 'FPRE-199', 'JUFE-264', 'KAM-213', 'LULU-076', 'MIAA-392', 'MXGS-1306', 'NSFS-012', '300MIUM-720']
   },
   {
     name: 'Haruka Riri', cover: '',
