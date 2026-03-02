@@ -798,38 +798,45 @@ export default {
               const data = await response.json()
               if (data && typeof data === 'object') {
                 let goldPrice = null
-                if (Array.isArray(data)) {
-                  const goldData = data.find(m => m.metal === 'gold')
-                  goldPrice = goldData?.price
-                } else if (data.gold) {
+
+                // Handle different response formats
+                if (data.gold && typeof data.gold === 'number') {
+                  // Format: { gold: 1234.56, silver: ... }
+                  goldPrice = data.gold
+                } else if (data.gold && data.gold.price) {
+                  // Format: { gold: { price: 1234.56 }, ... }
                   goldPrice = data.gold.price
+                } else if (Array.isArray(data)) {
+                  // Format: [{ metal: 'gold', price: 1234.56 }, ...]
+                  const goldData = data.find(m => m && m.metal === 'gold')
+                  goldPrice = goldData?.price
                 }
 
-                if (goldPrice) {
-                  this.goldPrice = goldPrice
+                if (goldPrice && !isNaN(goldPrice)) {
+                  this.goldPrice = parseFloat(goldPrice)
                   this.lastUpdated = new Date().toLocaleString()
                   this.saveToLocalStorage()
                   success = true
+                  console.log('✅ Got gold price from metals.live:', goldPrice)
                 }
               }
+            } else {
+              console.warn('metals.live response not ok:', response.status)
             }
           } catch (err) {
             console.warn('metals.live failed:', err.message)
           }
         }
 
-        // Fallback to alternative API
+        // Fallback to alternative API (goldapi.io)
         if (!success) {
           try {
             let apiUrl = 'https://www.goldapi.io/api/XAU/USD'
             let customHeaders = { ...headers }
 
             if (this.customApiUrl && this.customApiUrl.trim()) {
-              const input = this.customApiUrl.trim()
-              const match = input.match(/goldapi-([a-z0-9]+)\.io/) || input.match(/([a-z0-9]+)/)
-              if (match) {
-                customHeaders['x-access-token'] = input.includes('goldapi') ? input : match[1]
-              }
+              const apiKey = this.customApiUrl.trim()
+              customHeaders['x-access-token'] = apiKey
             }
 
             const response = await fetch(apiUrl, {
@@ -840,15 +847,42 @@ export default {
 
             if (response.ok) {
               const data = await response.json()
-              if (data.price) {
-                this.goldPrice = data.price
+              if (data && data.price) {
+                this.goldPrice = parseFloat(data.price)
                 this.lastUpdated = new Date().toLocaleString()
                 this.saveToLocalStorage()
                 success = true
+                console.log('✅ Got gold price from goldapi.io:', data.price)
               }
+            } else {
+              console.warn('goldapi response not ok:', response.status)
             }
           } catch (err) {
             console.warn('goldapi failed:', err.message)
+          }
+        }
+
+        // Third fallback - try alternative endpoint
+        if (!success) {
+          try {
+            const response = await fetch('https://api.metals.live/v1/gold/spot/usd', {
+              signal: controller.signal,
+              headers: headers,
+              mode: 'cors'
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              if (data && data.price && !isNaN(data.price)) {
+                this.goldPrice = parseFloat(data.price)
+                this.lastUpdated = new Date().toLocaleString()
+                this.saveToLocalStorage()
+                success = true
+                console.log('✅ Got gold price from metals.live alternative:', data.price)
+              }
+            }
+          } catch (err) {
+            console.warn('metals.live alternative failed:', err.message)
           }
         }
 
@@ -856,10 +890,12 @@ export default {
 
         if (success) {
           this.showSuccessMessage = true
+          this.error = null
           setTimeout(() => {
             this.showSuccessMessage = false
           }, 3000)
         } else {
+          // Try to use cached data
           const saved = this.safeGetLocalStorage('goldTrackerData')
           if (saved) {
             try {
@@ -867,7 +903,7 @@ export default {
               if (data.goldPrice) {
                 this.goldPrice = data.goldPrice
                 this.lastUpdated = data.lastUpdated + ' (cached)'
-                this.error = null
+                this.error = 'Using cached price - unable to fetch live data'
                 this.loading = false
                 return
               }
@@ -876,7 +912,7 @@ export default {
             }
           }
 
-          this.error = 'Unable to fetch live prices. Please try again or use custom price mode.'
+          this.error = '⚠️ Unable to fetch live prices. Check your internet or add a custom API key from goldapi.io'
         }
 
       } catch (err) {
@@ -888,7 +924,7 @@ export default {
             if (data.goldPrice) {
               this.goldPrice = data.goldPrice
               this.lastUpdated = data.lastUpdated + ' (cached)'
-              this.error = null
+              this.error = 'Using cached price - network error'
               this.loading = false
               return
             }
@@ -897,7 +933,7 @@ export default {
           }
         }
 
-        this.error = 'Connection error. Please check your internet and try again.'
+        this.error = '❌ Network error. Check your internet connection.'
       } finally {
         this.loading = false
       }
@@ -2221,12 +2257,14 @@ button {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
+    font-size: 16px;
   }
 
   .gold-tracker {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
+    font-size: 16px;
   }
 
   input,
@@ -2235,8 +2273,10 @@ button {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    font-size: 16px !important;
   }
 
+  /* HEADER */
   .header {
     flex-direction: row;
     gap: 8px;
@@ -2244,9 +2284,16 @@ button {
   }
 
   .header h1 {
-    font-size: 16px;
+    font-size: 18px;
+    font-weight: 700;
   }
 
+  .lang-btn {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  /* SECTIONS */
   .price-section,
   .price-method-section,
   .converter-section,
@@ -2254,17 +2301,31 @@ button {
   .purchases-section,
   .api-configuration-section {
     margin: 8px;
-    padding: 12px;
+    padding: 16px;
   }
 
+  .price-section h2,
+  .price-method-section h3,
+  .converter-section h2,
+  .price-by-unit h2,
+  .purchases-section h2,
+  .api-configuration-section h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  /* PRICE SECTION */
   .price-source-toggle,
   .price-method-toggle {
     gap: 6px;
   }
 
+  .source-btn,
   .method-btn {
-    padding: 10px;
-    font-size: 12px;
+    padding: 11px;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 44px;
   }
 
   .price-header {
@@ -2272,48 +2333,441 @@ button {
     gap: 8px;
   }
 
-  .price-value {
-    font-size: 32px;
+  .price-header h2 {
+    font-size: 18px;
   }
 
+  .price-value {
+    font-size: 36px;
+    font-weight: 700;
+  }
+
+  .price-unit {
+    font-size: 13px;
+  }
+
+  .price-meta {
+    font-size: 13px;
+  }
+
+  .card-label {
+    font-size: 13px;
+  }
+
+  .refresh-btn {
+    font-size: 13px;
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+
+  /* LOADING & MESSAGES */
+  .loading-bar {
+    height: 3px;
+    margin: 10px 0;
+  }
+
+  .success-message {
+    font-size: 13px;
+    padding: 14px;
+    margin-top: 10px;
+  }
+
+  .error-message {
+    font-size: 13px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+
+  .error-icon {
+    font-size: 14px;
+  }
+
+  .error-retry-btn {
+    font-size: 12px;
+    padding: 6px 11px;
+  }
+
+  .price-update-indicator {
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  /* CUSTOM PRICE INPUT */
+  .custom-price-input label {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .price-input-row {
+    gap: 8px;
+  }
+
+  .price-input {
+    font-size: 16px;
+    padding: 11px;
+    min-height: 44px;
+  }
+
+  .price-preview {
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .preview-header {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .preview-item {
+    font-size: 13px;
+    padding: 4px 0;
+  }
+
+  /* FORMS */
   .form-row {
     grid-template-columns: 1fr;
     gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .form-group {
+    gap: 5px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+    font-weight: 600;
   }
 
   .form-group input,
   .form-group select {
     min-height: 44px;
+    font-size: 16px;
+    padding: 11px;
   }
 
+  .submit-btn {
+    font-size: 15px;
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  /* CONVERTER */
+  .converter-tabs {
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .tab-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  .converter-input-group label {
+    font-size: 13px;
+  }
+
+  .converter-input {
+    font-size: 16px;
+    min-height: 44px;
+    padding: 11px;
+  }
+
+  .conversion-results {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .result-row {
+    padding: 6px 0;
+  }
+
+  .result-label,
+  .result-value {
+    font-size: 13px;
+  }
+
+  /* UNIT GRID */
   .unit-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
+  .unit-card {
+    padding: 10px;
+    gap: 3px;
+  }
+
+  .unit-name {
+    font-size: 12px;
+  }
+
+  .unit-price {
+    font-size: 16px;
+  }
+
+  .unit-weight {
+    font-size: 11px;
+  }
+
+  .no-price-message {
+    font-size: 14px;
+    padding: 30px 16px;
+  }
+
+  /* PURCHASES */
+  .purchases-header {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .purchases-header h2 {
+    font-size: 18px;
+    margin: 0;
+  }
+
+  .add-btn {
+    width: 100%;
+    font-size: 14px;
+    padding: 11px;
+    min-height: 44px;
+  }
+
+  .purchase-form {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
   .purchases-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .purchase-card {
+    padding: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .card-weight {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .icon-btn {
+    font-size: 16px;
+    padding: 5px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .card-detail {
+    font-size: 12px;
+    padding: 4px 0;
+    margin-bottom: 5px;
+  }
+
+  .detail-label {
+    font-size: 12px;
+  }
+
+  .detail-value {
+    font-size: 12px;
+  }
+
+  .card-date {
+    font-size: 10px;
+    margin-top: 6px;
+  }
+
+  .edit-form {
+    gap: 8px;
+  }
+
+  .edit-form input,
+  .edit-form select {
+    font-size: 16px;
+    padding: 11px;
+    min-height: 44px;
+  }
+
+  .edit-actions {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .save-btn,
+  .cancel-btn {
+    font-size: 14px;
+    padding: 11px;
+    min-height: 44px;
+  }
+
+  /* PORTFOLIO SUMMARY */
+  .portfolio-summary {
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .portfolio-summary h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .summary-grid {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .summary-item {
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .summary-label {
+    font-size: 13px;
+  }
+
+  .summary-value {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .export-btn {
+    font-size: 14px;
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  /* API SECTION */
+  .api-configuration-section {
+    margin: 8px;
+    padding: 16px;
+  }
+
+  .api-section-header h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .api-description {
+    font-size: 12px;
+  }
+
+  .api-cta-card {
+    padding: 12px;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+
+  .cta-icon {
+    font-size: 24px;
+  }
+
+  .cta-content h4 {
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
+
+  .cta-content p {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .cta-link {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .api-input-section label {
+    font-size: 13px;
+    margin-bottom: 8px;
   }
 
   .api-input-row {
     flex-direction: column;
+    gap: 8px;
   }
 
   .api-input {
+    font-size: 16px;
+    padding: 11px;
     min-height: 44px;
   }
 
   .api-action-btn {
     width: 100%;
-    min-height: 40px;
+    padding: 11px;
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .api-status {
+    padding: 10px;
+    font-size: 12px;
+    margin-bottom: 12px;
   }
 
   .api-save-btn {
+    padding: 12px;
+    font-size: 14px;
     min-height: 44px;
+  }
+
+  .api-info-box {
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .info-icon {
+    font-size: 14px;
+  }
+
+  /* NETWORK WARNING */
+  .network-warning {
+    font-size: 13px;
+    padding: 10px 16px;
   }
 }
 
 @media (min-width: 431px) and (max-width: 768px) {
+  .gold-tracker {
+    font-size: 15px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+  }
+
+  .price-section h2,
+  .price-method-section h3,
+  .converter-section h2,
+  .price-by-unit h2,
+  .purchases-section h2,
+  .api-configuration-section h3 {
+    font-size: 19px;
+  }
+
+  .price-value {
+    font-size: 40px;
+  }
+
   .form-row {
     grid-template-columns: 1fr 1fr;
   }
@@ -2324,6 +2778,35 @@ button {
 
   .purchases-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: 15px;
+  }
+
+  .converter-input {
+    font-size: 15px;
+  }
+
+  .card-weight {
+    font-size: 15px;
+  }
+
+  .card-detail {
+    font-size: 13px;
+  }
+
+  .summary-value {
+    font-size: 16px;
+  }
+
+  .unit-name {
+    font-size: 13px;
+  }
+
+  .unit-price {
+    font-size: 18px;
   }
 }
 </style>
