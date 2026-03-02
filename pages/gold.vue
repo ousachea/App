@@ -74,28 +74,28 @@
     <div v-if="priceSource === 'custom'" class="price-method-section">
       <h3>{{ t.setPriceBy }}</h3>
       <div class="price-method-toggle">
-        <button @click="priceInputMethod = 'troyOz'" :class="['method-btn', { active: priceInputMethod === 'troyOz' }]">
+        <button @click="switchPriceMethod('troyOz')" :class="['method-btn', { active: priceInputMethod === 'troyOz' }]">
           {{ t.troyOunce }}
         </button>
-        <button @click="priceInputMethod = 'damlung'"
+        <button @click="switchPriceMethod('damlung')"
           :class="['method-btn', { active: priceInputMethod === 'damlung' }]">
           {{ t.damlung }}
         </button>
-        <button @click="priceInputMethod = 'chi'" :class="['method-btn', { active: priceInputMethod === 'chi' }]">
+        <button @click="switchPriceMethod('chi')" :class="['method-btn', { active: priceInputMethod === 'chi' }]">
           {{ t.chi }}
         </button>
       </div>
 
-      <!-- Custom Price Input -->
+      <!-- Custom Price Input - Real-time update -->
       <div class="custom-price-input">
         <label>{{ t.customPrice }} ({{ priceInputMethod === 'troyOz' ? t.troyOunce : priceInputMethod === 'damlung' ?
         t.damlung : t.chi }}):</label>
         <div class="price-input-row">
           <input v-model.number="customPrice" type="text" inputmode="decimal" :placeholder="t.enterCustomPrice"
-            class="price-input">
-          <button @click="updateGoldPriceFromCustom" class="set-price-btn">
-            {{ t.setPrice }}
-          </button>
+            class="price-input" @input="updateGoldPriceFromCustom">
+        </div>
+        <div v-if="customPrice" class="price-update-indicator">
+          ✓ {{ t.pricesUpdated }}
         </div>
       </div>
 
@@ -401,7 +401,7 @@ export default {
       priceInputMethod: 'troyOz',
       customPrice: null,
       customApiUrl: '',
-      priceSource: 'api',  // 'api' or 'custom'
+      priceSource: 'api',
       defaultApiKey: '',
       apiCopied: false,
 
@@ -418,7 +418,7 @@ export default {
       newPurchase: {
         weight: '',
         unit: 'chi',
-        metal: 'gold',  // Always gold
+        metal: 'gold',
         price: '',
         date: new Date().toISOString().split('T')[0]
       },
@@ -430,7 +430,7 @@ export default {
       HUN_TO_GRAM: 0.375,
       LI_TO_GRAM: 0.0375,
 
-      // Translations (same as original)
+      // Translations
       translations: {
         en: {
           title: 'Gold & Silver Tracker',
@@ -438,7 +438,7 @@ export default {
           refreshNow: 'Refresh Now',
           setPrice: 'Set Price',
           loading: 'Loading...',
-          pricesUpdated: 'Prices updated successfully!',
+          pricesUpdated: 'Prices updated!',
           perTroyOz: 'per Troy Oz',
           lastUpdated: 'Last updated',
           priceByUnit: 'Price by Unit',
@@ -502,7 +502,7 @@ export default {
           refreshNow: 'តម្លៃឥឡូវនេះ',
           setPrice: 'កំណត់តម្លៃ',
           loading: 'កំពុងផ្ទុក...',
-          pricesUpdated: 'បានធ្វើបច្ចុប្បន្នភាពតម្លៃដោយជោគជ័យ!',
+          pricesUpdated: 'បានធ្វើបច្ចុប្បន្នភាពតម្លៃ!',
           perTroyOz: 'ក្នុងមួយត្រយ អោន',
           lastUpdated: 'បានធ្វើបច្ចុប្បន្នភាពចុងក្រោយ',
           priceByUnit: 'តម្លៃតាមឯកតា',
@@ -630,33 +630,11 @@ export default {
   },
 
   methods: {
-    selectApiKey() {
-      if (this.$refs.defaultApiInput) {
-        this.$refs.defaultApiInput.select()
-      }
-    },
-
-    async copyDefaultApi() {
-      try {
-        const textToCopy = 'Get your free API key at: https://www.goldapi.io/'
-        await navigator.clipboard.writeText(textToCopy)
-        this.apiCopied = true
-        setTimeout(() => {
-          this.apiCopied = false
-        }, 2000)
-      } catch (err) {
-        const textToCopy = 'Get your free API key at: https://www.goldapi.io/'
-        const tempInput = document.createElement('textarea')
-        tempInput.value = textToCopy
-        document.body.appendChild(tempInput)
-        tempInput.select()
-        document.execCommand('copy')
-        document.body.removeChild(tempInput)
-        this.apiCopied = true
-        setTimeout(() => {
-          this.apiCopied = false
-        }, 2000)
-      }
+    switchPriceMethod(method) {
+      this.priceInputMethod = method
+      this.customPrice = null
+      this.goldPrice = null
+      this.saveToLocalStorage()
     },
 
     async pasteFromClipboard() {
@@ -680,11 +658,6 @@ export default {
       this.customApiUrl = ''
       this.saveToLocalStorage()
       console.log('API key cleared')
-    },
-
-    setActiveMetal(metal) {
-      // No longer needed - only gold exists
-      console.log('Metal toggle removed - only gold available')
     },
 
     setupNetworkListeners() {
@@ -715,7 +688,7 @@ export default {
 
     updateGoldPriceFromCustom() {
       if (!this.customPrice || this.customPrice <= 0) {
-        alert(this.currentLang === 'en' ? 'Please enter a valid price' : 'សូមបញ្ចូលតម្លៃត្រឹមត្រូវ')
+        this.goldPrice = null
         return
       }
 
@@ -731,6 +704,12 @@ export default {
 
       this.lastUpdated = new Date().toLocaleString() + ' (custom)'
       this.saveToLocalStorage()
+
+      // Show success message briefly
+      this.showSuccessMessage = true
+      setTimeout(() => {
+        this.showSuccessMessage = false
+      }, 2000)
     },
 
     saveCustomApi() {
@@ -808,8 +787,6 @@ export default {
 
         // Try free API first (metals.live)
         if (!success) {
-          console.log('Trying metals.live API...')
-
           try {
             const response = await fetch('https://api.metals.live/v1/spot', {
               signal: controller.signal,
@@ -819,18 +796,12 @@ export default {
 
             if (response.ok) {
               const data = await response.json()
-              console.log('metals.live response:', data)
-
               if (data && typeof data === 'object') {
-                // Response might be: {gold: {...}, silver: {...}} or [{metal: 'gold', ...}]
                 let goldPrice = null
-
                 if (Array.isArray(data)) {
-                  // Array format
                   const goldData = data.find(m => m.metal === 'gold')
                   goldPrice = goldData?.price
                 } else if (data.gold) {
-                  // Object format: {gold: {price: ...}, silver: {...}}
                   goldPrice = data.gold.price
                 }
 
@@ -839,7 +810,6 @@ export default {
                   this.lastUpdated = new Date().toLocaleString()
                   this.saveToLocalStorage()
                   success = true
-                  console.log('✅ Got gold price from metals.live:', goldPrice)
                 }
               }
             }
@@ -848,10 +818,8 @@ export default {
           }
         }
 
-        // Fallback to alternative API if first fails
+        // Fallback to alternative API
         if (!success) {
-          console.log('Trying alternative API (goldapi)...')
-
           try {
             let apiUrl = 'https://www.goldapi.io/api/XAU/USD'
             let customHeaders = { ...headers }
@@ -872,14 +840,11 @@ export default {
 
             if (response.ok) {
               const data = await response.json()
-              console.log('goldapi response:', data)
-
               if (data.price) {
                 this.goldPrice = data.price
                 this.lastUpdated = new Date().toLocaleString()
                 this.saveToLocalStorage()
                 success = true
-                console.log('✅ Got gold price from goldapi:', data.price)
               }
             }
           } catch (err) {
@@ -895,7 +860,6 @@ export default {
             this.showSuccessMessage = false
           }, 3000)
         } else {
-          // No API worked, try to use cached data
           const saved = this.safeGetLocalStorage('goldTrackerData')
           if (saved) {
             try {
@@ -904,7 +868,6 @@ export default {
                 this.goldPrice = data.goldPrice
                 this.lastUpdated = data.lastUpdated + ' (cached)'
                 this.error = null
-                console.log('📦 Using cached gold price:', data.goldPrice)
                 this.loading = false
                 return
               }
@@ -918,8 +881,6 @@ export default {
 
       } catch (err) {
         console.error('fetchGoldPrice error:', err)
-
-        // Try to load from cache
         const saved = this.safeGetLocalStorage('goldTrackerData')
         if (saved) {
           try {
@@ -928,7 +889,6 @@ export default {
               this.goldPrice = data.goldPrice
               this.lastUpdated = data.lastUpdated + ' (cached)'
               this.error = null
-              console.log('📦 Using cached gold price:', data.goldPrice)
               this.loading = false
               return
             }
@@ -1214,156 +1174,6 @@ button {
   border-bottom: 2px solid #fde68a;
 }
 
-.custom-api-section {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 2px solid #e2e8f0;
-}
-
-.api-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.custom-api-section label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #64748b;
-  margin: 0;
-}
-
-.api-link {
-  color: #8b5cf6;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: #f3e8ff;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.api-link:hover {
-  background: #e9d5ff;
-  color: #7c3aed;
-}
-
-.api-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-
-.api-input {
-  flex: 1;
-  padding: 10px;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 17px;
-  color: #334155;
-  background: white;
-}
-
-.api-input:focus {
-  outline: none;
-  border-color: #64748b;
-}
-
-.paste-api-btn {
-  background: #06b6d4;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  min-width: 80px;
-}
-
-.paste-api-btn:hover {
-  background: #0891b2;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(6, 182, 212, 0.3);
-}
-
-.paste-api-btn:active {
-  transform: translateY(0);
-}
-
-.clear-api-btn {
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.clear-api-btn:hover {
-  background: #dc2626;
-  transform: scale(1.05);
-}
-
-.clear-api-btn:active {
-  transform: scale(0.95);
-}
-
-.save-api-btn {
-  background: #8b5cf6;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  min-width: 90px;
-}
-
-.save-api-btn:hover:not(:disabled) {
-  background: #7c3aed;
-}
-
-.save-api-btn:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.api-note {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #8b5cf6;
-  font-style: italic;
-}
-
-.api-note-default {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #059669;
-  font-style: italic;
-  font-weight: 500;
-}
-
 .price-section,
 .price-method-section,
 .converter-section,
@@ -1376,7 +1186,6 @@ button {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Price Source Toggle */
 .price-source-toggle {
   display: flex;
   gap: 8px;
@@ -1400,8 +1209,6 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 .source-btn:hover {
@@ -1413,273 +1220,6 @@ button {
   color: white;
   border-color: #1d4ed8;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.source-btn:active {
-  transform: scale(0.98);
-}
-
-.api-configuration-section {
-  background: white;
-  margin: 20px;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.api-section-header {
-  margin-bottom: 24px;
-}
-
-.api-section-header h3 {
-  color: #334155;
-  font-size: 20px;
-  margin-bottom: 8px;
-}
-
-.api-description {
-  color: #64748b;
-  font-size: 13px;
-  margin: 0;
-}
-
-/* CTA Card */
-.api-cta-card {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 2px solid #0ea5e9;
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 24px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.cta-icon {
-  font-size: 32px;
-  flex-shrink: 0;
-}
-
-.cta-content {
-  flex: 1;
-}
-
-.cta-content h4 {
-  color: #0369a1;
-  font-size: 15px;
-  margin: 0 0 4px 0;
-  font-weight: 600;
-}
-
-.cta-content p {
-  color: #0c4a6e;
-  font-size: 13px;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-}
-
-.cta-link {
-  display: inline-block;
-  color: #0369a1;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 12px;
-  padding: 6px 12px;
-  background: white;
-  border-radius: 4px;
-  transition: all 0.2s;
-  border: 1px solid #0ea5e9;
-}
-
-.cta-link:hover {
-  background: #e0f2fe;
-  color: #0c4a6e;
-}
-
-/* API Input Section */
-.api-input-section {
-  margin-bottom: 20px;
-}
-
-.api-input-section label {
-  display: block;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.api-input-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.api-input {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 17px;
-  color: #334155;
-  background: white;
-  transition: all 0.2s;
-}
-
-.api-input:focus {
-  outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-}
-
-.api-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: #0ea5e9;
-  color: white;
-  border: none;
-  padding: 12px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-height: 44px;
-  white-space: nowrap;
-}
-
-.api-action-btn:hover {
-  background: #0284c7;
-  transform: translateY(-1px);
-}
-
-.api-action-btn:active {
-  transform: translateY(0);
-}
-
-.btn-icon {
-  font-size: 16px;
-}
-
-.btn-text {
-  display: none;
-}
-
-@media (min-width: 480px) {
-  .btn-text {
-    display: inline;
-  }
-}
-
-/* Status Indicator */
-.api-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-
-.api-status.success {
-  background: #d1fae5;
-  border: 1px solid #6ee7b7;
-  color: #065f46;
-  justify-content: space-between;
-}
-
-.api-status.default {
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
-}
-
-.status-icon {
-  font-size: 16px;
-}
-
-.status-clear {
-  background: none;
-  border: none;
-  color: #059669;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: underline;
-  padding: 0;
-  transition: color 0.2s;
-}
-
-.status-clear:hover {
-  color: #047857;
-}
-
-/* Action Buttons */
-.api-action-buttons {
-  margin-bottom: 16px;
-}
-
-.api-save-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  padding: 14px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.api-save-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.api-save-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.api-save-btn:disabled {
-  background: #d1d5db;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.btn-disabled {
-  color: #6b7280;
-}
-
-/* Info Box */
-.api-info-box {
-  background: #fef3c7;
-  border-left: 4px solid #f59e0b;
-  padding: 12px 14px;
-  border-radius: 4px;
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  color: #92400e;
-  line-height: 1.5;
-}
-
-.info-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.api-info-box p {
-  margin: 0;
 }
 
 .price-section h2,
@@ -1714,8 +1254,6 @@ button {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -1775,8 +1313,6 @@ button {
   }
 }
 
-
-
 .success-message {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   color: #065f46;
@@ -1818,23 +1354,12 @@ button {
   min-height: 100px;
   display: flex;
   flex-direction: column;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.price-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .price-card.active {
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
   border-color: #3b82f6;
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-}
-
-.price-card.active:active {
-  transform: scale(0.98);
 }
 
 .card-label {
@@ -1921,14 +1446,33 @@ button {
   transform: translateY(-1px);
 }
 
-.error-retry-btn:active {
-  transform: translateY(0);
-}
-
 .price-method-toggle {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.method-btn {
+  flex: 1;
+  padding: 12px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.method-btn:hover {
+  background: #e2e8f0;
+}
+
+.method-btn.active {
+  background: #64748b;
+  color: white;
+  border-color: #475569;
 }
 
 .custom-price-input {
@@ -1956,51 +1500,21 @@ button {
   font-size: 17px;
   color: #334155;
   background: white;
+  transition: all 0.2s;
 }
 
 .price-input:focus {
   outline: none;
   border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.1);
 }
 
-.set-price-btn {
-  background: #10b981;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 6px;
-  font-size: 14px;
+.price-update-indicator {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #10b981;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.set-price-btn:hover {
-  background: #059669;
-}
-
-.method-btn {
-  flex: 1;
-  padding: 12px;
-  background: #f1f5f9;
-  color: #334155;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.method-btn:hover {
-  background: #e2e8f0;
-}
-
-.method-btn.active {
-  background: #64748b;
-  color: white;
-  border-color: #475569;
+  animation: slideIn 0.3s ease-out;
 }
 
 .price-preview {
@@ -2035,6 +1549,256 @@ button {
 .preview-value {
   color: #334155;
   font-weight: 700;
+}
+
+.api-configuration-section {
+  background: white;
+  margin: 20px;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.api-section-header {
+  margin-bottom: 24px;
+}
+
+.api-section-header h3 {
+  color: #334155;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.api-description {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+.api-cta-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #0ea5e9;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.cta-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.cta-content {
+  flex: 1;
+}
+
+.cta-content h4 {
+  color: #0369a1;
+  font-size: 15px;
+  margin: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.cta-content p {
+  color: #0c4a6e;
+  font-size: 13px;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.cta-link {
+  display: inline-block;
+  color: #0369a1;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: white;
+  border-radius: 4px;
+  transition: all 0.2s;
+  border: 1px solid #0ea5e9;
+}
+
+.cta-link:hover {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
+.api-input-section {
+  margin-bottom: 20px;
+}
+
+.api-input-section label {
+  display: block;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.api-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.api-input {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 17px;
+  color: #334155;
+  background: white;
+  transition: all 0.2s;
+}
+
+.api-input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.api-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.api-action-btn:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.btn-text {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .btn-text {
+    display: inline;
+  }
+}
+
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.api-status.success {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  justify-content: space-between;
+}
+
+.api-status.default {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+.status-clear {
+  background: none;
+  border: none;
+  color: #059669;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.status-clear:hover {
+  color: #047857;
+}
+
+.api-action-buttons {
+  margin-bottom: 16px;
+}
+
+.api-save-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.api-save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.api-save-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-disabled {
+  color: #6b7280;
+}
+
+.api-info-box {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 12px 14px;
+  border-radius: 4px;
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.info-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.api-info-box p {
+  margin: 0;
 }
 
 .converter-tabs {
@@ -2155,15 +1919,6 @@ button {
   border: 2px solid #e2e8f0;
 }
 
-.no-price-message {
-  text-align: center;
-  padding: 40px 20px;
-  color: #64748b;
-  font-size: 16px;
-  background: #f1f5f9;
-  border-radius: 8px;
-}
-
 .unit-name {
   font-size: 14px;
   font-weight: 600;
@@ -2179,6 +1934,15 @@ button {
 .unit-weight {
   font-size: 12px;
   color: #94a3b8;
+}
+
+.no-price-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-size: 16px;
+  background: #f1f5f9;
+  border-radius: 8px;
 }
 
 .purchases-header {
@@ -2446,13 +2210,8 @@ button {
   background: #475569;
 }
 
-/* ============================================
-   MOBILE OPTIMIZATION (375-430px iPhone)
-   ============================================ */
-
+/* Mobile Optimization */
 @media (max-width: 430px) {
-
-  /* PREVENT ALL HORIZONTAL OVERFLOW - CRITICAL FIX */
   * {
     box-sizing: border-box !important;
   }
@@ -2462,582 +2221,109 @@ button {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   .gold-tracker {
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
-    display: flex;
-    flex-direction: column;
   }
 
-  /* ALL INPUTS & TEXTAREAS */
   input,
   select,
   textarea {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    padding: 10px !important;
-    font-size: 16px !important;
   }
 
-  /* HEADER */
   .header {
-    display: flex;
     flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
     gap: 8px;
     padding: 12px;
-    width: 100%;
-    min-width: 0;
   }
 
   .header h1 {
     font-size: 16px;
-    margin: 0;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
-  .header-actions {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-    align-items: center;
-    min-width: 0;
+  .price-section,
+  .price-method-section,
+  .converter-section,
+  .price-by-unit,
+  .purchases-section,
+  .api-configuration-section {
+    margin: 8px;
+    padding: 12px;
   }
-}
 
-.lang-btn {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-/* MAIN SECTIONS - FLEX LAYOUT */
-.price-section,
-.price-method-section,
-.converter-section,
-.price-by-unit,
-.purchases-section,
-.api-configuration-section {
-  display: flex;
-  flex-direction: column;
-  margin: 8px;
-  padding: 12px;
-  border-radius: 10px;
-  width: calc(100% - 16px);
-  min-width: 0;
-  gap: 8px;
-}
-
-.price-section h2,
-.price-method-section h3,
-.converter-section h2,
-.price-by-unit h2,
-.purchases-section h2,
-.api-configuration-section h3 {
-  font-size: 16px;
-  margin-bottom: 12px;
-}
-
-/* PRICE SOURCE TOGGLE */
-.price-source-toggle {
-  display: flex;
-  flex-direction: row;
-  gap: 6px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  width: 100%;
-  min-width: 0;
-}
-
-.source-btn {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  font-size: 12px;
-  min-height: 40px;
-}
-
-/* PRICE HEADER - Refresh button */
-.price-header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.price-header h2 {
-  font-size: 16px;
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-}
-
-.refresh-btn {
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 12px;
-  min-height: 40px;
-}
-
-/* PRICE CARDS - FLEX */
-.price-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
-}
-
-.price-card {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  min-height: 80px;
-  width: 100%;
-  min-width: 0;
-  gap: 6px;
-}
-
-.price-value {
-  font-size: 32px;
-}
-
-.price-unit {
-  font-size: 12px;
-}
-
-/* FORM ROWS & GROUPS - FLEX */
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-}
-
-.form-group label {
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-}
-
-/* API INPUT ROW - FLEX */
-.api-input-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.api-input {
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-}
-
-.paste-api-btn,
-.clear-api-btn,
-.save-api-btn,
-.paste-btn {
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  font-size: 13px;
-}
-
-/* CONVERTER TABS - Scroll horizontally, prevent wrapping */
-.converter-tabs {
-  gap: 4px;
-  margin-bottom: 16px;
-}
-
-.tab-btn {
-  padding: 8px 12px;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-/* CONVERTER INPUT */
-.converter-input {
-  font-size: 16px;
-  min-height: 44px;
-  padding: 10px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* UNIT GRID - FLEX 2 COLUMNS */
-.unit-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.unit-card {
-  flex: 1 1 calc(50% - 4px);
-  min-width: 0;
-  padding: 10px;
-  gap: 3px;
-  display: flex;
-  flex-direction: column;
-}
-
-.unit-name {
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unit-price {
-  font-size: 16px;
-}
-
-.unit-weight {
-  font-size: 10px;
-}
-
-/* PURCHASES GRID - FLEX COLUMN */
-.purchases-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.purchase-card {
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  width: 100%;
-  min-width: 0;
-  gap: 6px;
-}
-
-.card-header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 6px;
-  width: 100%;
-  min-width: 0;
-}
-
-.card-weight {
-  font-size: 14px;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-actions {
-  display: flex;
-  width: 100%;
-  justify-content: flex-start;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.card-detail {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  padding: 4px 0;
-  width: 100%;
-  min-width: 0;
-}
-
-.icon-btn {
-  font-size: 16px;
-  padding: 6px;
-  min-width: 40px;
-  min-height: 40px;
-  flex-shrink: 0;
-}
-
-/* EDIT FORM - Stack inputs vertically */
-.edit-form {
-  gap: 8px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.edit-form input,
-.edit-form select {
-  padding: 10px;
-  font-size: 16px;
-  min-height: 44px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.edit-actions {
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.save-btn,
-.cancel-btn {
-  min-height: 44px;
-  font-size: 14px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* PORTFOLIO SUMMARY - Stack items */
-.portfolio-summary {
-  padding: 16px;
-}
-
-.summary-grid {
-  gap: 10px;
-}
-
-.summary-item {
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-}
-
-.summary-label {
-  font-size: 12px;
-}
-
-.summary-value {
-  font-size: 14px;
-}
-
-/* BUTTONS - Full width & touch-friendly */
-.submit-btn,
-.add-btn,
-.refresh-btn,
-.export-btn,
-.set-price-btn {
-  min-height: 44px;
-  font-size: 14px;
-  padding: 10px 16px;
-}
-
-/* PRICE METHOD TOGGLE */
-.price-method-toggle {
-  gap: 6px;
-}
-
-.method-btn {
-  padding: 10px;
-  font-size: 12px;
-  min-height: 40px;
-}
-
-/* PRICE PREVIEW */
-.price-preview {
-  padding: 12px;
-  gap: 6px;
-}
-
-.preview-header {
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.preview-item {
-  font-size: 12px;
-  padding: 4px 0;
-}
-
-/* PURCHASE FORM */
-.purchase-form {
-  padding: 16px;
-}
-
-/* API SECTION */
-.api-configuration-section {
-  margin: 8px;
-  padding: 16px;
-}
-
-.api-section-header h3 {
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-
-.api-cta-card {
-  padding: 12px;
-  margin-bottom: 16px;
-  gap: 10px;
-}
-
-.cta-icon {
-  font-size: 24px;
-}
-
-.cta-content h4 {
-  font-size: 14px;
-  margin-bottom: 3px;
-}
-
-.cta-content p {
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.cta-link {
-  font-size: 11px;
-  padding: 5px 10px;
-}
-
-.api-input-section label {
-  font-size: 12px;
-  margin-bottom: 8px;
-}
-
-.api-input-row {
-  flex-direction: column;
-  gap: 8px;
-}
-
-.api-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  min-height: 44px;
-}
-
-.api-action-btn {
-  width: 100%;
-  padding: 10px;
-  min-height: 40px;
-  font-size: 12px;
-}
-
-.api-status {
-  padding: 10px;
-  font-size: 12px;
-  margin-bottom: 12px;
-}
-
-.api-save-btn {
-  padding: 12px;
-  font-size: 14px;
-  min-height: 44px;
-}
-
-.api-info-box {
-  padding: 10px 12px;
-  font-size: 11px;
-  gap: 8px;
-}
-
-.info-icon {
-  font-size: 14px;
-}
-
-/* NETWORK WARNING */
-.network-warning {
-  font-size: 12px;
-  padding: 10px 16px;
-}
-
-/* SUCCESS & ERROR MESSAGES */
-.success-message,
-.error-message {
-  font-size: 12px;
-  padding: 12px;
-  margin-top: 10px;
-}
-
-/* ACTIVE METAL INDICATOR */
-.active-metal-indicator {
-  font-size: 12px;
-  padding: 6px 10px;
-  margin-bottom: 12px;
-}
-
-/* PRICE META */
-.price-meta {
-  font-size: 12px;
-}
-
-/* CUSTOM PRICE INPUT */
-.custom-price-input label {
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.price-input-row {
-  gap: 6px;
-  width: 100%;
-  box-sizing: border-box;
-  flex-direction: column;
-}
-
-.price-input {
-  font-size: 16px;
-  padding: 10px;
-  min-height: 44px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* ============================================
-   SMALL TABLET (430-768px)
-   ============================================ */
-
-@media (min-width: 431px) and (max-width: 768px) {
-  .price-cards {
+  .price-source-toggle,
+  .price-method-toggle {
+    gap: 6px;
+  }
+
+  .method-btn {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .price-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .price-value {
+    font-size: 32px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .form-group input,
+  .form-group select {
+    min-height: 44px;
+  }
+
+  .unit-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .purchases-grid {
     grid-template-columns: 1fr;
   }
 
+  .api-input-row {
+    flex-direction: column;
+  }
+
+  .api-input {
+    min-height: 44px;
+  }
+
+  .api-action-btn {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .api-save-btn {
+    min-height: 44px;
+  }
+}
+
+@media (min-width: 431px) and (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr 1fr;
   }
 
   .unit-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
   }
 
   .purchases-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
-}
-
-@media (min-width: 769px) {
-  /* Desktop specific styles */
 }
 </style>
