@@ -307,7 +307,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Mary Tachibana', cover: '',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['NKKD-322', 'ROYD-175','DASS-843','KAM-125']
+    compilations: [''], mainWorks: ['NKKD-322', 'ROYD-175','DASS-843','KAM-125','GVH-528','DASS-787','DASS-360','JUR-504','TITG-010']
   },
   {
     name: 'Meguri', cover: '',
