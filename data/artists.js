@@ -150,7 +150,7 @@ export const DEFAULT_ARTISTS = [
     cover: '',
     url: '',  // Custom cover
     compilations: [''],
-    mainWorks: ['VEC-749','BBTU-108','NACT-029','KAM-268','MVSD-657','JUR-345','MIDV-811','JUR-013','FWAY-016','NACT-007']
+    mainWorks: ['VEC-749','BBTU-108','NACT-029','KAM-268','MVSD-657','JUR-345','MIDV-811','JUR-013','FWAY-016','NACT-007','420HHL-142']
   },
   {
     name: 'Mei Satsuki',
