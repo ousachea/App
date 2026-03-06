@@ -10,14 +10,14 @@
         <div class="controls-panel">
             <div class="control-group">
                 <label for="array-size" class="label">Array Size</label>
-                <input id="array-size" v-model.number="arraySize" type="range" min="5" max="50" class="slider"
+                <input id="array-size" v-model.number="arraySize" type="range" min="5" max="100" class="slider"
                     @change="resetSort" />
                 <span class="value-display">{{ arraySize }}</span>
             </div>
 
             <div class="control-group">
                 <label for="speed" class="label">Speed</label>
-                <input id="speed" v-model.number="speed" type="range" min="10" max="500" class="slider"
+                <input id="speed" v-model.number="speed" type="range" min="2" max="500" class="slider"
                     @change="updateSpeed" />
                 <span class="value-display">{{ 510 - speed }}ms</span>
             </div>
@@ -25,22 +25,25 @@
             <div class="control-group">
                 <label for="sort-type" class="label">Sort Algorithm</label>
                 <select id="sort-type" v-model="sortType" class="select" @change="resetSort" :disabled="isSorting">
-                    <option value="bubble">Bubble Sort</option>
-                    <option value="selection">Selection Sort</option>
-                    <option value="insertion">Insertion Sort</option>
-                    <option value="quick">Quick Sort</option>
-                    <option value="merge">Merge Sort</option>
-                    <option value="heap">Heap Sort</option>
-                    <option value="shell">Shell Sort</option>
-                    <option value="cocktail">Cocktail Shaker Sort</option>
-                    <option value="gnome">Gnome Sort</option>
-                    <option value="comb">Comb Sort</option>
+                    <option value="bubble">Bubble Sort - ⭐☆☆☆☆ Slow</option>
+                    <option value="selection">Selection Sort - ⭐☆☆☆☆ Slow</option>
+                    <option value="insertion">Insertion Sort - ⭐☆☆☆☆ Slow</option>
+                    <option value="quick">Quick Sort - ⭐⭐⭐⭐☆ Very Fast</option>
+                    <option value="merge">Merge Sort - ⭐⭐⭐⭐☆ Very Fast</option>
+                    <option value="heap">Heap Sort - ⭐⭐⭐⭐☆ Very Fast</option>
+                    <option value="shell">Shell Sort - ⭐⭐⭐☆☆ Fast</option>
+                    <option value="cocktail">Cocktail Shaker - ⭐☆☆☆☆ Slow</option>
+                    <option value="gnome">Gnome Sort - ⭐☆☆☆☆ Very Slow</option>
+                    <option value="comb">Comb Sort - ⭐⭐⭐☆☆ Fast</option>
                 </select>
             </div>
 
             <div class="button-group">
-                <button :class="['btn', { 'btn-active': isSorting }]" @click="startSort" :disabled="isSorting">
-                    {{ isSorting ? 'Sorting...' : 'Start Sort' }}
+                <button v-if="!isSorting" :class="['btn', 'btn-start']" @click="startSort">
+                    Start Sort
+                </button>
+                <button v-else :class="['btn', 'btn-stop']" @click="stopSort">
+                    Stop
                 </button>
                 <button :class="['btn', 'btn-reset']" @click="resetSort" :disabled="isSorting">
                     Reset
@@ -91,7 +94,7 @@ export default {
         return {
             array: [],
             arraySize: 20,
-            speed: 300,
+            speed: 350,
             isSorting: false,
             comparisons: 0,
             swaps: 0,
@@ -103,10 +106,15 @@ export default {
             soundEnabled: true,
             sortType: 'bubble',
             colors: [
-                '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-                '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#52C41A',
-                '#FA8C16', '#EB2F96', '#13C2C2', '#1890FF', '#722ED1',
+                '#FF0000', // Red
+                '#FF7F00', // Orange
+                '#FFFF00', // Yellow
+                '#00FF00', // Green
+                '#0000FF', // Blue
+                '#4B0082', // Indigo
+                '#9400D3', // Violet
             ],
+            stopRequested: false,
         };
     },
     computed: {
@@ -129,6 +137,21 @@ export default {
                 comb: 'Comb Sort',
             };
             return names[this.sortType];
+        },
+        algorithmSpeed() {
+            const speeds = {
+                bubble: '⭐☆☆☆☆ Slow (O(n²))',
+                selection: '⭐☆☆☆☆ Slow (O(n²))',
+                insertion: '⭐☆☆☆☆ Slow (O(n²))',
+                quick: '⭐⭐⭐⭐☆ Very Fast (O(n log n))',
+                merge: '⭐⭐⭐⭐☆ Very Fast (O(n log n))',
+                heap: '⭐⭐⭐⭐☆ Very Fast (O(n log n))',
+                shell: '⭐⭐⭐☆☆ Fast (O(n log n))',
+                cocktail: '⭐☆☆☆☆ Slow (O(n²))',
+                gnome: '⭐☆☆☆☆ Very Slow (O(n²))',
+                comb: '⭐⭐⭐☆☆ Fast (O(n log n))',
+            };
+            return speeds[this.sortType];
         },
     },
     mounted() {
@@ -192,9 +215,22 @@ export default {
         },
         initializeArray() {
             this.array = [];
+            const colorIndices = [];
+
+            for (let i = 0; i < this.arraySize; i++) {
+                colorIndices.push(i);
+            }
+
+            // Shuffle color indices
+            for (let i = colorIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [colorIndices[i], colorIndices[j]] = [colorIndices[j], colorIndices[i]];
+            }
+
             for (let i = 0; i < this.arraySize; i++) {
                 const value = Math.floor(Math.random() * 100) + 1;
-                const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+                const colorIndex = colorIndices[i] % this.colors.length;
+                const color = this.colors[colorIndex];
                 this.array.push({ value, color, id: Math.random() });
             }
             this.resetStats();
@@ -228,6 +264,7 @@ export default {
             if (this.isSorting) return;
 
             this.isSorting = true;
+            this.stopRequested = false;
             this.status = 'Sorting...';
             this.resetStats();
             this.sortedIndices = [];
@@ -267,16 +304,28 @@ export default {
 
             this.comparingIndices = [];
             this.isSorting = false;
-            this.status = 'Sorted';
-            this.playSortCompleteSound();
+
+            if (!this.stopRequested) {
+                this.status = 'Sorted';
+                this.playSortCompleteSound();
+            } else {
+                this.status = 'Stopped';
+            }
+        },
+        stopSort() {
+            this.stopRequested = true;
         },
         async bubbleSort() {
             const n = this.array.length;
 
             for (let i = 0; i < n; i++) {
+                if (this.stopRequested) break;
+
                 let swapped = false;
 
                 for (let j = 0; j < n - i - 1; j++) {
+                    if (this.stopRequested) break;
+
                     this.comparingIndices = [j, j + 1];
                     this.comparisons++;
                     this.playCompareSound();
@@ -300,9 +349,11 @@ export default {
                 if (!swapped) break;
             }
 
-            for (let i = 0; i < n; i++) {
-                if (!this.sortedIndices.includes(i)) {
-                    this.sortedIndices.push(i);
+            if (!this.stopRequested) {
+                for (let i = 0; i < n; i++) {
+                    if (!this.sortedIndices.includes(i)) {
+                        this.sortedIndices.push(i);
+                    }
                 }
             }
         },
@@ -310,9 +361,13 @@ export default {
             const n = this.array.length;
 
             for (let i = 0; i < n - 1; i++) {
+                if (this.stopRequested) break;
+
                 let minIndex = i;
 
                 for (let j = i + 1; j < n; j++) {
+                    if (this.stopRequested) break;
+
                     this.comparingIndices = [minIndex, j];
                     this.comparisons++;
                     this.playCompareSound();
@@ -336,16 +391,22 @@ export default {
                 this.sortedIndices.push(i);
             }
 
-            this.sortedIndices.push(n - 1);
+            if (!this.stopRequested) {
+                this.sortedIndices.push(n - 1);
+            }
         },
         async insertionSort() {
             const n = this.array.length;
 
             for (let i = 1; i < n; i++) {
+                if (this.stopRequested) break;
+
                 let key = this.array[i];
                 let j = i - 1;
 
                 while (j >= 0) {
+                    if (this.stopRequested) break;
+
                     this.comparingIndices = [j, i];
                     this.comparisons++;
                     this.playCompareSound();
@@ -379,6 +440,8 @@ export default {
             }
         },
         async quickSortHelper(low, high) {
+            if (this.stopRequested) return;
+
             if (low < high) {
                 const pi = await this.partition(low, high);
 
@@ -594,9 +657,13 @@ export default {
             let swapped = true;
 
             while (swapped && left < right) {
+                if (this.stopRequested) break;
+
                 swapped = false;
 
                 for (let i = left; i < right; i++) {
+                    if (this.stopRequested) break;
+
                     this.comparingIndices = [i, i + 1];
                     this.comparisons++;
                     this.playCompareSound();
@@ -620,6 +687,8 @@ export default {
                 if (!swapped) break;
 
                 for (let i = right; i > left; i--) {
+                    if (this.stopRequested) break;
+
                     this.comparingIndices = [i - 1, i];
                     this.comparisons++;
                     this.playCompareSound();
@@ -641,9 +710,11 @@ export default {
                 left++;
             }
 
-            for (let i = 0; i < this.array.length; i++) {
-                if (!this.sortedIndices.includes(i)) {
-                    this.sortedIndices.push(i);
+            if (!this.stopRequested) {
+                for (let i = 0; i < this.array.length; i++) {
+                    if (!this.sortedIndices.includes(i)) {
+                        this.sortedIndices.push(i);
+                    }
                 }
             }
         },
@@ -775,7 +846,7 @@ export default {
 .control-group {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .label {
@@ -789,7 +860,7 @@ export default {
 .slider {
     width: 100%;
     height: 4px;
-    border-radius: 2px;
+    border-radius: 1px;
     background: #ddd;
     outline: none;
     -webkit-appearance: none;
@@ -821,7 +892,7 @@ export default {
     background: #1a1a1a;
     cursor: pointer;
     border: 2px solid #f5f1e8;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0px 1px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease;
 }
 
@@ -839,7 +910,7 @@ export default {
 .select {
     width: 100%;
     padding: 0.6rem 0.75rem;
-    border: 2px solid #1a1a1a;
+    border: 0px solid #1a1a1a;
     border-radius: 2px;
     background: #fff;
     color: #1a1a1a;
@@ -867,7 +938,7 @@ export default {
 .button-group {
     grid-column: 1 / -1;
     display: flex;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 .btn {
@@ -922,6 +993,26 @@ export default {
     border-style: dashed;
 }
 
+.btn-start {
+    background: #fff;
+}
+
+.btn-start:hover {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.btn-stop {
+    background: #FF6B6B;
+    color: #fff;
+    border-color: #FF6B6B;
+}
+
+.btn-stop:hover {
+    background: #d45555;
+    border-color: #d45555;
+}
+
 /* Visualization */
 .visualization-wrapper {
     background: rgba(255, 255, 255, 0.5);
@@ -954,8 +1045,7 @@ export default {
 
 .bar {
     width: 100%;
-    background: linear-gradient(180deg, #d4a574 0%, #c9935e 100%);
-    border: 2px solid #1a1a1a;
+    border: 0px solid #1a1a1a;
     border-radius: 2px 2px 0 0;
     display: flex;
     align-items: flex-end;
@@ -1007,7 +1097,7 @@ export default {
 .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1.5rem;
+    gap: 0.5rem;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
@@ -1076,7 +1166,7 @@ export default {
 
     .controls-panel {
         grid-template-columns: 1fr;
-        gap: 1.5rem;
+        gap: 0.5rem;
         padding: 1.5rem;
     }
 
