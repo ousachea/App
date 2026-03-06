@@ -50,6 +50,7 @@ export default {
         { name: 'MPG', route: '/mpg', icon: '⛽' },
         { name: 'Phone', route: '/phone', icon: '📱' },
         { name: 'KHQR', route: '/qr', icon: '🔲' },
+        { name: 'Sort', route: '/sort', icon: '💬' },
         { name: 'Text Converter', route: '/text-converter', icon: '📝' },
       ],
     };
