@@ -45,10 +45,12 @@ export default {
       searchQuery: '',
       pages: [
         { name: 'Home', route: '/', icon: '🏠' },
+        { name: 'Best', route: '/best', icon: '🗜️' },
         { name: 'Compressor', route: '/compressor', icon: '🗜️' },
         { name: 'Gold', route: '/gold', icon: '💰' },
         { name: 'MPG', route: '/mpg', icon: '⛽' },
         { name: 'Phone', route: '/phone', icon: '📱' },
+        { name: 'Project', route: '/project', icon: '📊' },
         { name: 'KHQR', route: '/qr', icon: '🔲' },
         { name: 'Sort', route: '/sort', icon: '💬' },
         { name: 'Text Converter', route: '/text-converter', icon: '📝' },
