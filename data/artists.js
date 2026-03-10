@@ -12,6 +12,27 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['___',]
   },
   {
+    name: 'Rui Shido 紫堂るい',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['SNOS-112','SNOS-167','SNOS-122']
+  },
+  {
+    name: 'Mikuru Hinagata',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['SNOS-129','SNOS-125','SNOS-080']
+  },
+  {
+    name: 'Mai Fujisaki',
+    cover: '',
+    url: '',  // Custom cover
+    compilations: [''],
+    mainWorks: ['IPZZ-807',]
+  },
+  {
     name: 'Ouka Rin',
     cover: '',
     url: '',  // Custom cover
@@ -275,7 +296,7 @@ export const DEFAULT_ARTISTS = [
   {
     name: 'Shio Asami/Kanon Hinano', cover: 'IPZZ-736',
     url: '',  // Custom cover
-    compilations: [''], mainWorks: ['DLDSS-361', 'DLDSS-362', 'DLDSS-372', 'FWAY-086', 'IPZZ-736', 'DLDSS-406', 'DLDSS-402', 'DLDSS-381', 'DLDSS-343', 'DLDSS-342']
+    compilations: [''], mainWorks: ['IPZZ-801','IPZZ-776','DLDSS-361', 'DLDSS-362', 'DLDSS-372', 'FWAY-086', 'IPZZ-736', 'DLDSS-406', 'DLDSS-402', 'DLDSS-381', 'DLDSS-343', 'DLDSS-342']
   },
   {
     name: 'Kiritani Matsuri', cover: '',
