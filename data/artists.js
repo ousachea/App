@@ -124,11 +124,11 @@ export const DEFAULT_ARTISTS = [
     mainWorks: ['SONE-807','OFJE-697','EBWH-276','SONE-964','SONE-894','SONE-634','SONE-494','FWAY-040']
   },
   {
-    name: 'Kiyomiya Nina',
+    name: 'Kiyomiya Nina | Toa Kiyomiya',
     cover: '',
     url: '',  // Custom cover
-    compilations: ['MKCK-398','MKCK-388'],
-    mainWorks: ['EBWH-281','EBWH-265','EBWH-261','EBWH-248','REBDB-950','EBWH-243','EBWH-230','EBWH-226','EBWH-226','EBWH-219','EBWH-205','MIDA-190','EBWH-200','EBWH-192','EBWH-183','MKCK-377','EBWH-165','EBWH-155','EBWH-144','EBVR-102','EBWH-135','EBWH-123','FWAY-028','EBWH-119','EBWH-104','EBWH-087','EBWH-071']
+    compilations: ['MKCK-398','MKCK-388','MKCK-414'],
+    mainWorks: ['EBWH-304','EBWH-298','MIMK-262','PFES-115','EBWH-281','EBWH-265','EBWH-261','EBWH-248','REBDB-950','EBWH-243','EBWH-230','EBWH-226','EBWH-226','EBWH-219','EBWH-205','MIDA-190','EBWH-200','EBWH-192','EBWH-183','MKCK-377','EBWH-165','EBWH-155','EBWH-144','EBVR-102','EBWH-135','EBWH-123','FWAY-028','EBWH-119','EBWH-104','EBWH-087','EBWH-071']
   },
   {
     name: 'Konomi Nagisa',
